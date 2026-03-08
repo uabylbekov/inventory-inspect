@@ -175,24 +175,26 @@ struct InspectionReportView: View {
         .navigationTitle("Report")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                HStack(spacing: 16) {
-                    if viewModel.isGeneratingPDF {
-                        ProgressView()
-                    } else {
-                        Button(action: {
-                            if let data = viewModel.generatePDF() {
-                                let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
-                                self.shareablePDF = ShareablePDF(data: data, filename: filename)
-                            }
-                        }) {
-                            Image(systemName: "square.and.arrow.up")
+            ToolbarItem(placement: .topBarTrailing) {
+                if viewModel.isGeneratingPDF {
+                    ProgressView()
+                } else {
+                    Button(action: {
+                        if let data = viewModel.generatePDF() {
+                            let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
+                            self.shareablePDF = ShareablePDF(data: data, filename: filename)
                         }
+                    }) {
+                        Image(systemName: "square.and.arrow.up")
+                            .imageScale(.large)
                     }
-                    
-                    Button(action: { showingInspectionSelection = true }) {
-                        Label("Inspection", systemImage: "camera.viewfinder")
-                    }
+                }
+            }
+            
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: { showingInspectionSelection = true }) {
+                    Image(systemName: "camera.viewfinder")
+                        .imageScale(.large)
                 }
             }
         }
@@ -239,6 +241,7 @@ struct ReportItemRow: View {
     let item: ReportItem
     var onResolve: (() -> Void)? = nil
     @State private var showFullScreenImage = false
+    @State private var showingResolveConfirmation = false
     
     private var status: String { item.inspectionItem.status }
     
@@ -297,7 +300,7 @@ struct ReportItemRow: View {
             }
             
             if let onResolve = onResolve, (status == "damaged" || status == "missing") {
-                Button(action: onResolve) {
+                Button(action: { showingResolveConfirmation = true }) {
                     HStack {
                         Spacer()
                         Text("Resolve Issue")
@@ -307,8 +310,13 @@ struct ReportItemRow: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
-                .padding(.leading, 32 + 12)
                 .padding(.top, 4)
+                .alert("Resolve This Issue?", isPresented: $showingResolveConfirmation) {
+                    Button("Cancel", role: .cancel) {}
+                    Button("Mark as Resolved") { onResolve() }
+                } message: {
+                    Text("This will mark the issue as resolved. This action cannot be undone.")
+                }
             }
         }
         .padding(.vertical, 8)

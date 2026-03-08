@@ -7,17 +7,16 @@ struct NotificationBellView: View {
     var body: some View {
         Button(action: { showingNotifications = true }) {
             ZStack {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 18))
-                    .foregroundColor(.primary)
+                Image(systemName: "bell")
+                    .symbolRenderingMode(.hierarchical)
                 
                 if notificationManager.unreadCount > 0 {
                     Text("\(notificationManager.unreadCount)")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 9, weight: .bold))
                         .foregroundColor(.white)
                         .padding(4)
                         .background(Circle().fill(.red))
-                        .offset(x: 10, y: -10)
+                        .offset(x: 10, y: -8)
                 }
             }
         }

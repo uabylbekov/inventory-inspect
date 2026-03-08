@@ -8,8 +8,6 @@ struct PropertyDetailView: View {
     @State private var showingRoomActiveInspectionAlert = false
     @State private var roomActiveInspectionItemCount = 0
     @State private var roomToDeleteOffsets: IndexSet?
-    @State private var showingStartInspection = false
-    
     init(property: PropertyModel) {
         _viewModel = State(initialValue: PropertyDetailViewModel(property: property))
     }
@@ -38,22 +36,18 @@ struct PropertyDetailView: View {
             }
             .padding(.bottom, 32)
         }
-        .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle(viewModel.property.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    Button(action: { showingManageTeam = true }) {
-                        Label("Manage Team", systemImage: "person.3")
-                    }
-                    if viewModel.isOwner {
-                        Button(action: { viewModel.showingAddRoom = true }) {
-                            Label("Add Room", systemImage: "plus")
+            if viewModel.isOwner {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(action: { viewModel.showingAddRoom = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus.circle")
+                            Text("Add Room")
+                                .font(.subheadline.bold())
                         }
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
         }
@@ -68,8 +62,10 @@ struct PropertyDetailView: View {
             Button("Delete", role: .destructive) {
                 if let offsets = roomToDeleteOffsets {
                     HapticManager.shared.impact(style: .medium)
-                    viewModel.deleteRooms(at: offsets)
-                    HapticManager.shared.notification(type: .success)
+                    Task {
+                        await viewModel.deleteRooms(at: offsets)
+                        HapticManager.shared.notification(type: .success)
+                    }
                 }
                 roomToDeleteOffsets = nil
             }
@@ -88,9 +84,6 @@ struct PropertyDetailView: View {
             Task { await viewModel.fetchRooms() }
         }) { room in
             EditRoomSheet(room: room)
-        }
-        .sheet(isPresented: $showingStartInspection) {
-            StartInspectionSheet()
         }
         .task {
             await viewModel.fetchRooms()
@@ -122,7 +115,7 @@ struct PropertyDetailView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
-                        .background(.ultraThinMaterial)
+                        .background(.secondary)
                         .clipShape(Capsule())
                     
                     Text(viewModel.property.name)
@@ -138,7 +131,7 @@ struct PropertyDetailView: View {
                     Image(systemName: "mappin.and.ellipse")
                         .foregroundColor(.secondary)
                     Text(viewModel.property.address_line1 ?? "No address recorded")
-                        .font(.subheadline)
+                        .font(.footnote)
                         .foregroundColor(.secondary)
                 }
                 .padding(.horizontal)
@@ -159,7 +152,7 @@ struct PropertyDetailView: View {
             Text("About Property")
                 .font(.headline)
             Text(desc)
-                .font(.subheadline)
+                .font(.footnote)
                 .foregroundColor(.secondary)
                 .lineLimit(3)
         }
@@ -167,28 +160,12 @@ struct PropertyDetailView: View {
     }
     
     private var quickActionsBar: some View {
-        HStack(spacing: 16) {
-            Button(action: {
-                HapticManager.shared.impact(style: .medium)
-                showingStartInspection = true
-            }) {
-                Label("Start Inspection", systemImage: "plus.viewfinder")
-                    .fontWeight(.bold)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.accentColor.gradient)
-                    .foregroundColor(.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
-            
-            Button(action: { showingManageTeam = true }) {
-                Image(systemName: "person.2.fill")
-                    .font(.headline)
-                    .padding()
-                    .background(Color(UIColor.secondarySystemGroupedBackground))
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            }
+        Button(action: { showingManageTeam = true }) {
+            Label("Manage Team", systemImage: "person.2.fill")
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.borderedProminent)
+        .controlSize(.large)
         .padding(.horizontal)
     }
     
@@ -199,7 +176,7 @@ struct PropertyDetailView: View {
                     .font(.headline)
                 Spacer()
                 Text("\(viewModel.rooms.count) total")
-                    .font(.caption.bold())
+                    .font(.footnote.bold())
                     .foregroundColor(.secondary)
             }
             .padding(.horizontal)
@@ -224,7 +201,7 @@ struct PropertyDetailView: View {
                                     } label: {
                                         Label("Edit Room", systemImage: "pencil")
                                     }
-                                    
+
                                     Button(role: .destructive) {
                                         confirmDeleteRoom(room)
                                     } label: {
@@ -232,6 +209,7 @@ struct PropertyDetailView: View {
                                     }
                                 }
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
@@ -255,38 +233,41 @@ struct PropertyDetailView: View {
                         }
                     } label: {
                         HStack(spacing: 14) {
-                            Circle()
-                                .fill(inspection.status == "completed" ? Color.green : Color.blue)
-                                .frame(width: 8, height: 8)
-                            
+                            Image(systemName: typeIcon(for: inspection.inspection_type))
+                                .font(.caption.bold())
+                                .foregroundColor(typeColor(for: inspection.inspection_type))
+                                .frame(width: 28, height: 28)
+                                .background(typeColor(for: inspection.inspection_type).opacity(0.1))
+                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                                    .font(.subheadline.bold())
+                                    .font(.headline)
                                     .foregroundColor(.primary)
                                 Text(AppFormatter.formatDate(inspection.started_at))
-                                    .font(.caption2)
+                                    .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             Spacer()
-                            
+
                             StatusBadge(status: inspection.status)
                                 .scaleEffect(0.8)
-                            
+
                             Image(systemName: "chevron.right")
                                 .font(.caption2)
                                 .foregroundColor(.secondary.opacity(0.3))
                         }
                         .padding()
-                        .background(Color(UIColor.secondarySystemGroupedBackground))
                     }
-                    
+                    .buttonStyle(.plain)
+
                     if inspection.id != viewModel.recentInspections.last?.id {
                         Divider().padding(.leading, 16)
                     }
                 }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
             .padding(.horizontal)
         }
     }
@@ -294,10 +275,10 @@ struct PropertyDetailView: View {
     private func statChip(value: String, label: String, icon: String) -> some View {
         HStack(spacing: 6) {
             Image(systemName: icon)
-                .font(.caption)
+                .font(.footnote)
                 .foregroundColor(.accentColor)
             Text("\(value) \(label)")
-                .font(.caption.bold())
+                .font(.footnote.bold())
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
@@ -305,8 +286,27 @@ struct PropertyDetailView: View {
         .clipShape(Capsule())
     }
     
+    private func typeIcon(for type: String) -> String {
+        switch type {
+        case "check-in": return "door.left.hand.open"
+        case "check-out": return "door.right.hand.closed"
+        case "routine": return "wrench.adjustable.fill"
+        default: return "checklist"
+        }
+    }
+
+    private func typeColor(for type: String) -> Color {
+        switch type {
+        case "check-in": return .purple
+        case "check-out": return .blue
+        case "routine": return .orange
+        default: return .gray
+        }
+    }
+
     private func confirmDeleteRoom(_ room: PropertyRoomModel) {
-        roomToDeleteOffsets = IndexSet(integer: viewModel.rooms.firstIndex(where: { $0.id == room.id }) ?? 0)
+        guard let index = viewModel.rooms.firstIndex(where: { $0.id == room.id }) else { return }
+        roomToDeleteOffsets = IndexSet(integer: index)
         Task {
             let count = await viewModel.activeInspectionItemCount(at: roomToDeleteOffsets!)
             if count > 0 {
@@ -333,18 +333,16 @@ struct RoomCard: View {
             
             VStack(alignment: .leading, spacing: 2) {
                 Text(room.name)
-                    .font(.subheadline.bold())
+                    .font(.headline)
                     .foregroundColor(.primary)
                     .lineLimit(1)
                 Text(room.room_type?.capitalized ?? "Room")
-                    .font(.caption2)
+                    .font(.caption)
                     .foregroundColor(.secondary)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

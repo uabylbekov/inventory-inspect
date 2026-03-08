@@ -97,13 +97,13 @@ struct StartInspectionSheet: View {
     private var inspectionTypeSection: some View {
         Section(header: Text("Inspection Type")) {
             VStack(spacing: 0) {
-                let types = [
-                    ("✨ Check In", "check-in"),
-                    ("🧹 Check Out", "check-out"),
-                    ("🛠️ Routine", "routine")
+                let types: [(String, String, String)] = [
+                    ("Check In", "door.left.hand.open", "check-in"),
+                    ("Check Out", "door.right.hand.closed", "check-out"),
+                    ("Routine", "wrench.adjustable.fill", "routine")
                 ]
-                
-                ForEach(types, id: \.1) { label, value in
+
+                ForEach(types, id: \.2) { name, icon, value in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             viewModel.inspectionType = value
@@ -111,7 +111,7 @@ struct StartInspectionSheet: View {
                         HapticManager.shared.impact(style: .light)
                     }) {
                         HStack {
-                            Text(label)
+                            Label(name, systemImage: icon)
                                 .font(.body.weight(.medium))
                                 .foregroundColor(.primary)
                             Spacer()
@@ -121,8 +121,8 @@ struct StartInspectionSheet: View {
                         .padding(.vertical, 12)
                     }
                     .buttonStyle(.plain)
-                    
-                    if value != types.last?.1 {
+
+                    if value != types.last?.2 {
                         Divider()
                     }
                 }
@@ -149,7 +149,6 @@ struct StartInspectionSheet: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
-                .tint(.blue)
                 .controlSize(.large)
                 .padding(.top, 4)
             }

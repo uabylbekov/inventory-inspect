@@ -28,9 +28,8 @@ struct DashboardView: View {
                 }
                 .padding(.bottom, 32)
             }
-            .background(Color(UIColor.systemGroupedBackground))
             .navigationTitle("Dashboard")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NotificationBellView()
@@ -79,7 +78,7 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
                 .font(.title2.bold())
-            Text(viewModel.properties.isEmpty ? "Welcome! Let's get started." : "Your portfolio is looking healthy.")
+            Text(subtitleText)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
         }
@@ -113,30 +112,18 @@ struct DashboardView: View {
     private var quickActionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Quick Actions")
-                .font(.headline)
+                .font(.title3.bold())
                 .padding(.horizontal)
             
-            Button(action: { 
+            Button(action: {
                 HapticManager.shared.impact(style: .medium)
-                showingStartInspection = true 
+                showingStartInspection = true
             }) {
-                HStack {
-                    Image(systemName: "plus.viewfinder")
-                        .font(.system(size: 20, weight: .semibold))
-                    Text("Start New Inspection")
-                        .fontWeight(.bold)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.bold())
-                        .foregroundColor(.white.opacity(0.5))
-                }
-                .padding()
-                .frame(maxWidth: .infinity)
-                .background(Color.accentColor.gradient)
-                .foregroundColor(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                .shadow(color: Color.accentColor.opacity(0.3), radius: 8, x: 0, y: 4)
+                Label("Start Inspection", systemImage: "plus.viewfinder")
+                    .frame(maxWidth: .infinity)
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .padding(.horizontal)
         }
     }
@@ -144,7 +131,7 @@ struct DashboardView: View {
     private var activeInspectionsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Active Inspections")
-                .font(.headline)
+                .font(.title3.bold())
                 .padding(.horizontal)
             
             ScrollView(.horizontal, showsIndicators: false) {
@@ -154,28 +141,31 @@ struct DashboardView: View {
                             InspectionHubView(inspection: inspection.toInspectionModel)
                         } label: {
                             VStack(alignment: .leading, spacing: 12) {
-                                HStack {
+                                HStack(spacing: 10) {
                                     Image(systemName: "house.fill")
-                                        .foregroundColor(.blue)
+                                        .font(.caption.bold())
+                                        .foregroundColor(.white)
+                                        .frame(width: 28, height: 28)
+                                        .background(Color.accentColor)
+                                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                                     Text(inspection.propertyName)
-                                        .font(.subheadline.bold())
+                                        .font(.headline)
                                         .lineLimit(1)
                                 }
-                                
+
                                 Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                                    .font(.caption.bold())
-                                    .foregroundColor(.secondary)
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.accentColor)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(Color.blue.opacity(0.1))
+                                    .background(Color.accentColor.opacity(0.1))
                                     .clipShape(Capsule())
                             }
                             .padding()
                             .frame(width: 180, alignment: .leading)
-                            .background(Color(UIColor.secondarySystemGroupedBackground))
-                            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-                            .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+                            .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
@@ -188,11 +178,11 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Text("Priority Alerts")
-                    .font(.headline)
+                    .font(.title3.bold())
                 Spacer()
                 if !viewModel.recentIssues.isEmpty {
                     Text("\(viewModel.recentIssues.count)")
-                        .font(.caption.bold())
+                        .font(.subheadline.bold())
                         .foregroundColor(.white)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 2)
@@ -210,17 +200,17 @@ struct DashboardView: View {
                 VStack(spacing: 8) {
                     Image(systemName: "shield.checkmark.fill")
                         .font(.system(size: 32))
+                        .symbolRenderingMode(.hierarchical)
                         .foregroundColor(.green)
                     Text("System Clear")
-                        .font(.subheadline.bold())
+                        .font(.headline)
                     Text("No outstanding damaged or missing items.")
-                        .font(.caption)
+                        .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 32)
-                .background(Color(UIColor.secondarySystemGroupedBackground))
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+                .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
                 .padding(.horizontal)
             } else {
                 VStack(spacing: 12) {
@@ -234,6 +224,7 @@ struct DashboardView: View {
                         } label: {
                             DashboardIssueRow(issue: issue)
                         }
+                        .buttonStyle(.plain)
                     }
                 }
                 .padding(.horizontal)
@@ -246,6 +237,19 @@ struct DashboardView: View {
         if hour < 12 { return "Good Morning" }
         if hour < 17 { return "Good Afternoon" }
         return "Good Evening"
+    }
+
+    private var subtitleText: String {
+        if viewModel.properties.isEmpty { return "Welcome! Let's get started." }
+        if !viewModel.recentIssues.isEmpty {
+            let count = viewModel.recentIssues.count
+            return "\(count) issue\(count == 1 ? "" : "s") need\(count == 1 ? "s" : "") your attention."
+        }
+        if !viewModel.activeInspections.isEmpty {
+            let count = viewModel.activeInspections.count
+            return "\(count) inspection\(count == 1 ? "" : "s") currently in progress."
+        }
+        return "All clear. Your portfolio is healthy."
     }
 }
 
@@ -264,31 +268,29 @@ struct MetricCard: View {
             HStack {
                 Image(systemName: icon)
                     .font(.headline)
+                    .symbolRenderingMode(.hierarchical)
                     .foregroundColor(color)
                 Spacer()
                 Text(title)
-                    .font(.caption.bold())
+                    .font(.headline)
                     .foregroundColor(.secondary)
-                    .textCase(.uppercase)
             }
             
             VStack(alignment: .leading, spacing: 2) {
                 if isLoading {
-                    Text("00").font(.title.bold()).redacted(reason: .placeholder)
+                    Text("00").font(.system(.title, design: .rounded).bold()).redacted(reason: .placeholder)
                 } else {
                     Text(value)
                         .font(.system(.title, design: .rounded).bold())
                 }
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
             }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: Color.black.opacity(0.04), radius: 10, x: 0, y: 5)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
     }
 }
 
@@ -313,41 +315,41 @@ struct DashboardIssueRow: View {
                 }
             } else {
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.orange.opacity(0.1))
+                    .fill(PropertyUI.roomColor(for: issue.property_rooms.room_type).opacity(0.1))
                     .frame(width: 60, height: 60)
                     .overlay(
-                        Image(systemName: issue.status == "missing" ? "questionmark.circle.fill" : "exclamationmark.triangle.fill")
-                            .foregroundColor(.orange)
+                        Image(systemName: PropertyUI.roomIcon(for: issue.property_rooms.room_type))
+                            .foregroundColor(PropertyUI.roomColor(for: issue.property_rooms.room_type))
+                            .symbolRenderingMode(.hierarchical)
                     )
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(issue.itemName)
-                        .font(.subheadline.bold())
+                        .font(.headline)
                         .foregroundColor(.primary)
                     Spacer()
                     Text(issue.status.capitalized)
-                        .font(.caption2.bold())
+                        .font(.caption.bold())
                         .foregroundColor(issue.status == "damaged" ? .red : .orange)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(issue.status == "damaged" ? Color.red.opacity(0.1) : Color.orange.opacity(0.1))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .background(issue.status == "damaged" ? Color.red.opacity(0.12) : Color.orange.opacity(0.12))
                         .clipShape(Capsule())
                 }
                 
                 Text(issue.propertyName)
-                    .font(.caption)
+                    .font(.subheadline)
                     .foregroundColor(.secondary)
                 
                 Text(issue.roomName)
-                    .font(.caption2)
+                    .font(.footnote)
                     .foregroundColor(.secondary.opacity(0.8))
             }
         }
-        .padding(12)
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
+        .padding(16)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
+    

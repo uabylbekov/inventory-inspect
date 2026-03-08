@@ -42,10 +42,9 @@ struct LoginView: View {
                     .focused($isEmailFocused)
                     .disabled(isLoading)
                     .padding()
-                    .background(Color(UIColor.secondarySystemFill))
-                    .cornerRadius(14)
+                    .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 14)
+                        RoundedRectangle(cornerRadius: 14, style: .continuous)
                             .stroke(showValidationError ? Color.red.opacity(0.8) : Color.clear, lineWidth: 1)
                     )
                     .onChange(of: email) {
@@ -94,8 +93,6 @@ struct LoginView: View {
                 .animation(.easeInOut(duration: 0.2), value: isEmailValid)
             }
             .padding(32)
-            // Background allows native iOS Light/Dark mode colors
-            .background(Color(UIColor.systemBackground))
             .navigationDestination(isPresented: $isNavigatingToInbox) {
                 CheckInboxView(email: email)
             }

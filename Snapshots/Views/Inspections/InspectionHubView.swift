@@ -5,6 +5,7 @@ struct InspectionHubView: View {
     @State private var viewModel: InspectionHubViewModel
     @State private var showCancelAlert = false
     @State private var cancelReason = ""
+    @State private var showCompleteAlert = false
     
     init(inspection: InspectionModel) {
         _viewModel = State(initialValue: InspectionHubViewModel(inspection: inspection))
@@ -18,160 +19,51 @@ struct InspectionHubView: View {
         viewModel.inspectionItems.count
     }
     
+    private var progressValue: Double {
+        totalItems > 0 ? Double(checkedItems) / Double(totalItems) : 0
+    }
+    
     var body: some View {
-        List {
-            if viewModel.isLoading && viewModel.rooms.isEmpty {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 40)
-                    .listRowBackground(Color.clear)
-            } else if viewModel.rooms.isEmpty {
-                Section {
-                    ContentUnavailableView(
-                        "No Rooms",
-                        systemImage: "door.left.hand.closed",
-                        description: Text("This property has no rooms. Add rooms to the property first.")
-                    )
-                }
-            } else {
-                // MARK: - Progress Tracker
-                Section {
-                    HStack(spacing: 14) {
-                        Image(systemName: "list.clipboard.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.white)
-                            .frame(width: 56, height: 56)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color.accentColor.gradient)
-                            )
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text("In-Progress Check")
-                                .font(.headline)
-                            Text("\(checkedItems) of \(totalItems) Checked")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        ZStack {
-                            Circle()
-                                .stroke(Color.accentColor.opacity(0.1), lineWidth: 4)
-                            Circle()
-                                .trim(from: 0, to: totalItems > 0 ? Double(checkedItems) / Double(totalItems) : 0)
-                                .stroke(checkedItems == totalItems && totalItems > 0 ? Color.green : Color.accentColor, style: StrokeStyle(lineWidth: 4, lineCap: .round))
-                                .rotationEffect(.degrees(-90))
-                            
-                            Text("\(totalItems > 0 ? Int(Double(checkedItems) / Double(totalItems) * 100) : 0)%")
-                                .font(.system(size: 10, weight: .bold, design: .rounded))
-                        }
-                        .frame(width: 36, height: 36)
-                    }
-                    .padding(.vertical, 6)
-                }
-                
-                // MARK: - Rooms & Items (Settings-style)
-                ForEach(viewModel.rooms) { room in
-                    let roomItems = viewModel.allInventoryItems.filter { $0.room_id == room.id }
+        ZStack(alignment: .bottom) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 28) {
+                    // MARK: - Tactical Progress Header
+                    tacticalHeader
                     
-                    if !roomItems.isEmpty {
-                        Section {
-                            ForEach(roomItems) { item in
-                                let record = viewModel.inspectionItems.first { $0.inventory_item_id == item.id }
-                                NavigationLink {
-                                    InspectionItemDetailView(
-                                        item: item,
-                                        inspection: viewModel.inspection,
-                                        room: room,
-                                        initialRecord: record
-                                    )
-                                } label: {
-                                    ItemRow(item: item, record: record)
-                                }
-                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                            }
-                        } header: {
-                            HStack {
-                                Text(room.name)
-                                Spacer()
-                                let roomChecked = roomItems.filter { item in
-                                    viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
-                                }.count
-                                Text("\(roomChecked)/\(roomItems.count)")
-                                    .font(.caption2.bold())
-                                    .foregroundColor(roomChecked == roomItems.count ? .green : .secondary)
-                            }
-                        }
+                    // MARK: - Rooms Navigation
+                    if viewModel.isLoading && viewModel.rooms.isEmpty {
+                        loadingState
+                    } else if viewModel.rooms.isEmpty {
+                        emptyState
+                    } else {
+                        roomsGrid
                     }
+                    
+                    // Add padding for the sticky bottom bar
+                    Spacer().frame(height: 100)
                 }
-                
-                // MARK: - Action Buttons
-                if viewModel.inspection.status == "in_progress" {
-                    Section {
-                        HStack(spacing: 12) {
-                            Button(action: {
-                                Task {
-                                    HapticManager.shared.impact(style: .medium)
-                                    let success = await viewModel.completeInspection()
-                                    if success {
-                                        HapticManager.shared.notification(type: .success)
-                                        dismiss()
-                                    } else {
-                                        HapticManager.shared.notification(type: .error)
-                                    }
-                                }
-                            }) {
-                                HStack {
-                                    if viewModel.isCompleting {
-                                        ProgressView().tint(.white)
-                                            .padding(.trailing, 4)
-                                    }
-                                    Label("Complete", systemImage: "checkmark.seal.fill")
-                                }
-                                .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            .controlSize(.large)
-                            .disabled(!viewModel.allRoomsComplete || viewModel.isCompleting)
-                            
-                            Button(role: .destructive) {
-                                cancelReason = ""
-                                showCancelAlert = true
-                            } label: {
-                                Text("Cancel")
-                                    .frame(maxWidth: .infinity)
-                            }
-                            .buttonStyle(.bordered)
-                            .controlSize(.large)
-                        }
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets(top: 16, leading: 0, bottom: 12, trailing: 0))
-                    } footer: {
-                        if !viewModel.allRoomsComplete {
-                            Text("Finish all rooms to complete.")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                        }
-                    }
-                }
+                .padding(.top, 16)
+            }
+            .refreshable {
+                await viewModel.fetchData()
             }
             
-            if let error = viewModel.errorMessage {
-                Section {
-                    Label(error, systemImage: "exclamationmark.triangle")
-                        .foregroundColor(.red)
-                        .font(.subheadline)
+            // MARK: - Sticky Bottom Action Bar
+            if viewModel.inspection.status == "in_progress" {
+                bottomActionBar
+            }
+        }
+        .navigationTitle("Inspection Hub")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if viewModel.inspection.status == "in_progress" {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(role: .destructive, action: { showCancelAlert = true }) {
+                        Label("Cancel Inspection", systemImage: "xmark")
+                    }
                 }
             }
         }
-        .listStyle(.insetGrouped)
-        .animation(.default, value: viewModel.isLoading)
-        .navigationTitle("Inspection")
-        .navigationBarTitleDisplayMode(.inline)
         .alert("Cancel Inspection?", isPresented: $showCancelAlert) {
             TextField("Reason (optional)", text: $cancelReason)
             Button("Keep Going", role: .cancel) {}
@@ -193,45 +85,297 @@ struct InspectionHubView: View {
             await viewModel.fetchData()
             await viewModel.setupRealtime()
         }
-        .refreshable {
-            await viewModel.fetchData()
+        .alert("Complete Inspection?", isPresented: $showCompleteAlert) {
+            Button("Not Yet", role: .cancel) {}
+            Button("Complete") {
+                Task {
+                    HapticManager.shared.impact(style: .medium)
+                    let success = await viewModel.completeInspection()
+                    if success {
+                        HapticManager.shared.notification(type: .success)
+                        dismiss()
+                    }
+                }
+            }
+        } message: {
+            Text("This will finalize the inspection and generate a report. No further changes can be made after completing.")
         }
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.inspectionItems.count)
     }
-}
-
-// MARK: - Item Row
-
-private struct ItemRow: View {
-    let item: RoomInventoryItemModel
-    let record: InspectionItemModel?
     
-    private var status: String { record?.status ?? "pending" }
+    // MARK: - Subviews
     
-    var body: some View {
-        HStack {
-            Label {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
+    private var tacticalHeader: some View {
+        VStack(spacing: 20) {
+            HStack(spacing: 24) {
+                // Progress Gauge
+                ZStack {
+                    Circle()
+                        .stroke(Color.accentColor.opacity(0.1), lineWidth: 10)
+                        .frame(width: 90, height: 90)
                     
-                    if item.expected_qty > 1 {
-                        Text("Qty: \(item.expected_qty)")
-                            .font(.caption)
+                    Circle()
+                        .trim(from: 0, to: progressValue)
+                        .stroke(
+                            AngularGradient(
+                                gradient: Gradient(colors: [Color.accentColor.opacity(0.6), Color.accentColor]),
+                                center: .center,
+                                startAngle: .degrees(-90),
+                                endAngle: .degrees(270)
+                            ),
+                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
+                        )
+                        .rotationEffect(.degrees(-90))
+                        .frame(width: 90, height: 90)
+                    
+                    VStack(spacing: -2) {
+                        Text("\(Int(progressValue * 100))%")
+                            .font(.system(size: 20, weight: .black, design: .rounded))
+                        Text("DONE")
+                            .font(.system(size: 8, weight: .bold))
                             .foregroundColor(.secondary)
                     }
                 }
-            } icon: {
+                .shadow(color: Color.accentColor.opacity(0.15), radius: 8, x: 0, y: 4)
+                
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
+                        .font(.footnote.bold())
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(Capsule())
+                    
+                    Text("Inventory Check")
+                        .font(.title3.bold())
+                    
+                    Text("\(checkedItems) of \(totalItems) items checked")
+                        .font(.footnote)
+                        .foregroundColor(.secondary)
+                }
+                
+                Spacer()
+            }
+            .padding(24)
+            .glassEffect(in: RoundedRectangle(cornerRadius: 28, style: .continuous))
+            .padding(.horizontal)
+        }
+    }
+    
+    private var roomsGrid: some View {
+        let incompleteFirst = viewModel.rooms.sorted { a, b in
+            let aItems = viewModel.allInventoryItems.filter { $0.room_id == a.id }
+            let aComplete = aItems.allSatisfy { item in
+                viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
+            }
+            let bItems = viewModel.allInventoryItems.filter { $0.room_id == b.id }
+            let bComplete = bItems.allSatisfy { item in
+                viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
+            }
+            return !aComplete && bComplete
+        }
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Room Walkthrough")
+                .font(.headline)
+                .padding(.horizontal)
+
+            VStack(spacing: 20) {
+                ForEach(incompleteFirst) { room in
+                    let roomItems = viewModel.allInventoryItems.filter { $0.room_id == room.id }
+                    if !roomItems.isEmpty {
+                        let roomCheckedCount = roomItems.filter { item in
+                            viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
+                        }.count
+
+                        RoomWalkthroughCard(
+                            room: room,
+                            checkedCount: roomCheckedCount,
+                            totalCount: roomItems.count,
+                            items: roomItems,
+                            viewModel: viewModel
+                        )
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+    }
+    
+    private var bottomActionBar: some View {
+        Button(action: {
+            showCompleteAlert = true
+        }) {
+            HStack(spacing: 12) {
+                if viewModel.isCompleting {
+                    ProgressView().tint(.white)
+                } else {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.headline)
+                }
+                Text("Complete Inspection")
+                    .fontWeight(.bold)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 56)
+            .background(viewModel.allRoomsComplete ? Color.green.gradient : Color.accentColor.gradient)
+            .foregroundColor(.white)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .shadow(color: (viewModel.allRoomsComplete ? Color.green : Color.accentColor).opacity(0.3), radius: 10, x: 0, y: 5)
+        }
+        .disabled(!viewModel.allRoomsComplete || viewModel.isCompleting)
+        .opacity(viewModel.allRoomsComplete ? 1.0 : 0.6)
+        .padding(.horizontal, 24)
+        .padding(.top, 16)
+        .padding(.bottom, 34)
+        .background(.ultraThinMaterial)
+    }
+    
+    private var emptyState: some View {
+        ContentUnavailableView(
+            "Ready for Duty",
+            systemImage: "clipboard.fill",
+            description: Text("No items available to inspect. This is usually due to a property having no inventory assigned.")
+        )
+        .padding(.top, 60)
+    }
+    
+    private var loadingState: some View {
+        VStack(spacing: 16) {
+            ProgressView()
+                .scaleEffect(1.2)
+            Text("Priming Hub...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 100)
+    }
+}
+
+// MARK: - Tactical Components
+
+struct RoomWalkthroughCard: View {
+    let room: PropertyRoomModel
+    let checkedCount: Int
+    let totalCount: Int
+    let items: [RoomInventoryItemModel]
+    let viewModel: InspectionHubViewModel
+    
+    var isComplete: Bool {
+        checkedCount == totalCount
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Room Header
+            HStack {
+                HStack(spacing: 12) {
+                    Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(PropertyUI.roomColor(for: room.room_type ?? "").gradient)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(room.name)
+                            .font(.headline)
+                        Text("\(checkedCount)/\(totalCount) Done")
+                            .font(.caption)
+                            .foregroundColor(isComplete ? .green : .secondary)
+                    }
+                }
+                
+                Spacer()
+                
+                if isComplete {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundColor(.green)
+                        .font(.title3)
+                } else {
+                    Text("\(Int(Double(checkedCount) / Double(totalCount) * 100))%")
+                        .font(.caption.bold())
+                        .monospacedDigit()
+                        .foregroundColor(.accentColor)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(Color.accentColor.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+            }
+            .padding(16)
+            
+            // Item List
+            VStack(spacing: 0) {
+                ForEach(items) { item in
+                    let record = viewModel.inspectionItems.first { $0.inventory_item_id == item.id }
+                    
+                    NavigationLink {
+                        InspectionItemDetailView(
+                            item: item,
+                            inspection: viewModel.inspection,
+                            room: room,
+                            initialRecord: record
+                        )
+                    } label: {
+                        TacticalItemRow(item: item, record: record)
+                    }
+                    .buttonStyle(.plain)
+                    
+                    if item.id != items.last?.id {
+                        Divider().padding(.leading, 52)
+                    }
+                }
+            }
+        }
+        .glassEffect(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+}
+
+struct TacticalItemRow: View {
+    let item: RoomInventoryItemModel
+    let record: InspectionItemModel?
+    
+    var status: String { record?.status ?? "pending" }
+    
+    var body: some View {
+        HStack(spacing: 16) {
+            ZStack {
+                Circle()
+                    .fill(StatusUI.color(for: status).opacity(0.1))
+                    .frame(width: 36, height: 36)
+                
                 Image(systemName: StatusUI.icon(for: status))
+                    .font(.system(size: 14, weight: .bold))
                     .foregroundColor(StatusUI.color(for: status))
+            }
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                
+                if item.expected_qty > 1 {
+                    Text("Expected Qty: \(item.expected_qty)")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
             Spacer()
             
             if status != "pending" {
                 StatusBadge(status: status)
+                    .scaleEffect(0.85)
             } else {
-                Text("Pending")
-                    .foregroundColor(.secondary)
+                Image(systemName: "chevron.right")
+                    .font(.caption2.bold())
+                    .foregroundColor(.secondary.opacity(0.3))
             }
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 }

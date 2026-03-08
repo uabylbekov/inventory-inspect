@@ -50,6 +50,22 @@ final class ContentViewModel {
         }
     }
     
+    /// Returns the number of active (in_progress) inspections for a single property ID.
+    func activeInspectionCount(for propertyId: UUID) async -> Int {
+        do {
+            let existing: [InspectionModel] = try await supabase
+                .from("inspections")
+                .select()
+                .eq("property_id", value: propertyId.uuidString.lowercased())
+                .eq("status", value: "in_progress")
+                .execute()
+                .value
+            return existing.count
+        } catch {
+            return 0
+        }
+    }
+    
     func deleteProperties(at offsets: IndexSet) {
         let itemsToDelete = offsets.map { properties[$0] }
         properties.remove(atOffsets: offsets)

@@ -42,11 +42,16 @@ class DashboardViewModel {
         let image_url: String?
         let updated_at: String
         let room_inventory_items: NameReference
-        let property_rooms: NameReference
+        let property_rooms: RoomReference
         let inspections: InspectionDetail
         
         struct NameReference: Codable {
             let name: String
+        }
+
+        struct RoomReference: Codable {
+            let name: String
+            let room_type: String?
         }
         
         struct InspectionDetail: Codable {
@@ -114,7 +119,7 @@ class DashboardViewModel {
                     image_url, 
                     updated_at,
                     room_inventory_items!inner(name),
-                    property_rooms!inner(name),
+                    property_rooms!inner(name, room_type),
                     inspections!inner(
                         *,
                         properties!inner(*)

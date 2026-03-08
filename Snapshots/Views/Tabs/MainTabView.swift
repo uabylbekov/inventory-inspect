@@ -3,25 +3,18 @@ import SwiftUI
 struct MainTabView: View {
     var body: some View {
         TabView {
-            DashboardView()
-                .tabItem {
-                    Label("Dashboard", systemImage: "square.grid.2x2.fill")
-                }
-            
-            ContentView()
-                .tabItem {
-                    Label("Properties", systemImage: "building.2.fill")
-                }
-            
-            InspectionsView()
-                .tabItem {
-                    Label("Inspections", systemImage: "checklist")
-                }
-            
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape.fill")
-                }
+            Tab("Dashboard", systemImage: "square.grid.2x2.fill") {
+                DashboardView()
+            }
+            Tab("Properties", systemImage: "building.2.fill") {
+                ContentView()
+            }
+            Tab("Inspections", systemImage: "checklist") {
+                InspectionsView()
+            }
+            Tab("Settings", systemImage: "gearshape.fill") {
+                SettingsView()
+            }
         }
     }
 }

@@ -29,7 +29,6 @@ struct RoomInventoryView: View {
             }
             .padding(.bottom, 32)
         }
-        .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle(room.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -38,9 +37,11 @@ struct RoomInventoryView: View {
                     HapticManager.shared.impact(style: .light)
                     viewModel.showingAddItem = true
                 }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
+                    HStack(spacing: 8) {
+                        Image(systemName: "plus.circle")
+                            .symbolRenderingMode(.hierarchical)
+                        Text("Add Item")
+                    }
                 }
             }
         }
@@ -107,7 +108,7 @@ struct RoomInventoryView: View {
                         .foregroundColor(.white)
                     
                     Text("Total Items")
-                        .font(.subheadline)
+                        .font(.footnote)
                         .foregroundColor(.white.opacity(0.9))
                 }
             }
@@ -126,21 +127,27 @@ struct RoomInventoryView: View {
             
             VStack(spacing: 16) {
                 ForEach(viewModel.items) { item in
-                    InventoryItemCard(item: item)
-                        .contextMenu {
-                            Button {
-                                editingItem = item
-                            } label: {
-                                Label("Edit Item", systemImage: "pencil")
-                            }
-                            
-                            Button(role: .destructive) {
-                                itemToDelete = item
-                                showingItemDeleteAlert = true
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
+                    NavigationLink {
+                        InventoryItemDetailView(item: item)
+                            .onAppear { HapticManager.shared.impact(style: .light) }
+                    } label: {
+                        InventoryItemCard(item: item)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button {
+                            editingItem = item
+                        } label: {
+                            Label("Edit Item", systemImage: "pencil")
                         }
+                        
+                        Button(role: .destructive) {
+                            itemToDelete = item
+                            showingItemDeleteAlert = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
                 }
             }
             .padding(.horizontal)
@@ -150,14 +157,11 @@ struct RoomInventoryView: View {
     private var emptyState: some View {
         VStack(spacing: 20) {
             Spacer()
-            Circle()
-                .fill(Color(UIColor.secondarySystemGroupedBackground))
+            Image(systemName: "plus.viewfinder")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
                 .frame(width: 100, height: 100)
-                .overlay(
-                    Image(systemName: "plus.viewfinder")
-                        .font(.system(size: 40))
-                        .foregroundStyle(.tertiary)
-                )
+                .glassEffect(in: Circle())
             
             VStack(spacing: 8) {
                 Text("Start Your Inventory")
@@ -217,12 +221,12 @@ struct InventoryItemCard: View {
             
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
-                    .font(.subheadline.bold())
+                    .font(.headline)
                     .foregroundColor(.primary)
                 
                 if let desc = item.description, !desc.isEmpty {
                     Text(desc)
-                        .font(.caption)
+                        .font(.footnote)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
@@ -244,9 +248,7 @@ struct InventoryItemCard: View {
                 .font(.caption2.bold())
                 .foregroundColor(.secondary.opacity(0.3))
         }
-        .padding()
-        .background(Color(UIColor.secondarySystemGroupedBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .shadow(color: Color.black.opacity(0.02), radius: 5, x: 0, y: 2)
+        .padding(14)
+        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

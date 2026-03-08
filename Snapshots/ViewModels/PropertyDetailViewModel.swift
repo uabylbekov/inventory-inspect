@@ -85,21 +85,26 @@ final class PropertyDetailViewModel {
         }
     }
     
-    func deleteRooms(at offsets: IndexSet) {
+    func deleteRooms(at offsets: IndexSet) async {
         let itemsToDelete = offsets.map { rooms[$0] }
-        rooms.remove(atOffsets: offsets)
         
-        Task {
-            for item in itemsToDelete {
-                do {
-                    try await supabase
-                        .from("property_rooms")
-                        .delete()
-                        .eq("id", value: item.id.uuidString.lowercased())
-                        .execute()
-                } catch {
-                    print("Failed to delete room: \(error)")
+        for item in itemsToDelete {
+            do {
+                try await supabase
+                    .from("property_rooms")
+                    .delete()
+                    .eq("id", value: item.id.uuidString.lowercased())
+                    .execute()
+                
+                // Only remove from local state once confirmed by server
+                await MainActor.run {
+                    if let index = rooms.firstIndex(where: { $0.id == item.id }) {
+                        rooms.remove(at: index)
+                    }
                 }
+            } catch {
+                print("Failed to delete room: \(error)")
+                self.errorMessage = "Could not delete room. Please try again."
             }
         }
     }
