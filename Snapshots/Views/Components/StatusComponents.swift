@@ -1,0 +1,48 @@
+import SwiftUI
+
+struct StatusUI {
+    static func color(for status: String) -> Color {
+        switch status.lowercased() {
+        case "present": return .green
+        case "missing": return .orange
+        case "damaged": return .red
+        case "resolved": return .blue
+        case "completed": return .green
+        case "in_progress": return .blue
+        case "cancelled": return .secondary
+        case "stale": return .orange
+        case "issues": return .red
+        default: return .gray
+        }
+    }
+    
+    static func icon(for status: String) -> String {
+        switch status.lowercased() {
+        case "present": return "checkmark.circle.fill"
+        case "missing": return "xmark.circle.fill"
+        case "damaged": return "exclamationmark.triangle.fill"
+        case "resolved": return "checkmark.seal.fill"
+        case "completed": return "checkmark.circle.fill"
+        case "in_progress": return "clock.fill"
+        case "cancelled": return "xmark.circle.fill"
+        case "stale": return "clock.badge.exclamationmark.fill"
+        case "issues": return "exclamationmark.triangle.fill"
+        default: return "circle"
+        }
+    }
+}
+
+struct StatusBadge: View {
+    let status: String
+    
+    var body: some View {
+        Text(status.capitalized.replacingOccurrences(of: "_", with: " "))
+            .font(.caption2)
+            .fontWeight(.bold)
+            .foregroundColor(StatusUI.color(for: status))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(StatusUI.color(for: status).opacity(0.12))
+            .clipShape(Capsule())
+    }
+}

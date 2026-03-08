@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Snapshots</string>
+	<key>CFBundleDisplayName</key>
+	<string>Snapshots</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>snapshots</string>
+			</array>
+		</dict>
+	</array>
+	<key>SUPABASE_KEY</key>
+	<string>$(SUPABASE_KEY)</string>
+	<key>SUPABASE_URL</key>
+	<string>$(SUPABASE_URL)</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Save snapshots photos to your Photos library.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>The app requires access to the camera to take photos for snapshots.</string>
+</dict>
+</plist>
