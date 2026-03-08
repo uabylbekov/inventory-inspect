@@ -8,6 +8,7 @@ final class PropertyDetailViewModel {
     var isLoading = false
     var errorMessage: String?
     var showingAddRoom = false
+    var recentInspections: [InspectionModel] = []
     
     init(property: PropertyModel) {
         self.property = property
@@ -37,6 +38,22 @@ final class PropertyDetailViewModel {
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+        }
+    }
+    
+    func fetchRecentInspections() async {
+        do {
+            let fetched: [InspectionModel] = try await supabase
+                .from("inspections")
+                .select()
+                .eq("property_id", value: property.id.uuidString.lowercased())
+                .order("started_at", ascending: false)
+                .limit(5)
+                .execute()
+                .value
+            self.recentInspections = fetched
+        } catch {
+            print("Failed to fetch recent inspections: \(error)")
         }
     }
     

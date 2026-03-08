@@ -25,5 +25,9 @@
 	<string>Save snapshots photos to your Photos library.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The app requires access to the camera to take photos for snapshots.</string>
+	<key></key>
+	<string></string>
+	<key>UIPrerenderedIcon</key>
+	<true/>
 </dict>
 </plist>

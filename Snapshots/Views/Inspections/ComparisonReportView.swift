@@ -128,7 +128,7 @@ struct ComparisonReportView: View {
                             anomalies: viewModel.anomalies,
                             presentItems: viewModel.presentItems
                         )
-                        pdfShareItem = ShareablePDF(data: data)
+                        pdfShareItem = ShareablePDF(data: data, filename: "ComparisonReport.pdf")
                         isGeneratingPDF = false
                     }
                 } label: {

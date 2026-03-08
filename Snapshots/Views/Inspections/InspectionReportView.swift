@@ -3,6 +3,7 @@ import SwiftUI
 struct InspectionReportView: View {
     @State private var viewModel: InspectionReportViewModel
     @State private var showingInspectionSelection = false
+    @State private var shareablePDF: ShareablePDF?
     
     init(inspection: InspectionModel) {
         _viewModel = State(initialValue: InspectionReportViewModel(inspection: inspection))
@@ -176,11 +177,27 @@ struct InspectionReportView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 HStack(spacing: 16) {
+                    if viewModel.isGeneratingPDF {
+                        ProgressView()
+                    } else {
+                        Button(action: {
+                            if let data = viewModel.generatePDF() {
+                                let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
+                                self.shareablePDF = ShareablePDF(data: data, filename: filename)
+                            }
+                        }) {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                    
                     Button(action: { showingInspectionSelection = true }) {
                         Label("Inspection", systemImage: "camera.viewfinder")
                     }
                 }
             }
+        }
+        .sheet(item: $shareablePDF) { pdf in
+            ShareSheet(data: pdf.data, filename: pdf.filename)
         }
         .sheet(isPresented: $showingInspectionSelection) {
             CompareSelectSheet(currentInspection: viewModel.inspection)
@@ -199,6 +216,7 @@ struct InspectionReportView: View {
 struct ShareablePDF: Identifiable {
     let id = UUID()
     let data: Data
+    let filename: String
 }
 
 struct ShareSheet: UIViewControllerRepresentable {

@@ -20,6 +20,7 @@ final class InspectionReportViewModel {
     var resolvedItems: [ReportItem] = [] // fixed issues
     
     var isLoading = false
+    var isGeneratingPDF = false
     var errorMessage: String?
     
     init(inspection: InspectionModel) {
@@ -179,5 +180,40 @@ final class InspectionReportViewModel {
                 }
             }
         }
+    }
+    
+    @MainActor
+    func generatePDF() -> Data? {
+        guard let property = property else { return nil }
+        
+        isGeneratingPDF = true
+        defer { isGeneratingPDF = false }
+        
+        let pdfView = InspectionPDFView(
+            property: property,
+            inspection: inspection,
+            inspectorName: inspectorName,
+            anomalies: anomalies,
+            resolvedItems: resolvedItems,
+            presentItems: presentItems
+        )
+        
+        let renderer = ImageRenderer(content: pdfView)
+        
+        let pdfData = NSMutableData()
+        renderer.render { size, context in
+            var box = CGRect(origin: .zero, size: size)
+            
+            guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
+                  let pdfContext = CGContext(consumer: consumer, mediaBox: &box, nil)
+            else { return }
+            
+            pdfContext.beginPDFPage(nil)
+            context(pdfContext)
+            pdfContext.endPDFPage()
+            pdfContext.closePDF()
+        }
+        
+        return pdfData.length == 0 ? nil : (pdfData as Data)
     }
 }

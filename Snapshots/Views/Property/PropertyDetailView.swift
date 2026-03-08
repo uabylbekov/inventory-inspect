@@ -8,196 +8,73 @@ struct PropertyDetailView: View {
     @State private var showingRoomActiveInspectionAlert = false
     @State private var roomActiveInspectionItemCount = 0
     @State private var roomToDeleteOffsets: IndexSet?
+    @State private var showingStartInspection = false
     
     init(property: PropertyModel) {
         _viewModel = State(initialValue: PropertyDetailViewModel(property: property))
     }
     
     var body: some View {
-        List {
-            // MARK: - Property Info
-            Section {
-                VStack(alignment: .leading, spacing: 16) {
-                    // Header Area
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(viewModel.property.name)
-                                .font(.title2.bold())
-                                .foregroundColor(.primary)
-                            
-                            Text(viewModel.property.address_line1 ?? "No address provided")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Spacer()
-                        
-                        Text(viewModel.property.property_type.capitalized)
-                            .font(.caption2.bold())
-                            .foregroundColor(.accentColor)
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color.accentColor.opacity(0.1))
-                            .clipShape(Capsule())
-                    }
-                    
-                    // Description
-                    if let desc = viewModel.property.description, !desc.isEmpty {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Text("About Property")
-                                .font(.caption.bold())
-                                .foregroundColor(.secondary)
-                                .textCase(.uppercase)
-                                .tracking(1)
-                            
-                            Text(desc)
-                                .font(.subheadline)
-                                .foregroundColor(.primary.opacity(0.8))
-                                .lineSpacing(4)
-                        }
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
-                    }
-                    
-                    // Stats Bar (Redesigned)
-                    HStack(spacing: 12) {
-                        statItem(value: "\(viewModel.property.bedrooms_count)", label: "Bedrooms", icon: "bed.double.fill", color: .blue)
-                        statItem(value: "\(viewModel.property.bathrooms_count)", label: "Bathrooms", icon: "shower.fill", color: .cyan)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // MARK: - Hero Header
+                heroSection
+                
+                // MARK: - Description
+                if let desc = viewModel.property.description, !desc.isEmpty {
+                    descriptionSection(desc)
                 }
-                .padding(.vertical, 12)
-            }
-
-            // MARK: - Rooms
-            Section {
-                if viewModel.isLoading && viewModel.rooms.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, alignment: .center)
-                        .padding(.vertical, 20)
-                } else if viewModel.rooms.isEmpty {
-                    VStack(spacing: 8) {
-                        Image(systemName: "door.left.hand.closed")
-                            .font(.system(size: 28))
-                            .foregroundStyle(.tertiary)
-                        Text("No rooms yet")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 20)
-                } else {
-                    ForEach(viewModel.rooms) { room in
-                        NavigationLink {
-                            RoomInventoryView(room: room)
-                        } label: {
-                            HStack(spacing: 14) {
-                                Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
-                                    .font(.system(size: 24))
-                                    .foregroundColor(.white)
-                                    .frame(width: 56, height: 56)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                            .fill(PropertyUI.roomColor(for: room.room_type ?? "").gradient)
-                                    )
-                                
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(room.name)
-                                        .font(.headline)
-                                    
-                                    if let desc = room.description, !desc.isEmpty {
-                                        Text(desc)
-                                            .font(.subheadline)
-                                            .foregroundColor(.secondary)
-                                            .lineLimit(1)
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                Text(room.room_type?.capitalized ?? "")
-                                    .font(.caption2.bold())
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 8)
-                                    .padding(.vertical, 4)
-                                    .background(Color.secondary.opacity(0.1))
-                                    .clipShape(Capsule())
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary.opacity(0.3))
-                            }
-                            .padding(.vertical, 6)
-                        }
-                        .swipeActions {
-                            Button(role: .destructive) {
-                                // Add delete logic
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                            
-                            Button {
-                                editingRoom = room
-                            } label: {
-                                Label("Edit", systemImage: "pencil")
-                            }
-                            .tint(.blue)
-                        }
-                    }
-                }
-            } header: {
-                HStack {
-                    Text("Rooms")
-                    Spacer()
-                    Text("\(viewModel.rooms.count) Total")
-                        .font(.caption.bold())
-                        .foregroundColor(.secondary)
+                
+                // MARK: - Quick Actions
+                quickActionsBar
+                
+                // MARK: - Rooms
+                roomsSection
+                
+                // MARK: - Recent History
+                if !viewModel.recentInspections.isEmpty {
+                    historySection
                 }
             }
-            .alert("Active Inspection Found", isPresented: $showingRoomActiveInspectionAlert) {
-                Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
-                Button("Delete Anyway", role: .destructive) { showingRoomDeleteAlert = true }
-            } message: {
-                Text("This room has \(roomActiveInspectionItemCount) checked item(s) in an active inspection. Deleting the room will remove that data permanently.")
-            }
-            .alert("Delete Room?", isPresented: $showingRoomDeleteAlert) {
-                Button("Cancel", role: .cancel) {
-                    roomToDeleteOffsets = nil
-                }
-                Button("Delete", role: .destructive) {
-                    if let offsets = roomToDeleteOffsets {
-                        HapticManager.shared.impact(style: .medium)
-                        viewModel.deleteRooms(at: offsets)
-                        HapticManager.shared.notification(type: .success)
-                    }
-                    roomToDeleteOffsets = nil
-                }
-            } message: {
-                Text("Are you sure you want to delete this room and all its inventory items?")
-            }
+            .padding(.bottom, 32)
         }
-        .listStyle(.insetGrouped)
+        .background(Color(UIColor.systemGroupedBackground))
         .navigationTitle(viewModel.property.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text(viewModel.property.name)
-                    .font(.headline)
-            }
-            ToolbarItem(placement: .topBarLeading) {
-                Button(action: { showingManageTeam = true }) {
-                    Image(systemName: "person.3")
-                }
-            }
-            if viewModel.isOwner {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { viewModel.showingAddRoom = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus")
-                            Text("Add Room")
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button(action: { showingManageTeam = true }) {
+                        Label("Manage Team", systemImage: "person.3")
+                    }
+                    if viewModel.isOwner {
+                        Button(action: { viewModel.showingAddRoom = true }) {
+                            Label("Add Room", systemImage: "plus")
                         }
                     }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
                 }
             }
+        }
+        .alert("Active Inspection Found", isPresented: $showingRoomActiveInspectionAlert) {
+            Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
+            Button("Delete Anyway", role: .destructive) { showingRoomDeleteAlert = true }
+        } message: {
+            Text("This room has \(roomActiveInspectionItemCount) checked item(s) in an active inspection. Deleting the room will remove that data permanently.")
+        }
+        .alert("Delete Room?", isPresented: $showingRoomDeleteAlert) {
+            Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
+            Button("Delete", role: .destructive) {
+                if let offsets = roomToDeleteOffsets {
+                    HapticManager.shared.impact(style: .medium)
+                    viewModel.deleteRooms(at: offsets)
+                    HapticManager.shared.notification(type: .success)
+                }
+                roomToDeleteOffsets = nil
+            }
+        } message: {
+            Text("Are you sure you want to delete this room and all its inventory items?")
         }
         .sheet(isPresented: $viewModel.showingAddRoom, onDismiss: {
             Task { await viewModel.fetchRooms() }
@@ -212,35 +89,262 @@ struct PropertyDetailView: View {
         }) { room in
             EditRoomSheet(room: room)
         }
+        .sheet(isPresented: $showingStartInspection) {
+            StartInspectionSheet()
+        }
         .task {
             await viewModel.fetchRooms()
+            await viewModel.fetchRecentInspections()
         }
         .refreshable {
             await viewModel.fetchRooms()
+            await viewModel.fetchRecentInspections()
         }
     }
     
-    // MARK: - Helpers
+    // MARK: - Subviews
     
-    @ViewBuilder
-    private func statItem(value: String, label: String, icon: String, color: Color) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.subheadline)
-                .foregroundColor(color)
+    private var heroSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ZStack(alignment: .bottomLeading) {
+                LinearGradient(colors: [.blue.opacity(0.6), .blue.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    .frame(height: 180)
+                    .overlay(
+                        Image(systemName: "map.fill")
+                            .font(.system(size: 80))
+                            .foregroundColor(.white.opacity(0.1))
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(viewModel.property.property_type.capitalized)
+                        .font(.caption2.bold())
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(.ultraThinMaterial)
+                        .clipShape(Capsule())
+                    
+                    Text(viewModel.property.name)
+                        .font(.title2.bold())
+                        .foregroundColor(.white)
+                }
+                .padding(20)
+            }
+            .padding(.horizontal)
             
-            HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(value)
-                    .font(.headline)
-                Text(label)
-                    .font(.caption2.bold())
-                    .foregroundColor(.secondary)
-                    .textCase(.uppercase)
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top) {
+                    Image(systemName: "mappin.and.ellipse")
+                        .foregroundColor(.secondary)
+                    Text(viewModel.property.address_line1 ?? "No address recorded")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal)
+                
+                HStack(spacing: 12) {
+                    statChip(value: "\(viewModel.property.bedrooms_count)", label: "Beds", icon: "bed.double.fill")
+                    statChip(value: "\(viewModel.property.bathrooms_count)", label: "Baths", icon: "shower.fill")
+                    Spacer()
+                }
+                .padding(.horizontal)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .background(Color(UIColor.tertiarySystemGroupedBackground).opacity(0.5))
+        .padding(.top, 16)
+    }
+    
+    private func descriptionSection(_ desc: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("About Property")
+                .font(.headline)
+            Text(desc)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .lineLimit(3)
+        }
+        .padding(.horizontal)
+    }
+    
+    private var quickActionsBar: some View {
+        HStack(spacing: 16) {
+            Button(action: {
+                HapticManager.shared.impact(style: .medium)
+                showingStartInspection = true
+            }) {
+                Label("Start Inspection", systemImage: "plus.viewfinder")
+                    .fontWeight(.bold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.accentColor.gradient)
+                    .foregroundColor(.white)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+            
+            Button(action: { showingManageTeam = true }) {
+                Image(systemName: "person.2.fill")
+                    .font(.headline)
+                    .padding()
+                    .background(Color(UIColor.secondarySystemGroupedBackground))
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            }
+        }
+        .padding(.horizontal)
+    }
+    
+    private var roomsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Rooms")
+                    .font(.headline)
+                Spacer()
+                Text("\(viewModel.rooms.count) total")
+                    .font(.caption.bold())
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal)
+            
+            if viewModel.isLoading && viewModel.rooms.isEmpty {
+                ProgressView().frame(maxWidth: .infinity).padding()
+            } else if viewModel.rooms.isEmpty {
+                Text("No rooms added yet.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal)
+            } else {
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                    ForEach(viewModel.rooms) { room in
+                        NavigationLink {
+                            RoomInventoryView(room: room)
+                        } label: {
+                            RoomCard(room: room)
+                                .contextMenu {
+                                    Button {
+                                        editingRoom = room
+                                    } label: {
+                                        Label("Edit Room", systemImage: "pencil")
+                                    }
+                                    
+                                    Button(role: .destructive) {
+                                        confirmDeleteRoom(room)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                        }
+                    }
+                }
+                .padding(.horizontal)
+            }
+        }
+    }
+    
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Recent Activity")
+                .font(.headline)
+                .padding(.horizontal)
+            
+            VStack(spacing: 0) {
+                ForEach(viewModel.recentInspections) { inspection in
+                    NavigationLink {
+                        if inspection.status == "in_progress" {
+                            InspectionHubView(inspection: inspection)
+                        } else {
+                            InspectionReportView(inspection: inspection)
+                        }
+                    } label: {
+                        HStack(spacing: 14) {
+                            Circle()
+                                .fill(inspection.status == "completed" ? Color.green : Color.blue)
+                                .frame(width: 8, height: 8)
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                                    .font(.subheadline.bold())
+                                    .foregroundColor(.primary)
+                                Text(AppFormatter.formatDate(inspection.started_at))
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            StatusBadge(status: inspection.status)
+                                .scaleEffect(0.8)
+                            
+                            Image(systemName: "chevron.right")
+                                .font(.caption2)
+                                .foregroundColor(.secondary.opacity(0.3))
+                        }
+                        .padding()
+                        .background(Color(UIColor.secondarySystemGroupedBackground))
+                    }
+                    
+                    if inspection.id != viewModel.recentInspections.last?.id {
+                        Divider().padding(.leading, 16)
+                    }
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .padding(.horizontal)
+        }
+    }
+    
+    private func statChip(value: String, label: String, icon: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: icon)
+                .font(.caption)
+                .foregroundColor(.accentColor)
+            Text("\(value) \(label)")
+                .font(.caption.bold())
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(Color.accentColor.opacity(0.08))
         .clipShape(Capsule())
+    }
+    
+    private func confirmDeleteRoom(_ room: PropertyRoomModel) {
+        roomToDeleteOffsets = IndexSet(integer: viewModel.rooms.firstIndex(where: { $0.id == room.id }) ?? 0)
+        Task {
+            let count = await viewModel.activeInspectionItemCount(at: roomToDeleteOffsets!)
+            if count > 0 {
+                roomActiveInspectionItemCount = count
+                showingRoomActiveInspectionAlert = true
+            } else {
+                showingRoomDeleteAlert = true
+            }
+        }
+    }
+}
+
+struct RoomCard: View {
+    let room: PropertyRoomModel
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
+                .font(.title2)
+                .foregroundColor(.white)
+                .frame(width: 44, height: 44)
+                .background(PropertyUI.roomColor(for: room.room_type ?? "").gradient)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(room.name)
+                    .font(.subheadline.bold())
+                    .foregroundColor(.primary)
+                    .lineLimit(1)
+                Text(room.room_type?.capitalized ?? "Room")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(UIColor.secondarySystemGroupedBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .shadow(color: Color.black.opacity(0.03), radius: 5, x: 0, y: 2)
     }
 }
