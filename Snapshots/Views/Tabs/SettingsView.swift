@@ -107,6 +107,8 @@ struct SettingsView: View {
         isSigningOut = true
         Task {
             do {
+                // Unregister device token for push notifications before sign out
+                await NotificationManager.shared.unregisterDeviceToken()
                 try await supabase.auth.signOut()
             } catch {
                 print("Error signing out: \(error.localizedDescription)")

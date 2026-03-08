@@ -20,6 +20,9 @@ struct NotificationsView: View {
                                 Task { await notificationManager.markAsRead(notification) }
                             }
                     }
+                    .onDelete { offsets in
+                        notificationManager.deleteNotifications(at: offsets)
+                    }
                 }
             }
             .navigationTitle("Notifications")
@@ -27,6 +30,14 @@ struct NotificationsView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Done") { dismiss() }
+                }
+                
+                ToolbarItem(placement: .primaryAction) {
+                    if notificationManager.unreadCount > 0 {
+                        Button("Mark All as Read") {
+                            Task { await notificationManager.markAllAsRead() }
+                        }
+                    }
                 }
             }
             .refreshable {

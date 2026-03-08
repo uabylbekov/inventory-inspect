@@ -5,19 +5,18 @@ import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts"
 serve(async (req) => {
     try {
         const payload = await req.json()
-        const { record } = payload // The new notification row from the webhook
+        const { record } = payload
 
         if (!record || !record.user_id) {
             return new Response("Invalid payload", { status: 400 })
         }
 
-        // 1. Setup Supabase Client
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL')!,
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         )
 
-        // 2. Fetch user's registered device tokens
+        // 1. Fetch user's active device tokens
         const { data: tokens, error: tokenError } = await supabase
             .from('user_push_tokens')
             .select('device_token')
@@ -25,40 +24,38 @@ serve(async (req) => {
 
         if (tokenError) throw tokenError
         if (!tokens || tokens.length === 0) {
-            console.log(`No tokens found for user ${record.user_id}`)
             return new Response("No tokens found", { status: 200 })
         }
 
+        // 2. SMART BADGE: Count current unread notifications for this user
+        // We fetch this count AFTER the insert that triggered this hook
+        const { count: unreadCount } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', record.user_id)
+            .eq('is_read', false)
+
         // 3. APNs Configuration
-        const privateKey = Deno.env.get('APNS_PRIVATE_KEY') // The .p8 content
+        const privateKey = Deno.env.get('APNS_PRIVATE_KEY')
         const keyId = Deno.env.get('APNS_KEY_ID')
         const teamId = Deno.env.get('APNS_TEAM_ID')
         const bundleId = Deno.env.get('APNS_BUNDLE_ID')
         const isProduction = Deno.env.get('APNS_ENVIRONMENT') === 'production'
 
         if (!privateKey || !keyId || !teamId || !bundleId) {
-            return new Response("Missing APNs configuration secrets", { status: 500 })
+            return new Response("Missing APNs configuration", { status: 500 })
         }
 
-        // 4. Generate APNs JWT
-        // Ensure the private key is properly formatted with newlines if passed as a string
         const formattedKey = privateKey.replace(/\\n/g, '\n')
+        const jwt = await new jose.SignJWT({})
+            .setProtectedHeader({ alg: 'ES256', kid: keyId })
+            .setIssuedAt()
+            .setIssuer(teamId)
+            .sign(await jose.importPKCS8(formattedKey, 'ES256'))
 
-        let jwt;
-        try {
-            jwt = await new jose.SignJWT({})
-                .setProtectedHeader({ alg: 'ES256', kid: keyId })
-                .setIssuedAt()
-                .setIssuer(teamId)
-                .sign(await jose.importPKCS8(formattedKey, 'ES256'))
-        } catch (e) {
-            console.error("JWT Signing Error:", e)
-            return new Response("Failed to sign APNs JWT", { status: 500 })
-        }
-
-        // 5. Send to Apple (APNs)
         const host = isProduction ? 'api.push.apple.com' : 'api.sandbox.push.apple.com'
 
+        // 4. Send to each device
         const results = await Promise.all(tokens.map(async (t) => {
             try {
                 const response = await fetch(`https://${host}/3/device/${t.device_token}`, {
@@ -76,32 +73,37 @@ serve(async (req) => {
                                 body: record.body
                             },
                             sound: 'default',
-                            badge: 1,
+                            badge: Number(unreadCount), // Use exact unread count from DB
                             "mutable-content": 1
                         },
-                        data: record.data || {}
+                        data: {
+                            id: record.id,
+                            type: record.type,
+                            ... (record.data || {})
+                        }
                     })
                 })
 
-                if (!response.ok) {
-                    const errBody = await response.text()
-                    console.error(`APNs Error for token ${t.device_token}:`, errBody)
+                // Cleanup dead tokens
+                if (response.status === 410 || response.status === 404) {
+                    await supabase
+                        .from('user_push_tokens')
+                        .delete()
+                        .eq('device_token', t.device_token)
                 }
 
                 return response.status
             } catch (e) {
-                console.error(`Fetch Error for token ${t.device_token}:`, e)
                 return 500
             }
         }))
 
-        return new Response(JSON.stringify({ sent: results.length, statuses: results }), {
+        return new Response(JSON.stringify({ sent: results.length, badge: unreadCount }), {
             headers: { "Content-Type": "application/json" },
             status: 200
         })
 
     } catch (error) {
-        console.error("Main function error:", error)
         return new Response(error.message, { status: 500 })
     }
 })

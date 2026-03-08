@@ -25,18 +25,33 @@ struct CompareSelectSheet: View {
                         NavigationLink {
                             ComparisonReportView(base: inspection, current: currentInspection)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(AppFormatter.formatInspectionType(inspection.inspection_type).capitalized)
-                                    .font(.headline)
+                            HStack(spacing: 16) {
+                                // Radio-style indicator (visual only since it navigates on tap)
+                                Circle()
+                                    .stroke(Color.secondary.opacity(0.3), lineWidth: 2)
+                                    .frame(width: 22, height: 22)
+                                    .overlay(
+                                        Circle()
+                                            .fill(Color.accentColor.opacity(0.1))
+                                            .frame(width: 12, height: 12)
+                                    )
                                 
-                                Label(
-                                    AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at),
-                                    systemImage: "calendar"
-                                )
-                                .font(.caption)
-                                .foregroundColor(.secondary)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(AppFormatter.formatInspectionType(inspection.inspection_type).capitalized)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    Label(
+                                        AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at),
+                                        systemImage: "calendar"
+                                    )
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                                
+                                Spacer()
                             }
-                            .padding(.vertical, 4)
                         }
                     }
                 }
