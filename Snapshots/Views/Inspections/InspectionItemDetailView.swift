@@ -437,6 +437,7 @@ struct ConditionTile: View {
             .frame(maxWidth: .infinity)
             .frame(height: 80)
             .foregroundColor(isSelected ? color : .secondary)
+            .contentShape(Rectangle())
             .glassEffect(in: RoundedRectangle(cornerRadius: 18, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: 18, style: .continuous)

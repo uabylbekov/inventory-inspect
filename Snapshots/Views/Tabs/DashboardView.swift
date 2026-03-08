@@ -349,6 +349,7 @@ struct DashboardIssueRow: View {
             }
         }
         .padding(16)
+        .contentShape(Rectangle())
         .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

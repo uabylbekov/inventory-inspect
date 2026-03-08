@@ -343,6 +343,7 @@ struct RoomCard: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

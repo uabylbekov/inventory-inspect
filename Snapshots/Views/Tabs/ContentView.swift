@@ -229,6 +229,7 @@ struct PropertyCard: View {
                 .foregroundColor(.secondary.opacity(0.3))
         }
         .padding(14)
+        .contentShape(Rectangle())
         .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }

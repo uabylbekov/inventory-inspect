@@ -97,25 +97,45 @@ struct StartInspectionSheet: View {
     private var inspectionTypeSection: some View {
         Section(header: Text("Inspection Type")) {
             VStack(spacing: 0) {
-                let types: [(String, String, String)] = [
-                    ("Check In", "door.left.hand.open", "check-in"),
-                    ("Check Out", "door.right.hand.closed", "check-out"),
-                    ("Routine", "wrench.adjustable.fill", "routine")
+                let types: [(String, String, String, String)] = [
+                    ("Check In", "door.left.hand.open", "check-in", "Document condition before a new tenant moves in to set the baseline."),
+                    ("Check Out", "door.right.hand.closed", "check-out", "Assess condition after move-out to identify deductions & repairs."),
+                    ("Routine", "wrench.adjustable.fill", "routine", "Periodic check to catch maintenance issues early and ensure safety.")
                 ]
 
-                ForEach(types, id: \.2) { name, icon, value in
+                ForEach(types, id: \.2) { name, icon, value, description in
                     Button(action: {
                         withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
                             viewModel.inspectionType = value
                         }
                         HapticManager.shared.impact(style: .light)
                     }) {
-                        HStack {
-                            Label(name, systemImage: icon)
-                                .font(.body.weight(.medium))
-                                .foregroundColor(.primary)
+                        HStack(alignment: .top, spacing: 14) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(viewModel.inspectionType == value ? Color.accentColor : Color.secondary.opacity(0.1))
+                                    .frame(width: 40, height: 40)
+                                
+                                Image(systemName: icon)
+                                    .font(.title3)
+                                    .foregroundColor(viewModel.inspectionType == value ? .white : .secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(name)
+                                    .font(.body.weight(.semibold))
+                                    .foregroundColor(.primary)
+                                
+                                Text(description)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            
                             Spacer()
+                            
                             RadioButtonIndicator(isSelected: viewModel.inspectionType == value)
+                                .padding(.top, 4)
                         }
                         .contentShape(Rectangle())
                         .padding(.vertical, 12)
