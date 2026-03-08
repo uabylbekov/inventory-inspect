@@ -46,7 +46,9 @@ struct RoomInventoryView: View {
             }
         }
         .alert("Delete Item?", isPresented: $showingItemDeleteAlert) {
-            Button("Cancel", role: .cancel) { itemToDelete = nil }
+            Button("Cancel", role: .cancel) {
+                itemToDelete = nil
+            }
             Button("Delete", role: .destructive) {
                 if let item = itemToDelete, let index = viewModel.items.firstIndex(where: { $0.id == item.id }) {
                     HapticManager.shared.impact(style: .medium)
@@ -173,15 +175,11 @@ struct RoomInventoryView: View {
                     .padding(.horizontal, 40)
             }
             
-            Button(action: { viewModel.showingAddItem = true }) {
-                Text("Add First Item")
-                    .fontWeight(.semibold)
-                    .padding(.horizontal, 32)
-                    .padding(.vertical, 14)
-                    .background(Color.accentColor)
-                    .foregroundColor(.white)
-                    .clipShape(Capsule())
+            Button("Add First Item") {
+                viewModel.showingAddItem = true
             }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
             .padding(.top, 8)
             
             Spacer()

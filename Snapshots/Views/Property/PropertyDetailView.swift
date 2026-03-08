@@ -8,6 +8,7 @@ struct PropertyDetailView: View {
     @State private var showingRoomActiveInspectionAlert = false
     @State private var roomActiveInspectionItemCount = 0
     @State private var roomToDeleteOffsets: IndexSet?
+
     init(property: PropertyModel) {
         _viewModel = State(initialValue: PropertyDetailViewModel(property: property))
     }
@@ -58,7 +59,9 @@ struct PropertyDetailView: View {
             Text("This room has \(roomActiveInspectionItemCount) checked item(s) in an active inspection. Deleting the room will remove that data permanently.")
         }
         .alert("Delete Room?", isPresented: $showingRoomDeleteAlert) {
-            Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
+            Button("Cancel", role: .cancel) {
+                roomToDeleteOffsets = nil
+            }
             Button("Delete", role: .destructive) {
                 if let offsets = roomToDeleteOffsets {
                     HapticManager.shared.impact(style: .medium)
@@ -233,11 +236,11 @@ struct PropertyDetailView: View {
                         }
                     } label: {
                         HStack(spacing: 14) {
-                            Image(systemName: typeIcon(for: inspection.inspection_type))
+                            Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
                                 .font(.caption.bold())
-                                .foregroundColor(typeColor(for: inspection.inspection_type))
+                                .foregroundColor(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
                                 .frame(width: 28, height: 28)
-                                .background(typeColor(for: inspection.inspection_type).opacity(0.1))
+                                .background(AppFormatter.inspectionTypeColor(for: inspection.inspection_type).opacity(0.1))
                                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                             VStack(alignment: .leading, spacing: 2) {
@@ -286,23 +289,6 @@ struct PropertyDetailView: View {
         .clipShape(Capsule())
     }
     
-    private func typeIcon(for type: String) -> String {
-        switch type {
-        case "check-in": return "door.left.hand.open"
-        case "check-out": return "door.right.hand.closed"
-        case "routine": return "wrench.adjustable.fill"
-        default: return "checklist"
-        }
-    }
-
-    private func typeColor(for type: String) -> Color {
-        switch type {
-        case "check-in": return .purple
-        case "check-out": return .blue
-        case "routine": return .orange
-        default: return .gray
-        }
-    }
 
     private func confirmDeleteRoom(_ room: PropertyRoomModel) {
         guard let index = viewModel.rooms.firstIndex(where: { $0.id == room.id }) else { return }

@@ -156,25 +156,8 @@ struct ContentView: View {
 struct PropertyCard: View {
     let property: PropertyModel
     
-    private var typeIcon: String {
-        switch property.property_type.lowercased() {
-        case "apartment": return "building.2.fill"
-        case "house": return "house.fill"
-        case "condo": return "building.fill"
-        case "townhouse": return "house.and.flag.fill"
-        default: return "mappin.circle.fill"
-        }
-    }
-    
-    private var typeColor: Color {
-        switch property.property_type.lowercased() {
-        case "apartment": return .blue
-        case "house": return .green
-        case "condo": return .purple
-        case "townhouse": return .orange
-        default: return .gray
-        }
-    }
+    private var typeIcon: String { PropertyUI.icon(for: property.property_type) }
+    private var typeColor: Color { PropertyUI.color(for: property.property_type) }
     
     var body: some View {
         HStack(spacing: 16) {

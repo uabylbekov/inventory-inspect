@@ -66,12 +66,15 @@ struct InspectionHubView: View {
         }
         .alert("Cancel Inspection?", isPresented: $showCancelAlert) {
             TextField("Reason (optional)", text: $cancelReason)
-            Button("Keep Going", role: .cancel) {}
+            Button("Keep Going", role: .cancel) {
+                cancelReason = ""
+            }
             Button("Cancel Inspection", role: .destructive) {
                 Task {
                     let success = await viewModel.cancelInspection(reason: cancelReason)
                     if success {
                         HapticManager.shared.notification(type: .success)
+                        cancelReason = ""
                         dismiss()
                     } else {
                         HapticManager.shared.notification(type: .error)
@@ -166,11 +169,11 @@ struct InspectionHubView: View {
     private var roomsGrid: some View {
         let incompleteFirst = viewModel.rooms.sorted { a, b in
             let aItems = viewModel.allInventoryItems.filter { $0.room_id == a.id }
-            let aComplete = aItems.allSatisfy { item in
+            let aComplete = !aItems.isEmpty && aItems.allSatisfy { item in
                 viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
             }
             let bItems = viewModel.allInventoryItems.filter { $0.room_id == b.id }
-            let bComplete = bItems.allSatisfy { item in
+            let bComplete = !bItems.isEmpty && bItems.allSatisfy { item in
                 viewModel.inspectionItems.contains { $0.inventory_item_id == item.id }
             }
             return !aComplete && bComplete

@@ -21,24 +21,61 @@ final class AddPropertyViewModel {
     var vrboListingId = ""
     var isSaving = false
     var errorMessage: String?
-    
-    var isSaveDisabled: Bool {
-        name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving
+
+    // MARK: - Country List
+    static let allCountries: [(name: String, code: String)] = {
+        let locale = Locale.autoupdatingCurrent
+        return Locale.Region.isoRegions
+            .compactMap { region -> (name: String, code: String)? in
+                guard let name = locale.localizedString(forRegionCode: region.identifier) else { return nil }
+                return (name: name, code: region.identifier)
+            }
+            .sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+    }()
+
+    // MARK: - Validation
+    var nameError: String? {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Property name is required." }
+        if trimmed.count > 100 { return "Name must be 100 characters or fewer." }
+        return nil
     }
-    
+
+    var maxGuestsError: String? {
+        guard !maxGuests.isEmpty else { return nil }
+        guard let value = Int(maxGuests), value > 0 else {
+            return "Max guests must be a positive whole number."
+        }
+        return nil
+    }
+
+    var postalCodeError: String? {
+        let trimmed = postalCode.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.count > 20 { return "Postal code is too long." }
+        return nil
+    }
+
+    var isFormValid: Bool {
+        nameError == nil && maxGuestsError == nil && postalCodeError == nil
+    }
+
+    var isSaveDisabled: Bool {
+        nameError != nil || isSaving
+    }
+
+    // MARK: - Save
     func saveToSupabase() async -> Bool {
         isSaving = true
         errorMessage = nil
-        
+
         do {
-            // Get the current user to satisfy the owner_id constraint
             let session = try await supabase.auth.session
             let ownerId = session.user.id
-            
-            // Map our UI state to the required Supabase schema
+
             let newProperty = PropertyInsert(
                 owner_id: ownerId,
-                name: name,
+                name: name.trimmingCharacters(in: .whitespaces),
                 description: description.trimmingCharacters(in: .whitespaces).isEmpty ? nil : description,
                 property_type: type,
                 status: status,
@@ -56,15 +93,14 @@ final class AddPropertyViewModel {
                 airbnb_listing_id: airbnbListingId.trimmingCharacters(in: .whitespaces).isEmpty ? nil : airbnbListingId,
                 vrbo_listing_id: vrboListingId.trimmingCharacters(in: .whitespaces).isEmpty ? nil : vrboListingId
             )
-            
-            // Insert into the public.properties table
+
             try await supabase.from("properties")
                 .insert(newProperty)
                 .execute()
-            
+
             isSaving = false
             return true
-            
+
         } catch {
             self.errorMessage = error.localizedDescription
             self.isSaving = false

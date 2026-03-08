@@ -2,6 +2,30 @@ import Foundation
 import SwiftUI
 
 struct AppFormatter {
+
+    // MARK: - Notifications
+    static let joinInspectionNotification = NSNotification.Name("JoinInspection")
+
+    // MARK: - Inspection Type UI
+    static func inspectionTypeIcon(for type: String) -> String {
+        switch type {
+        case "check-in": return "door.left.hand.open"
+        case "check-out": return "door.right.hand.closed"
+        case "routine": return "wrench.adjustable.fill"
+        default: return "checklist"
+        }
+    }
+
+    static func inspectionTypeColor(for type: String) -> Color {
+        switch type {
+        case "check-in": return .purple
+        case "check-out": return .blue
+        case "routine": return .orange
+        default: return .gray
+        }
+    }
+
+    // MARK: - Formatting
     static func formatInspectionType(_ type: String) -> String {
         switch type {
         case "check-in": return "Check In"

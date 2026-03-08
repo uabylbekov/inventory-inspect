@@ -162,7 +162,7 @@ struct StartInspectionSheet: View {
                 
                 Button(action: {
                     dismiss()
-                    NotificationCenter.default.post(name: NSNotification.Name("JoinInspection"), object: activeId)
+                    NotificationCenter.default.post(name: AppFormatter.joinInspectionNotification, object: activeId)
                 }) {
                     Text("Join Existing Session")
                         .fontWeight(.bold)

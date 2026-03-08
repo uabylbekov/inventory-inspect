@@ -25,8 +25,36 @@ final class EditPropertyViewModel {
     var isSaving = false
     var errorMessage: String?
     
+    // MARK: - Validation
+
+    var nameError: String? {
+        let trimmed = name.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "Property name is required." }
+        if trimmed.count > 100 { return "Name must be 100 characters or fewer." }
+        return nil
+    }
+
+    var maxGuestsError: String? {
+        guard !maxGuests.isEmpty else { return nil }
+        guard let value = Int(maxGuests), value > 0 else {
+            return "Max guests must be a positive whole number."
+        }
+        return nil
+    }
+
+    var postalCodeError: String? {
+        let trimmed = postalCode.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        if trimmed.count > 20 { return "Postal code is too long." }
+        return nil
+    }
+
+    var isFormValid: Bool {
+        nameError == nil && maxGuestsError == nil && postalCodeError == nil
+    }
+
     var isSaveDisabled: Bool {
-        name.trimmingCharacters(in: .whitespaces).isEmpty || isSaving || isLoading
+        nameError != nil || isSaving || isLoading
     }
     
     init(propertyId: UUID) {

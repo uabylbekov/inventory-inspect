@@ -61,13 +61,15 @@ struct InspectionsView: View {
             .navigationDestination(item: $joinedInspection) { inspection in
                 InspectionHubView(inspection: inspection)
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("JoinInspection"))) { output in
+            .onReceive(NotificationCenter.default.publisher(for: AppFormatter.joinInspectionNotification)) { output in
                 if let id = output.object as? UUID {
                     handleJoinNotification(id)
                 }
             }
             .alert("Delete Inspection?", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) { inspectionToDelete = nil }
+                Button("Cancel", role: .cancel) {
+                    inspectionToDelete = nil
+                }
                 Button("Delete", role: .destructive) {
                     if let inspection = inspectionToDelete {
                         Task { await viewModel.deleteInspection(inspection) }
@@ -209,7 +211,7 @@ struct InspectionsView: View {
                     .padding(.horizontal, 40)
             }
             
-            Button("Start New Inspection") {
+            Button("Start Inspection") {
                 viewModel.showingStartInspection = true
             }
             .buttonStyle(.borderedProminent)
@@ -266,23 +268,8 @@ struct InspectionCard: View {
     private var isResolved: Bool { resolvedCount > 0 && anomalyCount == 0 }
     private var hasIssues: Bool { anomalyCount > 0 && !isActive }
     
-    private var typeIcon: String {
-        switch inspection.inspection_type {
-        case "check-in": return "door.left.hand.open"
-        case "check-out": return "door.right.hand.closed"
-        case "routine": return "wrench.adjustable.fill"
-        default: return "checklist"
-        }
-    }
-    
-    private var typeColor: Color {
-        switch inspection.inspection_type {
-        case "check-in": return .purple
-        case "check-out": return .blue
-        case "routine": return .orange
-        default: return .gray
-        }
-    }
+    private var typeIcon: String { AppFormatter.inspectionTypeIcon(for: inspection.inspection_type) }
+    private var typeColor: Color { AppFormatter.inspectionTypeColor(for: inspection.inspection_type) }
     
     var body: some View {
         HStack(spacing: 16) {

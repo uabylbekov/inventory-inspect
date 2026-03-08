@@ -5,6 +5,7 @@ struct DashboardView: View {
     @State private var viewModel = DashboardViewModel()
     @State private var showingStartInspection = false
     @State private var joinedInspection: InspectionModel?
+    @State private var joinError: String?
     
     var body: some View {
         NavigationStack {
@@ -41,7 +42,7 @@ struct DashboardView: View {
             .task {
                 await viewModel.fetchData()
             }
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("JoinInspection"))) { output in
+            .onReceive(NotificationCenter.default.publisher(for: AppFormatter.joinInspectionNotification)) { output in
                 if let id = output.object as? UUID {
                     Task {
                         do {
@@ -59,12 +60,20 @@ struct DashboardView: View {
                             }
                         } catch {
                             print("Error joining: \(error)")
+                            await MainActor.run {
+                                joinError = "Unable to join inspection. The inspection may have been completed or deleted."
+                            }
                         }
                     }
                 }
             }
             .navigationDestination(item: $joinedInspection) { inspection in
                 InspectionHubView(inspection: inspection)
+            }
+            .alert("Unable to Join", isPresented: Binding(get: { joinError != nil }, set: { if !$0 { joinError = nil } })) {
+                Button("OK") { joinError = nil }
+            } message: {
+                Text(joinError ?? "")
             }
             .sheet(isPresented: $showingStartInspection) {
                 StartInspectionSheet()
@@ -134,7 +143,7 @@ struct DashboardView: View {
                 .font(.title3.bold())
                 .padding(.horizontal)
             
-            ScrollView(.horizontal, showsIndicators: false) {
+            ScrollView(.horizontal, showsIndicators: true) {
                 HStack(spacing: 16) {
                     ForEach(viewModel.activeInspections) { inspection in
                         NavigationLink {
@@ -267,9 +276,11 @@ struct MetricCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: icon)
-                    .font(.headline)
-                    .symbolRenderingMode(.hierarchical)
+                    .font(.caption.bold())
                     .foregroundColor(color)
+                    .frame(width: 30, height: 30)
+                    .background(color.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 Spacer()
                 Text(title)
                     .font(.headline)
@@ -277,12 +288,9 @@ struct MetricCard: View {
             }
             
             VStack(alignment: .leading, spacing: 2) {
-                if isLoading {
-                    Text("00").font(.system(.title, design: .rounded).bold()).redacted(reason: .placeholder)
-                } else {
-                    Text(value)
-                        .font(.system(.title, design: .rounded).bold())
-                }
+                Text(isLoading ? "–" : value)
+                    .font(.system(.title, design: .rounded).bold())
+                    .contentTransition(.numericText())
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -353,4 +361,3 @@ struct DashboardIssueRow: View {
         .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
-    
