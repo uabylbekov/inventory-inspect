@@ -53,39 +53,39 @@ struct NotificationsView: View {
 
 struct NotificationRow: View {
     let notification: NotificationModel
-    
+
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: iconName)
-                .font(.system(size: 16))
-                .foregroundColor(.white)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(iconColor))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(notification.title)
-                        .font(.subheadline.bold())
-                    Spacer()
-                    if !notification.is_read {
-                        Circle()
-                            .fill(.blue)
-                            .frame(width: 8, height: 8)
-                    }
-                }
-                
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(iconColor.gradient)
+                    .frame(width: 32, height: 32)
+                Image(systemName: iconName)
+                    .font(.subheadline)
+                    .foregroundColor(.white)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(notification.title)
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
                 Text(notification.body)
-                    .font(.footnote)
+                    .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(2)
-                
                 Text(AppFormatter.formatDate(notification.created_at))
-                    .font(.system(size: 10))
+                    .font(.caption2)
                     .foregroundColor(.secondary.opacity(0.6))
-                    .padding(.top, 2)
+            }
+
+            Spacer()
+
+            if !notification.is_read {
+                Circle()
+                    .fill(.blue)
+                    .frame(width: 8, height: 8)
             }
         }
-        .padding(.vertical, 4)
     }
     
     private var iconName: String {

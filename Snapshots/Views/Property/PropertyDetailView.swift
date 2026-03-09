@@ -2,12 +2,16 @@ import SwiftUI
 
 struct PropertyDetailView: View {
     @State private var viewModel: PropertyDetailViewModel
+    @Environment(\.dismiss) private var dismiss
     @State private var showingManageTeam = false
+    @State private var didLeaveProperty = false
     @State private var editingRoom: PropertyRoomModel?
     @State private var showingRoomDeleteAlert = false
     @State private var showingRoomActiveInspectionAlert = false
     @State private var roomActiveInspectionItemCount = 0
     @State private var roomToDeleteOffsets: IndexSet?
+    @State private var showingPaywall = false
+    @State private var accessManager = SnapshotsAccessManager.shared
 
     init(property: PropertyModel) {
         _viewModel = State(initialValue: PropertyDetailViewModel(property: property))
@@ -65,8 +69,25 @@ struct PropertyDetailView: View {
             
             // MARK: - Actions
             Section {
-                Button(action: { showingManageTeam = true }) {
-                    Label("Manage Team", systemImage: "person.2.fill")
+                Button(action: { 
+                    if accessManager.isPro {
+                        showingManageTeam = true 
+                    } else {
+                        showingPaywall = true
+                    }
+                }) {
+                    HStack {
+                        Label("Manage Team", systemImage: "person.2.fill")
+                        Spacer()
+                        if !accessManager.isPro {
+                            Text("PRO")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.accentColor))
+                                .foregroundColor(.white)
+                        }
+                    }
                 }
             }
             
@@ -111,11 +132,6 @@ struct PropertyDetailView: View {
                             .tint(.accentColor)
                         }
                         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                    }
-                }
-                if viewModel.isOwner {
-                    Button(action: { viewModel.showingAddRoom = true }) {
-                        Label("Add Room", systemImage: "plus.circle")
                     }
                 }
             }
@@ -163,6 +179,15 @@ struct PropertyDetailView: View {
         .listStyle(.insetGrouped)
         .navigationTitle(viewModel.property.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            if viewModel.isOwner {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { viewModel.showingAddRoom = true }) {
+                        Label("Add Room", systemImage: "plus")
+                    }
+                }
+            }
+        }
         .alert("Active Inspection Found", isPresented: $showingRoomActiveInspectionAlert) {
             Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
             Button("Delete Anyway", role: .destructive) { showingRoomDeleteAlert = true }
@@ -191,8 +216,13 @@ struct PropertyDetailView: View {
         }) {
             AddRoomSheet(propertyId: viewModel.property.id)
         }
-        .sheet(isPresented: $showingManageTeam) {
-            ManageTeamSheet(propertyId: viewModel.property.id, isOwner: viewModel.isOwner)
+        .sheet(isPresented: $showingManageTeam, onDismiss: {
+            if didLeaveProperty { dismiss() }
+        }) {
+            ManageTeamSheet(propertyId: viewModel.property.id, isOwner: viewModel.isOwner, isManager: viewModel.isManager, didLeave: $didLeaveProperty)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PremiumPaywallView()
         }
         .sheet(item: $editingRoom, onDismiss: {
             Task { await viewModel.fetchRooms() }

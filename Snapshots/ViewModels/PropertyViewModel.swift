@@ -4,9 +4,16 @@ import Supabase
 @Observable @MainActor
 final class PropertyViewModel {
     var showingAddProperty = false
+    var showingPaywall = false
     var isLoading = false
     var errorMessage: String?
     var properties: [PropertyModel] = []
+    
+    private let accessManager = SnapshotsAccessManager.shared
+
+    func canAddProperty() -> Bool {
+        accessManager.canAddProperty(currentCount: properties.count)
+    }
 
     func fetchProperties() async {
         isLoading = true

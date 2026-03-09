@@ -23,7 +23,12 @@ struct PropertyView: View {
                             Spacer()
                         }
                     } else if viewModel.properties.isEmpty {
-                        EmptyView()
+                        ContentUnavailableView(
+                            "No Properties",
+                            systemImage: "building.2",
+                            description: Text("Add your first property to get started.")
+                        )
+                        .listRowBackground(Color.clear)
                     } else {
                         ForEach(viewModel.properties) { property in
                             NavigationLink {
@@ -55,19 +60,36 @@ struct PropertyView: View {
                     }
                 }
                 
-                // MARK: - Add Section
-                Section {
-                    Button(action: {
-                        HapticManager.shared.impact(style: .light)
-                        viewModel.showingAddProperty = true
-                    }) {
-                        Label("Add Property", systemImage: "plus.circle.fill")
-                    }
-                }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Properties")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: {
+                        HapticManager.shared.impact(style: .light)
+                        if viewModel.canAddProperty() {
+                            viewModel.showingAddProperty = true
+                        } else {
+                            viewModel.showingPaywall = true
+                        }
+                    }) {
+                        if viewModel.canAddProperty() {
+                            Label("Add Property", systemImage: "plus")
+                        } else {
+                            HStack(spacing: 4) {
+                                Label("Add Property", systemImage: "plus")
+                                Text("PRO")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Capsule().fill(Color.accentColor))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                    }
+                }
+            }
                 .refreshable {
                     await viewModel.fetchProperties()
                 }
@@ -105,6 +127,9 @@ struct PropertyView: View {
                     Task { await viewModel.fetchProperties() }
                 }) {
                     AddPropertySheet()
+                }
+                .sheet(isPresented: $viewModel.showingPaywall) {
+                    PremiumPaywallView()
                 }
                 .sheet(item: $editingProperty, onDismiss: {
                     Task { await viewModel.fetchProperties() }

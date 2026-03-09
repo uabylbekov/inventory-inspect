@@ -4,6 +4,8 @@ struct InspectionReportView: View {
     @State private var viewModel: InspectionReportViewModel
     @State private var showingInspectionSelection = false
     @State private var shareablePDF: ShareablePDF?
+    @State private var showingPaywall = false
+    private let accessManager = SnapshotsAccessManager.shared
     
     init(inspection: InspectionModel) {
         _viewModel = State(initialValue: InspectionReportViewModel(inspection: inspection))
@@ -183,8 +185,19 @@ struct InspectionReportView: View {
                             self.shareablePDF = ShareablePDF(data: data, filename: filename)
                         }
                     }) {
-                        Image(systemName: "square.and.arrow.up")
-                            .imageScale(.large)
+                        HStack(spacing: 4) {
+                            if !accessManager.isPro {
+                                Text("PRO")
+                                    .font(.system(size: 8, weight: .black))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.accentColor)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                            }
+                            Image(systemName: "square.and.arrow.up")
+                                .imageScale(.large)
+                        }
                     }
                 }
             }
@@ -201,6 +214,9 @@ struct InspectionReportView: View {
         }
         .sheet(isPresented: $showingInspectionSelection) {
             CompareSelectSheet(currentInspection: viewModel.inspection)
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PremiumPaywallView()
         }
         .task {
             await viewModel.fetchReportData()

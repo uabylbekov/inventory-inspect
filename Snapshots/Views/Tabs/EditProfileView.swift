@@ -10,6 +10,11 @@ struct EditProfileView: View {
     @State private var isDeletingAccount = false
     @State private var showingDeleteAlert = false
     @State private var errorMessage: String? = nil
+    @State private var businessName: String = ""
+    @State private var businessAddress: String = ""
+    @State private var businessPhone: String = ""
+    @State private var businessWebsite: String = ""
+    private let accessManager = SnapshotsAccessManager.shared
     
     var body: some View {
         Form {
@@ -29,6 +34,49 @@ struct EditProfileView: View {
             } footer: {
                 if isEditing {
                     Text("Updating your email will require a verification email and sign you out.")
+                }
+            }
+            
+            // MARK: - Business Branding (Enterprise)
+            Section {
+                if accessManager.isEnterprise {
+                    TextField("Business Name", text: $businessName)
+                        .disabled(!isEditing)
+                    TextField("Address", text: $businessAddress)
+                        .disabled(!isEditing)
+                    TextField("Phone", text: $businessPhone)
+                        .keyboardType(.phonePad)
+                        .disabled(!isEditing)
+                    TextField("Website", text: $businessWebsite)
+                        .keyboardType(.URL)
+                        .autocapitalization(.none)
+                        .disabled(!isEditing)
+                } else {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Image(systemName: "briefcase.fill")
+                                .foregroundColor(.accentColor)
+                            Text("Business Branding")
+                                .font(.headline)
+                        }
+                        
+                        Text("Add your company logo, address, and contact info to your PDF reports.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        
+                        NavigationLink(destination: PremiumPaywallView()) {
+                            Text("Unlock Enterprise Branding")
+                                .font(.subheadline.bold())
+                                .foregroundColor(.accentColor)
+                        }
+                    }
+                    .padding(.vertical, 8)
+                }
+            } header: {
+                Text("Business Details")
+            } footer: {
+                if accessManager.isEnterprise {
+                    Text("These details will appear on all your generated PDF reports.")
                 }
             }
             
@@ -99,6 +147,24 @@ struct EditProfileView: View {
                     
                     if case .string(let fetchedName) = user.userMetadata["full_name"] {
                         self.name = fetchedName
+                    }
+                    
+                    // Load business details from public.profiles table (subscription-tier dependent)
+                    if let profile = accessManager.profile {
+                        if let detailsString = profile.business_details, !detailsString.isEmpty,
+                           let data = detailsString.data(using: .utf8),
+                           let dict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                            self.businessName = dict["business_name"] as? String ?? ""
+                            self.businessAddress = dict["business_address"] as? String ?? ""
+                            self.businessPhone = dict["business_phone"] as? String ?? ""
+                            self.businessWebsite = dict["business_website"] as? String ?? ""
+                        } else {
+                            // Fallback if stored differently or empty
+                            self.businessName = ""
+                            self.businessAddress = ""
+                            self.businessPhone = ""
+                            self.businessWebsite = ""
+                        }
                     }
                 }
             }

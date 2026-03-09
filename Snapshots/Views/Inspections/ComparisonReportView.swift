@@ -5,6 +5,8 @@ struct ComparisonReportView: View {
     @State private var viewModel: ComparisonReportViewModel
     @State private var isGeneratingPDF = false
     @State private var pdfShareItem: ShareablePDF?
+    @State private var showingPaywall = false
+    private let accessManager = SnapshotsAccessManager.shared
     
     init(base: InspectionModel, current: InspectionModel) {
         _viewModel = State(initialValue: ComparisonReportViewModel(base: base, current: current))
@@ -150,7 +152,18 @@ struct ComparisonReportView: View {
                     if isGeneratingPDF {
                         ProgressView()
                     } else {
-                        Label("Share PDF", systemImage: "square.and.arrow.up")
+                        HStack(spacing: 4) {
+                            if !accessManager.isPro {
+                                Text("PRO")
+                                    .font(.system(size: 8, weight: .black))
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
+                                    .background(Color.accentColor)
+                                    .foregroundColor(.white)
+                                    .cornerRadius(4)
+                            }
+                            Label("Share PDF", systemImage: "square.and.arrow.up")
+                        }
                     }
                 }
                 .disabled(viewModel.isLoading || isGeneratingPDF)
@@ -158,6 +171,9 @@ struct ComparisonReportView: View {
         }
         .sheet(item: $pdfShareItem) { pdf in
             ShareSheet(data: pdf.data, filename: "InspectionReport.pdf")
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PremiumPaywallView()
         }
         .task {
             await viewModel.fetchComparison()

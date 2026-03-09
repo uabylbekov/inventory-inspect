@@ -18,7 +18,14 @@ struct StartInspectionSheet: View {
                         }
                     }
                 } else if viewModel.properties.isEmpty {
-                    EmptyView()
+                    Section {
+                        ContentUnavailableView(
+                            "No Properties",
+                            systemImage: "building.2",
+                            description: Text("Add a property first before starting an inspection.")
+                        )
+                        .listRowBackground(Color.clear)
+                    }
                 } else {
                     // MARK: - Property Selection
                     Section("Property") {

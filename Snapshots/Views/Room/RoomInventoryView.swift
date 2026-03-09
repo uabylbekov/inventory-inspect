@@ -54,22 +54,12 @@ struct RoomInventoryView: View {
                         Spacer()
                     }
                 } else if viewModel.items.isEmpty {
-                    VStack(spacing: 12) {
-                        Text("No items added yet")
-                            .foregroundColor(.secondary)
-                            .italic()
-                        
-                        Button(action: {
-                            viewModel.showingAddItem = true
-                        }) {
-                            Label("Add First Item", systemImage: "plus.circle")
-                                .font(.subheadline.bold())
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundColor(.accentColor)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    ContentUnavailableView(
+                        "No Items",
+                        systemImage: "cube.box",
+                        description: Text("Add inventory items to track what's in this room.")
+                    )
+                    .listRowBackground(Color.clear)
                 } else {
                     ForEach(viewModel.items) { item in
                         NavigationLink {
@@ -110,14 +100,18 @@ struct RoomInventoryView: View {
                         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     }
                 }
-                Button(action: { viewModel.showingAddItem = true }) {
-                    Label("Add New Item", systemImage: "plus.circle")
-                }
             }
         }
         .listStyle(.insetGrouped)
         .navigationTitle(room.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { viewModel.showingAddItem = true }) {
+                    Label("Add Item", systemImage: "plus")
+                }
+            }
+        }
         .alert("Delete Item?", isPresented: $showingItemDeleteAlert) {
             Button("Cancel", role: .cancel) {
                 itemToDelete = nil

@@ -43,19 +43,20 @@ struct InspectionsView: View {
                 
                 inspectionsSection
                 
-                // MARK: - Add Section
-                Section {
-                    Button(action: {
-                        HapticManager.shared.impact(style: .light)
-                        viewModel.showingStartInspection = true
-                    }) {
-                        Label("New Inspection", systemImage: "plus.circle.fill")
-                    }
-                }
             }
             .listStyle(.insetGrouped)
             .navigationTitle("Inspections")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: {
+                        HapticManager.shared.impact(style: .light)
+                        viewModel.showingStartInspection = true
+                    }) {
+                        Label("Add Inspection", systemImage: "plus")
+                    }
+                }
+            }
             .refreshable {
                 async let fetchI: () = self.viewModel.fetchInspections()
                 async let fetchP: () = self.viewModel.fetchProperties()
@@ -104,15 +105,26 @@ struct InspectionsView: View {
         let active = viewModel.filteredInspections.filter { $0.status == "in_progress" }
         let completed = viewModel.filteredInspections.filter { $0.status == "completed" }
         let cancelled = viewModel.filteredInspections.filter { $0.status == "cancelled" }
-        
+
+        if viewModel.filteredInspections.isEmpty && !viewModel.isLoading {
+            Section {
+                ContentUnavailableView(
+                    "No Inspections",
+                    systemImage: "checklist",
+                    description: Text(viewModel.isFilteringByDate ? "No inspections found for this date." : "Start your first inspection to begin tracking.")
+                )
+                .listRowBackground(Color.clear)
+            }
+        }
+
         if !active.isEmpty {
             inspectionGroup(title: "Active Walks", inspections: active)
         }
-        
+
         if !completed.isEmpty {
             inspectionGroup(title: "Completed", inspections: completed)
         }
-        
+
         if !cancelled.isEmpty {
             inspectionGroup(title: "Cancelled", inspections: cancelled)
         }

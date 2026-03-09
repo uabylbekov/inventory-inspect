@@ -39,25 +39,38 @@ final class ManageTeamViewModel {
         }
         
         do {
-            let params: [String: AnyJSON] = [
-                "p_email": .string(email),
-                "p_property_id": .string(propertyId.uuidString.lowercased()),
-                "p_role": .string(newMemberRole)
-            ]
-            
-            // Calls a custom Postgres function (RPC) we setup in Supabase
-            try await supabase.rpc("invite_user_to_property", params: params).execute()
-            
+            struct InvitePayload: Encodable {
+                let email: String
+                let property_id: String
+                let role: String
+            }
+            struct InviteResponse: Decodable {
+                let success: Bool?
+                let status: String?
+                let error: String?
+            }
+
+            let response: InviteResponse = try await supabase.functions
+                .invoke("send-property-invite", options: .init(body: InvitePayload(
+                    email: email,
+                    property_id: propertyId.uuidString.lowercased(),
+                    role: newMemberRole
+                )))
+
+            if let serverError = response.error {
+                self.errorMessage = serverError
+                self.isSaving = false
+                return false
+            }
+
             self.isSaving = false
-            self.successMessage = "Successfully added \(email) to the team!"
+            self.successMessage = response.status == "pending_created"
+                ? "Invite sent! \(email) will receive an email to download the app."
+                : "Successfully added \(email) to the team!"
             self.newMemberEmail = ""
             return true
-            
+
         } catch is CancellationError {
-            self.isSaving = false
-            return false
-        } catch let error as PostgrestError {
-            self.errorMessage = error.message
             self.isSaving = false
             return false
         } catch {

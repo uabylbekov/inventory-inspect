@@ -5,6 +5,8 @@ struct SettingsView: View {
     @State private var isSigningOut = false
     @State private var showingSignOutAlert = false
     @State private var userName: String = ""
+    @State private var showingPaywall = false
+    @State private var accessManager = SnapshotsAccessManager.shared
     
     var body: some View {
         NavigationStack {
@@ -36,6 +38,59 @@ struct SettingsView: View {
                         .padding(.vertical, 6)
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                }
+                
+                // MARK: - Subscription Section
+                Section {
+                    Button {
+                        showingPaywall = true
+                    } label: {
+                        HStack {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(accessManager.isPro ? Color.accentColor.gradient : Color.secondary.opacity(0.15).gradient)
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "star.fill")
+                                    .font(.subheadline)
+                                    .foregroundColor(accessManager.isPro ? .white : .secondary)
+                            }
+                            
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Snapshots Plan")
+                                    .font(.subheadline)
+                                    .foregroundColor(.primary)
+                                Text(accessManager.isPro ? "PRO Partner" : "Standard Tier")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
+                            Spacer()
+                            
+                            if !accessManager.isPro {
+                                Text("Upgrade")
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 4)
+                                    .background(Capsule().fill(Color.accentColor))
+                                    .foregroundColor(.white)
+                            } else {
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.secondary.opacity(0.5))
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Plan")
+                } footer: {
+                    if accessManager.isPro {
+                        Text("You have unlimited properties and team collaboration.")
+                    } else {
+                        Text("Manage 1 property for free. Upgrade for unlimited properties and team collaboration.")
+                    }
+                }
+                .sheet(isPresented: $showingPaywall) {
+                    PremiumPaywallView()
                 }
                 
                 // MARK: - App Section

@@ -18,6 +18,10 @@ final class PropertyDetailViewModel {
     var isOwner: Bool {
         property.property_members?.contains(where: { $0.role == "owner" }) ?? false
     }
+
+    var isManager: Bool {
+        property.property_members?.contains(where: { $0.role == "manager" }) ?? false
+    }
     
     func fetchRooms() async {
         isLoading = true

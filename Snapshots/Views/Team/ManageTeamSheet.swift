@@ -4,16 +4,22 @@ struct ManageTeamSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: ManageTeamViewModel
     let isOwner: Bool
-    
-    init(propertyId: UUID, isOwner: Bool) {
+    let isManager: Bool
+    @Binding var didLeave: Bool
+
+    init(propertyId: UUID, isOwner: Bool, isManager: Bool = false, didLeave: Binding<Bool>) {
         self.isOwner = isOwner
+        self.isManager = isManager
+        self._didLeave = didLeave
         _viewModel = State(initialValue: ManageTeamViewModel(propertyId: propertyId))
     }
+
+    private var canInvite: Bool { isOwner || isManager }
     
     var body: some View {
         NavigationStack {
             Form {
-                if isOwner {
+                if canInvite {
                     Section(header: Text("Invite Team Member")) {
                         TextField("Email Address", text: $viewModel.newMemberEmail)
                             .keyboardType(.emailAddress)
@@ -22,7 +28,9 @@ struct ManageTeamSheet: View {
                             .autocorrectionDisabled()
                         
                         Picker("Role", selection: $viewModel.newMemberRole) {
-                            Text("Manager").tag("manager")
+                            if isOwner {
+                                Text("Manager").tag("manager")
+                            }
                             Text("Cleaner").tag("cleaner")
                         }
                     }
@@ -122,9 +130,10 @@ struct ManageTeamSheet: View {
                             Task {
                                 HapticManager.shared.impact(style: .medium)
                                 let left = await viewModel.leaveProperty()
-                                if left { 
+                                if left {
                                     HapticManager.shared.notification(type: .success)
-                                    dismiss() 
+                                    didLeave = true
+                                    dismiss()
                                 } else {
                                     HapticManager.shared.notification(type: .error)
                                 }
