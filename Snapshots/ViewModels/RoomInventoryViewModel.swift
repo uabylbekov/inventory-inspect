@@ -28,6 +28,8 @@ final class RoomInventoryViewModel {
                 
             self.items = fetchedItems
             self.isLoading = false
+        } catch is CancellationError {
+            self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false

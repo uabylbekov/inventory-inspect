@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 import SwiftUI
 
-@Observable
+@Observable @MainActor
 final class ComparisonReportViewModel {
     let older: InspectionModel
     let newer: InspectionModel
@@ -55,15 +55,18 @@ final class ComparisonReportViewModel {
             
             let roomsDict = Dictionary(uniqueKeysWithValues: fetchedRooms.map { ($0.id, $0) })
             
-            var allInventory: [RoomInventoryItemModel] = []
-            for room in fetchedRooms {
-                let items: [RoomInventoryItemModel] = try await supabase
+            // 3. Batch fetch all Inventory Items for these rooms
+            let allInventory: [RoomInventoryItemModel]
+            if !fetchedRooms.isEmpty {
+                let roomIds = fetchedRooms.map { $0.id.uuidString.lowercased() }
+                allInventory = try await supabase
                     .from("room_inventory_items")
                     .select()
-                    .eq("room_id", value: room.id.uuidString.lowercased())
+                    .in("room_id", values: roomIds)
                     .execute()
                     .value
-                allInventory.append(contentsOf: items)
+            } else {
+                allInventory = []
             }
             
             // Fetch OLD items
@@ -148,6 +151,8 @@ final class ComparisonReportViewModel {
                 }
             }
             
+            isLoading = false
+        } catch is CancellationError {
             isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription

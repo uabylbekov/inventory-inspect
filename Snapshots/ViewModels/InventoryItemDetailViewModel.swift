@@ -28,6 +28,8 @@ final class InventoryItemDetailViewModel {
                 
             self.history = records
             self.isLoading = false
+        } catch is CancellationError {
+            self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false

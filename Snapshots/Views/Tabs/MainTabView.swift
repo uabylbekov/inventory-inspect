@@ -7,7 +7,7 @@ struct MainTabView: View {
                 DashboardView()
             }
             Tab("Properties", systemImage: "building.2.fill") {
-                ContentView()
+                PropertyView()
             }
             Tab("Inspections", systemImage: "checklist") {
                 InspectionsView()

@@ -90,12 +90,13 @@ final class EditPropertyViewModel {
                 airbnbListingId = dict["airbnb_listing_id"]?.stringValue ?? ""
                 vrboListingId = dict["vrbo_listing_id"]?.stringValue ?? ""
             }
+        } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
     }
-    
+
     func saveToSupabase() async -> Bool {
         isSaving = true
         errorMessage = nil
@@ -133,6 +134,9 @@ final class EditPropertyViewModel {
             isSaving = false
             return true
             
+        } catch is CancellationError {
+            self.isSaving = false
+            return false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isSaving = false

@@ -10,168 +10,166 @@ struct InspectionReportView: View {
     }
     
     var body: some View {
-        Group {
-            if viewModel.isLoading {
-                ProgressView()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                VStack(spacing: 0) {
-                    if let error = viewModel.errorMessage {
+        List {
+            // Error Banner (Inline in List)
+            if let error = viewModel.errorMessage {
+                Section {
+                    HStack {
+                        Image(systemName: "exclamationmark.octagon.fill")
                         Text(error)
-                            .font(.caption)
-                            .foregroundColor(.white)
-                            .padding(.vertical, 8)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.red)
                     }
-                    
-                    List {
-                    // MARK: - Header Section
-                        // MARK: - Header Section
-                        Section {
-                            VStack(spacing: 12) {
-                                if let prop = viewModel.property {
-                                    HStack(alignment: .center) {
-                                        VStack(alignment: .leading, spacing: 2) {
-                                            Text(prop.name)
-                                                .font(.headline)
-                                            Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
-                                                .font(.caption.bold())
-                                                .foregroundColor(.accentColor)
-                                                .textCase(.uppercase)
-                                        }
-                                        Spacer()
-                                        StatusBadge(status: viewModel.inspection.status)
-                                    }
-                                }
-                                
-                                Divider()
-                                
-                                HStack(spacing: 16) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("DATE")
-                                            .font(.caption2.bold())
-                                            .foregroundColor(.secondary)
-                                        Text(AppFormatter.formatDate(viewModel.inspection.started_at))
-                                            .font(.subheadline.bold())
-                                    }
-                                    
-                                    if let name = viewModel.inspectorName {
-                                        Spacer()
-                                        VStack(alignment: .trailing, spacing: 2) {
-                                            Text("INSPECTOR")
-                                                .font(.caption2.bold())
-                                                .foregroundColor(.secondary)
-                                            Text(name)
-                                                .font(.subheadline.bold())
-                                        }
-                                    }
-                                }
-                                
-                                if let notes = viewModel.inspection.notes, !notes.isEmpty {
-                                    Text(notes)
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                        .padding(.top, 4)
-                                }
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    
-                    // MARK: - Anomalies Section
-                    if !viewModel.anomalies.isEmpty {
-                        Section {
-                            ForEach(viewModel.anomalies) { item in
-                                ReportItemRow(item: item, onResolve: {
-                                    Task { 
-                                        HapticManager.shared.impact(style: .medium)
-                                        await viewModel.resolveAnomaly(reportItem: item) 
-                                        HapticManager.shared.notification(type: .success)
-                                    }
-                                })
-                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                            }
-                        } header: {
-                            HStack {
-                                Text("Anomalies")
-                                Spacer()
-                                Text("\(viewModel.anomalies.count)")
-                            }
-                        }
-                    } else if !viewModel.resolvedItems.isEmpty {
-                        Section {
-                            VStack(spacing: 10) {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.blue)
-                                Text("Inspection Resolved")
+                    .foregroundColor(.white)
+                    .listRowBackground(Color.red)
+                }
+            }
+            
+            // Header Section
+            Section {
+                VStack(spacing: 12) {
+                    if let prop = viewModel.property {
+                        HStack(alignment: .center) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(prop.name)
                                     .font(.headline)
-                                Text("All flagged issues have been fixed.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
+                                    .font(.caption.bold())
+                                    .foregroundColor(.accentColor)
+                                    .textCase(.uppercase)
                             }
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 16)
-                        } header: {
-                            Text("Anomalies")
-                        }
-                    } else {
-                        Section {
-                            VStack(spacing: 10) {
-                                Image(systemName: "checkmark.seal.fill")
-                                    .font(.system(size: 32))
-                                    .foregroundColor(.green)
-                                Text("Perfect Inspection")
-                                    .font(.headline)
-                                Text("No missing or damaged items found.")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 16)
-                        } header: {
-                            Text("Anomalies")
+                            Spacer()
+                            StatusBadge(status: viewModel.inspection.status)
                         }
                     }
                     
-                    // MARK: - Resolved Section
-                    if !viewModel.resolvedItems.isEmpty {
-                        Section {
-                            ForEach(viewModel.resolvedItems) { item in
-                                ReportItemRow(item: item)
-                                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                            }
-                        } header: {
-                            HStack {
-                                Text("Resolved Issues")
-                                Spacer()
-                                Text("\(viewModel.resolvedItems.count)")
-                            }
-                        }
-                    }
+                    Divider()
                     
-                    // MARK: - Present Items Section
-                    if !viewModel.presentItems.isEmpty {
-                        Section {
-                            ForEach(viewModel.presentItems) { item in
-                                ReportItemRow(item: item)
-                                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                            }
-                        } header: {
-                            HStack {
-                                Text("Present & Intact")
-                                Spacer()
-                                Text("\(viewModel.presentItems.count)")
+                    HStack(spacing: 16) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("DATE")
+                                .font(.caption2.bold())
+                                .foregroundColor(.secondary)
+                            Text(AppFormatter.formatDate(viewModel.inspection.started_at))
+                                .font(.subheadline.bold())
+                        }
+                        
+                        if let name = viewModel.inspectorName {
+                            Spacer()
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text("INSPECTOR")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.secondary)
+                                Text(name)
+                                    .font(.subheadline.bold())
                             }
                         }
                     }
+                }
+                .padding(.vertical, 4)
+            }
+            .redacted(reason: viewModel.isLoading ? .placeholder : [])
+
+            // MARK: - Anomalies Section
+            if !viewModel.anomalies.isEmpty {
+                Section {
+                    ForEach(viewModel.anomalies) { item in
+                        ReportItemRow(item: item, onResolve: {
+                            Task { 
+                                HapticManager.shared.impact(style: .medium)
+                                await viewModel.resolveAnomaly(reportItem: item) 
+                                HapticManager.shared.notification(type: .success)
+                            }
+                        })
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     }
-                    .listStyle(.insetGrouped)
+                } header: {
+                    HStack {
+                        Text("Anomalies")
+                        Spacer()
+                        Text("\(viewModel.anomalies.count)")
+                    }
+                }
+            } else if !viewModel.isLoading && !viewModel.resolvedItems.isEmpty {
+                Section {
+                    VStack(spacing: 10) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.blue)
+                        Text("Inspection Resolved")
+                            .font(.headline)
+                        Text("All flagged issues have been fixed.")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+                } header: {
+                    Text("Anomalies")
+                }
+            } else if !viewModel.isLoading {
+                Section {
+                    VStack(spacing: 10) {
+                        Image(systemName: "checkmark.seal.fill")
+                            .font(.system(size: 32))
+                            .foregroundColor(.green)
+                            Text("Perfect Inspection")
+                                .font(.headline)
+                            Text("No missing or damaged items found.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 16)
+                } header: {
+                    Text("Anomalies")
+                }
+            }
+            
+            // MARK: - Resolved Section
+            if !viewModel.resolvedItems.isEmpty {
+                Section {
+                    ForEach(viewModel.resolvedItems) { item in
+                        ReportItemRow(item: item)
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                    }
+                } header: {
+                    HStack {
+                        Text("Resolved Issues")
+                        Spacer()
+                        Text("\(viewModel.resolvedItems.count)")
+                    }
+                }
+            }
+            
+            // MARK: - Present Items Section
+            if !viewModel.presentItems.isEmpty {
+                Section {
+                    ForEach(viewModel.presentItems) { item in
+                        ReportItemRow(item: item)
+                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                    }
+                } header: {
+                    HStack {
+                        Text("Present & Intact")
+                        Spacer()
+                        Text("\(viewModel.presentItems.count)")
+                    }
                 }
             }
         }
-        .animation(.default, value: viewModel.isLoading)
+        .listStyle(.insetGrouped)
+        .overlay {
+            if viewModel.isLoading {
+                ZStack {
+                    Color(UIColor.systemGroupedBackground)
+                        .ignoresSafeArea()
+                    ProgressView("Crunching Data…")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+        }
+
+        .animation(.none, value: viewModel.isLoading)
         .navigationTitle("Report")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

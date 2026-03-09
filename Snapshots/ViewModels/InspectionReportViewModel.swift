@@ -9,7 +9,7 @@ struct ReportItem: Identifiable {
     let room: PropertyRoomModel
 }
 
-@Observable
+@Observable @MainActor
 final class InspectionReportViewModel {
     let inspection: InspectionModel
     
@@ -52,19 +52,20 @@ final class InspectionReportViewModel {
                 
             let roomsDict = Dictionary(uniqueKeysWithValues: fetchedRooms.map { ($0.id, $0) })
             
-            // 3. Fetch all Inventory Items for these rooms
-            // Limit to just those rooms in chunks if >100, but in our case property_rooms is small enough
-            // Instead, we just fetch all items and filter below. (Optimal way is matching room_id IN (...))
-            var fetchedInventoryItems: [RoomInventoryItemModel] = []
-            for room in fetchedRooms {
-                let items: [RoomInventoryItemModel] = try await supabase
+            // 3. Batch fetch all Inventory Items for these rooms
+            let fetchedInventoryItems: [RoomInventoryItemModel]
+            if !fetchedRooms.isEmpty {
+                let roomIds = fetchedRooms.map { $0.id.uuidString.lowercased() }
+                fetchedInventoryItems = try await supabase
                     .from("room_inventory_items")
                     .select()
-                    .eq("room_id", value: room.id.uuidString.lowercased())
+                    .in("room_id", values: roomIds)
                     .execute()
                     .value
-                fetchedInventoryItems.append(contentsOf: items)
+            } else {
+                fetchedInventoryItems = []
             }
+            
             let inventoryDict = Dictionary(uniqueKeysWithValues: fetchedInventoryItems.map { ($0.id, $0) })
             
             // 4. Fetch the Inspection Items for this specific inspection
@@ -114,12 +115,14 @@ final class InspectionReportViewModel {
             
             self.isLoading = false
             
+        } catch is CancellationError {
+            self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
         }
     }
-    
+
     func resolveAnomaly(reportItem: ReportItem) async {
         // Find existing index and store local copy for potential fallback
         guard let index = anomalies.firstIndex(where: { $0.id == reportItem.id }) else { return }

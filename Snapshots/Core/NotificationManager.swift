@@ -3,7 +3,7 @@ import UserNotifications
 import Supabase
 import Realtime
 
-@Observable
+@Observable @MainActor
 final class NotificationManager: @unchecked Sendable {
     static let shared = NotificationManager()
     
@@ -14,6 +14,8 @@ final class NotificationManager: @unchecked Sendable {
     
     // Deep linking state
     var selectedNotificationID: UUID?
+    var joiningInspection: InspectionModel?
+    var joinError: String?
     
     private let supabase = SupabaseClient(
         supabaseURL: EnvConfig.supabaseURL,
@@ -29,6 +31,24 @@ final class NotificationManager: @unchecked Sendable {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
             }
+        }
+    }
+    
+    func handleJoinRequest(id: UUID) async {
+        joinError = nil
+        do {
+            let inspection: [InspectionModel] = try await supabase
+                .from("inspections")
+                .select()
+                .eq("id", value: id.uuidString.lowercased())
+                .execute()
+                .value
+            
+            if let first = inspection.first {
+                self.joiningInspection = first
+            }
+        } catch {
+            self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
         }
     }
     
@@ -78,15 +98,13 @@ final class NotificationManager: @unchecked Sendable {
                 .execute()
                 .value
             
-            await MainActor.run {
-                self.notifications = fetched
-                self.unreadCount = fetched.filter { !$0.is_read }.count
-                
-                // Clear the app icon badge number if we're up to date
-                UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { error in
-                    if let error = error {
-                        print("Error setting badge count: \(error)")
-                    }
+            self.notifications = fetched
+            self.unreadCount = fetched.filter { !$0.is_read }.count
+            
+            // Clear the app icon badge number if we're up to date
+            UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { error in
+                if let error = error {
+                    print("Error setting badge count: \(error)")
                 }
             }
         } catch {
@@ -137,9 +155,7 @@ final class NotificationManager: @unchecked Sendable {
                     .execute()
                 
                 // Sync the badge count locally
-                await MainActor.run {
-                    UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
-                }
+                UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
             } catch {
                 print("Error batch deleting notifications: \(error)")
                 // Background re-fetch in case of failure to keep UI synced
@@ -171,11 +187,9 @@ final class NotificationManager: @unchecked Sendable {
                 switch change {
                 case .insert(let action):
                     if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
-                        await MainActor.run {
-                            self.notifications.insert(newNotification, at: 0)
-                            self.unreadCount += 1
-                            self.triggerLocalNotification(for: newNotification)
-                        }
+                        self.notifications.insert(newNotification, at: 0)
+                        self.unreadCount += 1
+                        self.triggerLocalNotification(for: newNotification)
                     }
                 default:
                     await fetchNotifications()

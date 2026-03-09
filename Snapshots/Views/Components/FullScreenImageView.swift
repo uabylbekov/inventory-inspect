@@ -52,7 +52,7 @@ struct FullScreenImageView: View {
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.white)
                         .frame(width: 44, height: 44)
-                        .background(.ultraThinMaterial)
+                        .background(Color.black.opacity(0.5))
                         .clipShape(Circle())
                 }
                 
@@ -71,7 +71,7 @@ struct FullScreenImageView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial)
+                            .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
                     }
                     
@@ -83,7 +83,7 @@ struct FullScreenImageView: View {
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
                             .frame(width: 44, height: 44)
-                            .background(.ultraThinMaterial)
+                            .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
                     }
                     .sheet(isPresented: $showShareSheet) {
@@ -105,7 +105,7 @@ struct FullScreenImageView: View {
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        .background(.ultraThinMaterial)
+                        .background(Color.black.opacity(0.5))
                         .clipShape(Capsule())
                         .padding(.bottom, 40)
                         .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -8,23 +8,26 @@ struct AddPropertySheet: View {
 
     var body: some View {
         NavigationStack {
-            Form {
+            List {
                 // MARK: - Basic Details
-                Section(header: Text("Basic Details")) {
-                    TextField("Property Name", text: $viewModel.name)
+                Section("Basic Details") {
+                    TextField("Property Name (e.g. Sunset Villa)", text: $viewModel.name)
                         .onChange(of: viewModel.name) { _, _ in
-                            if showValidation { }  // triggers re-render
+                            if showValidation { } 
                         }
 
                     if showValidation, let error = viewModel.nameError {
-                        validationText(error)
+                        Label(error, systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
                     }
 
-                    TextField("Description", text: $viewModel.description)
+                    TextField("Description", text: $viewModel.description, axis: .vertical)
+                        .lineLimit(3...10)
                 }
 
                 // MARK: - Classification
-                Section(header: Text("Classification")) {
+                Section("Classification") {
                     Picker("Property Type", selection: $viewModel.type) {
                         Text("Apartment").tag("Apartment")
                         Text("House").tag("House")
@@ -41,7 +44,7 @@ struct AddPropertySheet: View {
                 }
 
                 // MARK: - Location
-                Section(header: Text("Location")) {
+                Section("Location") {
                     TextField("Address Line 1", text: $viewModel.addressLine1)
                         .textContentType(.streetAddressLine1)
                     TextField("Address Line 2", text: $viewModel.addressLine2)
@@ -54,8 +57,11 @@ struct AddPropertySheet: View {
                     TextField("Postal Code", text: $viewModel.postalCode)
                         .textContentType(.postalCode)
                         .autocorrectionDisabled()
+                    
                     if showValidation, let error = viewModel.postalCodeError {
-                        validationText(error)
+                        Label(error, systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
                     }
 
                     Picker("Country", selection: $viewModel.country) {
@@ -66,19 +72,28 @@ struct AddPropertySheet: View {
                 }
 
                 // MARK: - Details
-                Section(header: Text("Details")) {
+                Section("Interior Details") {
                     Stepper("Bedrooms: \(viewModel.bedroomsCount)", value: $viewModel.bedroomsCount, in: 0...50)
                     Stepper("Bathrooms: \(viewModel.bathroomsCount, specifier: "%.1f")", value: $viewModel.bathroomsCount, in: 0...50, step: 0.5)
 
-                    TextField("Max Guests", text: $viewModel.maxGuests)
-                        .keyboardType(.numberPad)
+                    HStack {
+                        Text("Max Guests")
+                        Spacer()
+                        TextField("Count", text: $viewModel.maxGuests)
+                            .keyboardType(.numberPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                    
                     if showValidation, let error = viewModel.maxGuestsError {
-                        validationText(error)
+                        Label(error, systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
                     }
                 }
 
                 // MARK: - Listings
-                Section(header: Text("Listings")) {
+                Section("External Listings") {
                     TextField("Airbnb Listing ID", text: $viewModel.airbnbListingId)
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
@@ -87,30 +102,30 @@ struct AddPropertySheet: View {
                         .autocorrectionDisabled()
                 }
 
-                // MARK: - Server Error
-                if let error = viewModel.errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.footnote)
+                // MARK: - Action Section
+                Section {
+                    Button(action: handleSave) {
+                        HStack(spacing: 8) {
+                            if viewModel.isSaving {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text("Add Property")
+                                .fontWeight(.bold)
+                        }
+                        .frame(maxWidth: .infinity)
                     }
+                    .disabled(viewModel.isSaving)
+                    .listRowBackground(Color.accentColor)
+                    .foregroundColor(.white)
                 }
             }
+            .listStyle(.insetGrouped)
             .navigationTitle("Add Property")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(action: handleSave) {
-                        if viewModel.isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Add")
-                        }
-                    }
-                    .disabled(viewModel.isSaving)
                 }
             }
         }
@@ -135,14 +150,4 @@ struct AddPropertySheet: View {
             }
         }
     }
-
-    private func validationText(_ message: String) -> some View {
-        Text(message)
-            .font(.caption)
-            .foregroundColor(.red)
-    }
-}
-
-#Preview {
-    AddPropertySheet()
 }

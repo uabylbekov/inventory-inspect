@@ -8,11 +8,12 @@ struct NotificationsView: View {
         NavigationStack {
             List {
                 if notificationManager.notifications.isEmpty {
-                    ContentUnavailableView {
-                        Label("All caught up", systemImage: "bell.slash")
-                    } description: {
-                        Text("You don't have any notifications right now.")
-                    }
+                    ContentUnavailableView(
+                        "No Notifications",
+                        systemImage: "bell.slash",
+                        description: Text("Alerts about invitations or inspection activities will appear here.")
+                    )
+                    .listRowBackground(Color.clear)
                 } else {
                     ForEach(notificationManager.notifications) { notification in
                         NotificationRow(notification: notification)

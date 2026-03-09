@@ -13,38 +13,111 @@ struct RoomInventoryView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // MARK: - Room Hero Header
-                roomHeaderSection
-                
-                // MARK: - Inventory List
-                if viewModel.isLoading && viewModel.items.isEmpty {
-                    loadingState
-                } else if viewModel.items.isEmpty {
-                    emptyState
-                } else {
-                    inventorySection
+        List {
+            // MARK: - Room Header
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(PropertyUI.roomColor(for: room.room_type ?? "").opacity(0.1))
+                                .frame(width: 60, height: 60)
+                            Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
+                                .font(.title2)
+                                .foregroundColor(PropertyUI.roomColor(for: room.room_type ?? ""))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(room.name)
+                                .font(.title3.bold())
+                            Text(room.room_type?.capitalized ?? "Room")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    HStack(spacing: 20) {
+                        Label("\(viewModel.items.count) Items", systemImage: "cube.box")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 }
+                .padding(.vertical, 8)
             }
-            .padding(.bottom, 32)
-        }
-        .navigationTitle(room.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button(action: {
-                    HapticManager.shared.impact(style: .light)
-                    viewModel.showingAddItem = true
-                }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus.circle")
-                            .symbolRenderingMode(.hierarchical)
-                        Text("Add Item")
+            
+            // MARK: - Inventory Section
+            Section("Inventory") {
+                if viewModel.isLoading && viewModel.items.isEmpty {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                } else if viewModel.items.isEmpty {
+                    VStack(spacing: 12) {
+                        Text("No items added yet")
+                            .foregroundColor(.secondary)
+                            .italic()
+                        
+                        Button(action: {
+                            viewModel.showingAddItem = true
+                        }) {
+                            Label("Add First Item", systemImage: "plus.circle")
+                                .font(.subheadline.bold())
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundColor(.accentColor)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                } else {
+                    ForEach(viewModel.items) { item in
+                        NavigationLink {
+                            InventoryItemDetailView(item: item)
+                                .onAppear { HapticManager.shared.impact(style: .light) }
+                        } label: {
+                            InventoryItemRow(item: item)
+                        }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                itemToDelete = item
+                                showingItemDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                editingItem = item
+                            } label: {
+                                Label("Edit", systemImage: "pencil")
+                            }
+                            .tint(.accentColor)
+                        }
+                        .contextMenu {
+                            Button {
+                                editingItem = item
+                            } label: {
+                                Label("Edit Item", systemImage: "pencil")
+                            }
+                            Button(role: .destructive) {
+                                itemToDelete = item
+                                showingItemDeleteAlert = true
+                            } label: {
+                                Label("Delete", systemImage: "trash")
+                            }
+                        }
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     }
                 }
+                Button(action: { viewModel.showingAddItem = true }) {
+                    Label("Add New Item", systemImage: "plus.circle")
+                }
             }
         }
+        .listStyle(.insetGrouped)
+        .navigationTitle(room.name)
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Delete Item?", isPresented: $showingItemDeleteAlert) {
             Button("Cancel", role: .cancel) {
                 itemToDelete = nil
@@ -77,177 +150,43 @@ struct RoomInventoryView: View {
             await viewModel.fetchItems()
         }
     }
-    
-    // MARK: - Subviews
-    
-    private var roomHeaderSection: some View {
-        ZStack(alignment: .bottomLeading) {
-            // Background Gradient with Icon Backdrop
-            LinearGradient(
-                colors: [PropertyUI.roomColor(for: room.room_type ?? "").opacity(0.8), PropertyUI.roomColor(for: room.room_type ?? "").opacity(1.0)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            .frame(height: 140)
-            .overlay(
-                Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
-                    .font(.system(size: 100))
-                    .foregroundColor(.white.opacity(0.15))
-                    .offset(x: 40, y: 20),
-                alignment: .bottomTrailing
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(room.room_type?.uppercased() ?? "ROOM")
-                    .font(.caption2.bold())
-                    .foregroundColor(.white.opacity(0.8))
-                    .tracking(1)
-                
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text("\(viewModel.items.count)")
-                        .font(.system(size: 32, weight: .bold))
-                        .foregroundColor(.white)
-                    
-                    Text("Total Items")
-                        .font(.footnote)
-                        .foregroundColor(.white.opacity(0.9))
-                }
-            }
-            .padding(24)
-        }
-        .padding(.horizontal)
-        .padding(.top, 16)
-        .shadow(color: PropertyUI.roomColor(for: room.room_type ?? "").opacity(0.2), radius: 10, x: 0, y: 5)
-    }
-    
-    private var inventorySection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Items in \(room.name)")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            VStack(spacing: 16) {
-                ForEach(viewModel.items) { item in
-                    NavigationLink {
-                        InventoryItemDetailView(item: item)
-                            .onAppear { HapticManager.shared.impact(style: .light) }
-                    } label: {
-                        InventoryItemCard(item: item)
-                    }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        Button {
-                            editingItem = item
-                        } label: {
-                            Label("Edit Item", systemImage: "pencil")
-                        }
-                        
-                        Button(role: .destructive) {
-                            itemToDelete = item
-                            showingItemDeleteAlert = true
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                }
-            }
-            .padding(.horizontal)
-        }
-    }
-    
-    private var emptyState: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Image(systemName: "plus.viewfinder")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-                .frame(width: 100, height: 100)
-                .glassEffect(in: Circle())
-            
-            VStack(spacing: 8) {
-                Text("Start Your Inventory")
-                    .font(.title3.bold())
-                Text("Keep track of every furniture, appliance, or valuable in this room.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-            
-            Button("Add First Item") {
-                viewModel.showingAddItem = true
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .padding(.top, 8)
-            
-            Spacer()
-        }
-        .frame(minHeight: 400)
-    }
-    
-    private var loadingState: some View {
-        VStack {
-            ProgressView()
-                .scaleEffect(1.2)
-                .padding()
-            Text("Fetching Inventory...")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 60)
-    }
 }
 
-struct InventoryItemCard: View {
+struct InventoryItemRow: View {
     let item: RoomInventoryItemModel
     
     var body: some View {
-        HStack(spacing: 16) {
-            // Placeholder/Thumbnail
+        HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
                     .fill(Color.accentColor.opacity(0.1))
-                    .frame(width: 50, height: 50)
-                
+                    .frame(width: 44, height: 44)
                 Image(systemName: "cube.box")
-                    .font(.title3)
+                    .font(.body)
                     .foregroundColor(.accentColor)
             }
-            
-            VStack(alignment: .leading, spacing: 4) {
+
+            VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
                     .font(.headline)
-                    .foregroundColor(.primary)
-                
+                    .lineLimit(1)
+
                 if let desc = item.description, !desc.isEmpty {
                     Text(desc)
-                        .font(.footnote)
+                        .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(1)
                 }
             }
-            
+
             Spacer()
-            
+
             if item.expected_qty > 1 {
-                Text("QTY \(item.expected_qty)")
-                    .font(.system(size: 10, weight: .black))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.secondary.opacity(0.1))
+                Text("×\(item.expected_qty)")
+                    .font(.subheadline.bold())
                     .foregroundColor(.secondary)
-                    .clipShape(Capsule())
             }
-            
-            Image(systemName: "chevron.right")
-                .font(.caption2.bold())
-                .foregroundColor(.secondary.opacity(0.3))
         }
-        .padding(14)
-        .contentShape(Rectangle())
-        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.vertical, 4)
     }
 }

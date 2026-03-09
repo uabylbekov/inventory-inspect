@@ -14,44 +14,155 @@ struct PropertyDetailView: View {
     }
     
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                // MARK: - Hero Header
-                heroSection
-                
-                // MARK: - Description
-                if let desc = viewModel.property.description, !desc.isEmpty {
-                    descriptionSection(desc)
+        @Bindable var viewModel = viewModel
+        List {
+            // MARK: - Hero Section
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 16) {
+                        ZStack {
+                            Circle()
+                                .fill(PropertyUI.color(for: viewModel.property.property_type).opacity(0.1))
+                                .frame(width: 60, height: 60)
+                            Image(systemName: PropertyUI.icon(for: viewModel.property.property_type))
+                                .font(.title2)
+                                .foregroundColor(PropertyUI.color(for: viewModel.property.property_type))
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(viewModel.property.name)
+                                .font(.title3.bold())
+                            Text(viewModel.property.property_type.capitalized)
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    
+                    if let address = viewModel.property.address_line1 {
+                        Label(address, systemImage: "mappin.and.ellipse")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                    }
+                    
+                    HStack(spacing: 20) {
+                        Label("\(viewModel.property.bedrooms_count) Beds", systemImage: "bed.double")
+                        Label("\(viewModel.property.bathrooms_count, specifier: "%.1f") Baths", systemImage: "shower")
+                    }
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                 }
-                
-                // MARK: - Quick Actions
-                quickActionsBar
-                
-                // MARK: - Rooms
-                roomsSection
-                
-                // MARK: - Recent History
-                if !viewModel.recentInspections.isEmpty {
-                    historySection
+                .padding(.vertical, 8)
+            }
+            
+            // MARK: - About
+            if let desc = viewModel.property.description, !desc.isEmpty {
+                Section("About Property") {
+                    Text(desc)
+                        .font(.body)
+                        .foregroundColor(.primary)
                 }
             }
-            .padding(.bottom, 32)
-        }
-        .navigationTitle(viewModel.property.name)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if viewModel.isOwner {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button(action: { viewModel.showingAddRoom = true }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus.circle")
-                            Text("Add Room")
-                                .font(.subheadline.bold())
+            
+            // MARK: - Actions
+            Section {
+                Button(action: { showingManageTeam = true }) {
+                    Label("Manage Team", systemImage: "person.2.fill")
+                }
+            }
+            
+            // MARK: - Rooms
+            Section("Rooms") {
+                if viewModel.isLoading && viewModel.rooms.isEmpty {
+                    HStack {
+                        Spacer()
+                        ProgressView()
+                        Spacer()
+                    }
+                } else if viewModel.rooms.isEmpty {
+                    Text("No rooms added yet")
+                        .foregroundColor(.secondary)
+                        .italic()
+                } else {
+                    ForEach(viewModel.rooms) { room in
+                        NavigationLink {
+                            RoomInventoryView(room: room)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
+                                    .foregroundColor(PropertyUI.roomColor(for: room.room_type ?? ""))
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(room.name)
+                                        .font(.headline)
+                                    Text(room.room_type?.capitalized ?? "Room")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            Button(role: .destructive) {
+                                confirmDeleteRoom(room)
+                            } label: { Label("Delete", systemImage: "trash") }
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button { editingRoom = room } label: { Label("Edit", systemImage: "pencil") }
+                            .tint(.accentColor)
+                        }
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                    }
+                }
+                if viewModel.isOwner {
+                    Button(action: { viewModel.showingAddRoom = true }) {
+                        Label("Add Room", systemImage: "plus.circle")
+                    }
+                }
+            }
+            
+            // MARK: - Recent Activity
+            if !viewModel.recentInspections.isEmpty {
+                Section("Recent Activity") {
+                    ForEach(viewModel.recentInspections) { inspection in
+                        NavigationLink {
+                            if inspection.status == "in_progress" {
+                                InspectionHubView(inspection: inspection)
+                            } else {
+                                InspectionReportView(inspection: inspection)
+                            }
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
+                                    .foregroundColor(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
+                                    .frame(width: 24)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                                        .font(.headline)
+                                    Text(AppFormatter.formatDate(inspection.started_at))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Text(inspection.status.replacingOccurrences(of: "_", with: " ").capitalized)
+                                    .font(.caption2.bold())
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(inspection.status == "in_progress" ? Color.blue.opacity(0.1) : Color.secondary.opacity(0.1))
+                                    .foregroundColor(inspection.status == "in_progress" ? .blue : .secondary)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     }
                 }
             }
         }
+        .listStyle(.insetGrouped)
+        .navigationTitle(viewModel.property.name)
+        .navigationBarTitleDisplayMode(.inline)
         .alert("Active Inspection Found", isPresented: $showingRoomActiveInspectionAlert) {
             Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
             Button("Delete Anyway", role: .destructive) { showingRoomDeleteAlert = true }
@@ -98,198 +209,6 @@ struct PropertyDetailView: View {
         }
     }
     
-    // MARK: - Subviews
-    
-    private var heroSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            ZStack(alignment: .bottomLeading) {
-                LinearGradient(colors: [.blue.opacity(0.6), .blue.opacity(0.8)], startPoint: .topLeading, endPoint: .bottomTrailing)
-                    .frame(height: 180)
-                    .overlay(
-                        Image(systemName: "map.fill")
-                            .font(.system(size: 80))
-                            .foregroundColor(.white.opacity(0.1))
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(viewModel.property.property_type.capitalized)
-                        .font(.caption2.bold())
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.secondary)
-                        .clipShape(Capsule())
-                    
-                    Text(viewModel.property.name)
-                        .font(.title2.bold())
-                        .foregroundColor(.white)
-                }
-                .padding(20)
-            }
-            .padding(.horizontal)
-            
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .top) {
-                    Image(systemName: "mappin.and.ellipse")
-                        .foregroundColor(.secondary)
-                    Text(viewModel.property.address_line1 ?? "No address recorded")
-                        .font(.footnote)
-                        .foregroundColor(.secondary)
-                }
-                .padding(.horizontal)
-                
-                HStack(spacing: 12) {
-                    statChip(value: "\(viewModel.property.bedrooms_count)", label: "Beds", icon: "bed.double.fill")
-                    statChip(value: "\(viewModel.property.bathrooms_count)", label: "Baths", icon: "shower.fill")
-                    Spacer()
-                }
-                .padding(.horizontal)
-            }
-        }
-        .padding(.top, 16)
-    }
-    
-    private func descriptionSection(_ desc: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("About Property")
-                .font(.headline)
-            Text(desc)
-                .font(.footnote)
-                .foregroundColor(.secondary)
-                .lineLimit(3)
-        }
-        .padding(.horizontal)
-    }
-    
-    private var quickActionsBar: some View {
-        Button(action: { showingManageTeam = true }) {
-            Label("Manage Team", systemImage: "person.2.fill")
-                .frame(maxWidth: .infinity)
-        }
-        .buttonStyle(.borderedProminent)
-        .controlSize(.large)
-        .padding(.horizontal)
-    }
-    
-    private var roomsSection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            HStack {
-                Text("Rooms")
-                    .font(.headline)
-                Spacer()
-                Text("\(viewModel.rooms.count) total")
-                    .font(.footnote.bold())
-                    .foregroundColor(.secondary)
-            }
-            .padding(.horizontal)
-            
-            if viewModel.isLoading && viewModel.rooms.isEmpty {
-                ProgressView().frame(maxWidth: .infinity).padding()
-            } else if viewModel.rooms.isEmpty {
-                Text("No rooms added yet.")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-            } else {
-                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
-                    ForEach(viewModel.rooms) { room in
-                        NavigationLink {
-                            RoomInventoryView(room: room)
-                        } label: {
-                            RoomCard(room: room)
-                                .contextMenu {
-                                    Button {
-                                        editingRoom = room
-                                    } label: {
-                                        Label("Edit Room", systemImage: "pencil")
-                                    }
-
-                                    Button(role: .destructive) {
-                                        confirmDeleteRoom(room)
-                                    } label: {
-                                        Label("Delete", systemImage: "trash")
-                                    }
-                                }
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal)
-            }
-        }
-    }
-    
-    private var historySection: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Recent Activity")
-                .font(.headline)
-                .padding(.horizontal)
-            
-            VStack(spacing: 0) {
-                ForEach(viewModel.recentInspections) { inspection in
-                    NavigationLink {
-                        if inspection.status == "in_progress" {
-                            InspectionHubView(inspection: inspection)
-                        } else {
-                            InspectionReportView(inspection: inspection)
-                        }
-                    } label: {
-                        HStack(spacing: 14) {
-                            Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
-                                .font(.caption.bold())
-                                .foregroundColor(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
-                                .frame(width: 28, height: 28)
-                                .background(AppFormatter.inspectionTypeColor(for: inspection.inspection_type).opacity(0.1))
-                                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                                    .font(.headline)
-                                    .foregroundColor(.primary)
-                                Text(AppFormatter.formatDate(inspection.started_at))
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            StatusBadge(status: inspection.status)
-                                .scaleEffect(0.8)
-
-                            Image(systemName: "chevron.right")
-                                .font(.caption2)
-                                .foregroundColor(.secondary.opacity(0.3))
-                        }
-                        .padding()
-                    }
-                    .buttonStyle(.plain)
-
-                    if inspection.id != viewModel.recentInspections.last?.id {
-                        Divider().padding(.leading, 16)
-                    }
-                }
-            }
-            .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-            .padding(.horizontal)
-        }
-    }
-    
-    private func statChip(value: String, label: String, icon: String) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: icon)
-                .font(.footnote)
-                .foregroundColor(.accentColor)
-            Text("\(value) \(label)")
-                .font(.footnote.bold())
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Color.accentColor.opacity(0.08))
-        .clipShape(Capsule())
-    }
-    
-
     private func confirmDeleteRoom(_ room: PropertyRoomModel) {
         guard let index = viewModel.rooms.firstIndex(where: { $0.id == room.id }) else { return }
         roomToDeleteOffsets = IndexSet(integer: index)
@@ -302,34 +221,5 @@ struct PropertyDetailView: View {
                 showingRoomDeleteAlert = true
             }
         }
-    }
-}
-
-struct RoomCard: View {
-    let room: PropertyRoomModel
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
-                .font(.title2)
-                .foregroundColor(.white)
-                .frame(width: 44, height: 44)
-                .background(PropertyUI.roomColor(for: room.room_type ?? "").gradient)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            
-            VStack(alignment: .leading, spacing: 2) {
-                Text(room.name)
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                    .lineLimit(1)
-                Text(room.room_type?.capitalized ?? "Room")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

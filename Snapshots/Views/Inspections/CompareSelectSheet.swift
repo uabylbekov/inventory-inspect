@@ -14,12 +14,37 @@ struct CompareSelectSheet: View {
             Group {
                 if isLoading {
                     ProgressView()
+                } else if let error = errorMessage {
+                    VStack(spacing: 20) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 48))
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+                        Button("Try Again") {
+                            Task { await fetchInspections() }
+                        }
+                        .buttonStyle(.bordered)
+                    }
                 } else if inspections.isEmpty {
-                    ContentUnavailableView(
-                        "No other inspections",
-                        systemImage: "doc.text.magnifyingglass",
-                        description: Text("There are no other completed inspections for this property to use as a snapshot.")
-                    )
+                    VStack(spacing: 20) {
+                        Image(systemName: "clock.badge.exclamationmark")
+                            .font(.system(size: 48))
+                            .foregroundColor(.secondary)
+                        
+                        VStack(spacing: 8) {
+                            Text("No Previous History")
+                                .font(.headline)
+                            Text("There are no other completed inspections for this property to compare against.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 32)
+                        }
+                    }
                 } else {
                     List(inspections) { inspection in
                         NavigationLink {
@@ -81,6 +106,9 @@ struct CompareSelectSheet: View {
                 .value
             
             self.inspections = fetched
+        } catch is CancellationError {
+            isLoading = false
+            return
         } catch {
             self.errorMessage = error.localizedDescription
         }

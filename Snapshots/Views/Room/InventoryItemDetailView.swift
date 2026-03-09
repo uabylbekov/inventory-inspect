@@ -69,7 +69,8 @@ struct InventoryItemDetailView: View {
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .glassEffect(in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(24)
         .padding(.horizontal)
     }
     
@@ -84,7 +85,8 @@ struct InventoryItemDetailView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glassEffect(in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .background(Color(.secondarySystemGroupedBackground))
+        .cornerRadius(20)
         .padding(.horizontal)
     }
     
@@ -134,7 +136,8 @@ struct InventoryItemDetailView: View {
                             }
                         }
                         .padding()
-                        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .background(Color(.secondarySystemGroupedBackground))
+                        .cornerRadius(16)
                     }
                 }
                 .padding(.horizontal)

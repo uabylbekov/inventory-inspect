@@ -5,16 +5,14 @@ struct AddRoomSheet: View {
     @State private var viewModel: AddRoomViewModel
     
     init(propertyId: UUID) {
-        // Initialize the view model with the correct property ID
         _viewModel = State(initialValue: AddRoomViewModel(propertyId: propertyId))
     }
     
     var body: some View {
         NavigationStack {
-            Form {
-                Section(header: Text("Room Details")) {
+            List {
+                Section("Room Details") {
                     TextField("Room Name (e.g. Master Bedroom)", text: $viewModel.name)
-                    TextField("Description (e.g. South facing windows)", text: $viewModel.description)
                     
                     Picker("Room Type", selection: $viewModel.roomType) {
                         Text("Bedroom").tag("Bedroom")
@@ -26,25 +24,12 @@ struct AddRoomSheet: View {
                         Text("Outdoor Space").tag("Outdoor Space")
                         Text("Other").tag("Other")
                     }
+                    
+                    TextField("Description (e.g. South facing windows)", text: $viewModel.description, axis: .vertical)
+                        .lineLimit(3...6)
                 }
                 
-                if let error = viewModel.errorMessage {
-                    Section {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .font(.footnote)
-                    }
-                }
-            }
-            .navigationTitle("Add Room")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        dismiss()
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
+                Section {
                     Button(action: {
                         Task {
                             HapticManager.shared.impact(style: .medium)
@@ -57,13 +42,35 @@ struct AddRoomSheet: View {
                             }
                         }
                     }) {
-                        if viewModel.isSaving {
-                            ProgressView()
-                        } else {
-                            Text("Add")
+                        HStack(spacing: 8) {
+                            if viewModel.isSaving {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text("Add Room")
+                                .fontWeight(.bold)
                         }
+                        .frame(maxWidth: .infinity)
                     }
                     .disabled(viewModel.isSaveDisabled)
+                    .listRowBackground(viewModel.isSaveDisabled ? Color.secondary.opacity(0.1) : Color.accentColor)
+                    .foregroundColor(viewModel.isSaveDisabled ? .secondary : .white)
+                }
+                
+                if let error = viewModel.errorMessage {
+                    Section {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .font(.footnote)
+                            .foregroundColor(.red)
+                    }
+                }
+            }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Add Room")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
                 }
             }
         }

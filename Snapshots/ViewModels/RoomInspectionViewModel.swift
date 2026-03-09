@@ -46,6 +46,8 @@ final class RoomInspectionViewModel {
             self.existingRecords = recordsMap
             
             isLoading = false
+        } catch is CancellationError {
+            isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false

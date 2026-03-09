@@ -53,6 +53,9 @@ final class ManageTeamViewModel {
             self.newMemberEmail = ""
             return true
             
+        } catch is CancellationError {
+            self.isSaving = false
+            return false
         } catch let error as PostgrestError {
             self.errorMessage = error.message
             self.isSaving = false
@@ -84,6 +87,8 @@ final class ManageTeamViewModel {
                 
             self.members = fetched
             self.isLoadingMembers = false
+        } catch is CancellationError {
+            self.isLoadingMembers = false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoadingMembers = false
@@ -98,11 +103,12 @@ final class ManageTeamViewModel {
                 .execute()
             
             await fetchMembers() // Refresh list
+        } catch is CancellationError {
         } catch {
             self.errorMessage = error.localizedDescription
         }
     }
-    
+
     func leaveProperty() async -> Bool {
         do {
             let session = try await supabase.auth.session
@@ -112,6 +118,8 @@ final class ManageTeamViewModel {
                 .eq("property_id", value: propertyId)
                 .execute()
             return true
+        } catch is CancellationError {
+            return false
         } catch {
             self.errorMessage = error.localizedDescription
             return false

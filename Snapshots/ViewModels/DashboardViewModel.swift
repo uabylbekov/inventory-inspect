@@ -3,7 +3,7 @@ import Observation
 import Supabase
 import SwiftUI
 
-@Observable
+@Observable @MainActor
 class DashboardViewModel {
     var properties: [PropertyModel] = []
     var propertiesCount: Int { properties.count }
@@ -131,11 +131,14 @@ class DashboardViewModel {
                 .execute()
                 .value
             
+        } catch is CancellationError {
+            isLoading = false
+            return
         } catch {
             print("Dashboard fetch error: \(error)")
             self.errorMessage = error.localizedDescription
         }
-        
+
         isLoading = false
     }
     

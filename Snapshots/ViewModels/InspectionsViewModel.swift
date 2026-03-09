@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class InspectionsViewModel {
     var inspections: [InspectionModel] = []
     var properties: [PropertyModel] = []
@@ -27,7 +27,9 @@ final class InspectionsViewModel {
     }
     
     func fetchInspections() async {
-        isLoading = true
+        if inspections.isEmpty {
+            isLoading = true
+        }
         errorMessage = nil
         
         do {
@@ -66,12 +68,14 @@ final class InspectionsViewModel {
             }
             
             self.isLoading = false
+        } catch is CancellationError {
+            self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
         }
     }
-    
+
     func fetchProperties() async {
         do {
             let fetched: [PropertyModel] = try await supabase
@@ -80,26 +84,34 @@ final class InspectionsViewModel {
                 .order("created_at", ascending: false)
                 .execute()
                 .value
-            
+
             self.properties = fetched
+        } catch is CancellationError {
         } catch {
             self.errorMessage = error.localizedDescription
         }
     }
-    
-    func deleteInspection(_ inspection: InspectionModel) async {
+
+    func cancelInspection(_ inspection: InspectionModel) async {
         do {
+            let params: [String: AnyJSON] = [
+                "status": .string("cancelled"),
+                "notes": .string("Cancelled from list")
+            ]
             try await supabase
                 .from("inspections")
-                .delete()
+                .update(params)
                 .eq("id", value: inspection.id.uuidString.lowercased())
                 .execute()
-            inspections.removeAll { $0.id == inspection.id }
+            if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
+                inspections[idx].status = "cancelled"
+            }
+        } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
         }
     }
-    
+
     func reopenInspection(_ inspection: InspectionModel) async {
         do {
             try await supabase
@@ -110,6 +122,21 @@ final class InspectionsViewModel {
             if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
                 inspections[idx].status = "in_progress"
             }
+        } catch is CancellationError {
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteInspection(_ inspection: InspectionModel) async {
+        do {
+            try await supabase
+                .from("inspections")
+                .delete()
+                .eq("id", value: inspection.id.uuidString.lowercased())
+                .execute()
+            inspections.removeAll { $0.id == inspection.id }
+        } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
         }

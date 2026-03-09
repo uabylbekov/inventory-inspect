@@ -1,8 +1,8 @@
 import Foundation
-import SwiftData
+
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class AddPropertyViewModel {
     var name = ""
     var description = ""
@@ -101,6 +101,9 @@ final class AddPropertyViewModel {
             isSaving = false
             return true
 
+        } catch is CancellationError {
+            self.isSaving = false
+            return false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isSaving = false

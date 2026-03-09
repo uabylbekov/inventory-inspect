@@ -18,81 +18,65 @@ struct LoginView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 0) {
-                Text("📸")
-                    .font(.system(size: 56))
-                    .padding(.bottom, 24)
-                    .padding(.top, 40)
-                
-                Text("Sign in to\nSnapshots")
-                    .font(.largeTitle)
-                    .fontWeight(.bold)
-                    .padding(.bottom, 12)
-                
-                Text("Enter your email address to receive a magic link. No passwords required.")
-                    .font(.body)
-                    .foregroundColor(.secondary)
-                    .padding(.bottom, 40)
-                
-                TextField("Email", text: $email)
-                    .keyboardType(.emailAddress)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    .autocorrectionDisabled()
-                    .focused($isEmailFocused)
-                    .disabled(isLoading)
-                    .padding()
-                    .glassEffect(in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 14, style: .continuous)
-                            .stroke(showValidationError ? Color.red.opacity(0.8) : Color.clear, lineWidth: 1)
-                    )
-                    .onChange(of: email) {
-                        showValidationError = false
-                        if errorMessage != nil { errorMessage = nil }
-                    }
-                    .onChange(of: isEmailFocused) {
-                        // When the user stops typing and leaves the field
-                        if !isEmailFocused && !email.isEmpty && !isEmailValid {
-                            showValidationError = true
+            List {
+                Section {
+                    VStack(alignment: .center, spacing: 16) {
+                        Text("📸")
+                            .font(.system(size: 80))
+                        
+                        VStack(spacing: 8) {
+                            Text("Snapshots")
+                                .font(.largeTitle.bold())
+                            Text("Sign in to your account with a magic link. No passwords required.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .multilineTextAlignment(.center)
                         }
                     }
-                    .onSubmit {
-                        // Trigger validation if they press "Done" or "return" on the keyboard
-                        if !email.isEmpty && !isEmailValid {
-                            showValidationError = true
-                        }
-                    }
-                    .padding(.bottom, 8)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 32)
+                    .listRowBackground(Color.clear)
+                }
                 
-                // Messages Fixed Height Area
-                VStack(alignment: .leading) {
+                Section("Email Address") {
+                    TextField("email@example.com", text: $email)
+                        .keyboardType(.emailAddress)
+                        .textContentType(.emailAddress)
+                        .autocapitalization(.none)
+                        .autocorrectionDisabled()
+                        .focused($isEmailFocused)
+                        .disabled(isLoading)
+                    
+                    if showValidationError {
+                        Label("Invalid email address", systemImage: "exclamationmark.circle.fill")
+                            .font(.caption)
+                            .foregroundColor(.red)
+                    }
+                }
+                
+                Section {
+                    Button(action: signIn) {
+                        HStack(spacing: 8) {
+                            if isLoading {
+                                ProgressView()
+                                    .tint(.white)
+                            }
+                            Text("Continue")
+                                .fontWeight(.bold)
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .disabled(!isEmailValid || isLoading)
+                    .listRowBackground(isEmailValid && !isLoading ? Color.accentColor : Color.secondary.opacity(0.1))
+                    .foregroundColor(isEmailValid && !isLoading ? .white : .secondary)
+                } footer: {
                     if let errorMessage = errorMessage {
                         Text(errorMessage)
-                            .font(.footnote)
                             .foregroundColor(.red)
-                            .transition(.opacity)
                     }
                 }
-                .frame(height: 20)
-                .animation(.easeInOut, value: errorMessage)
-                
-                Spacer()
-                
-                Button(action: signIn) {
-                    if isLoading {
-                        ProgressView()
-                            .padding(.trailing, 4)
-                    }
-                    Text("Continue")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .disabled(!isEmailValid || isLoading)
-                .animation(.easeInOut(duration: 0.2), value: isEmailValid)
             }
-            .padding(32)
+            .listStyle(.insetGrouped)
             .navigationDestination(isPresented: $isNavigatingToInbox) {
                 CheckInboxView(email: email)
             }

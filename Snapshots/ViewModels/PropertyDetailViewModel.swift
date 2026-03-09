@@ -1,7 +1,7 @@
 import SwiftUI
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class PropertyDetailViewModel {
     let property: PropertyModel
     var rooms: [PropertyRoomModel] = []
@@ -34,6 +34,8 @@ final class PropertyDetailViewModel {
                 .value
                 
             self.rooms = fetchedRooms
+            self.isLoading = false
+        } catch is CancellationError {
             self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
@@ -96,11 +98,8 @@ final class PropertyDetailViewModel {
                     .eq("id", value: item.id.uuidString.lowercased())
                     .execute()
                 
-                // Only remove from local state once confirmed by server
-                await MainActor.run {
-                    if let index = rooms.firstIndex(where: { $0.id == item.id }) {
-                        rooms.remove(at: index)
-                    }
+                if let index = rooms.firstIndex(where: { $0.id == item.id }) {
+                    rooms.remove(at: index)
                 }
             } catch {
                 print("Failed to delete room: \(error)")

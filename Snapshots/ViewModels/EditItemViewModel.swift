@@ -44,6 +44,9 @@ final class EditItemViewModel {
             isSaving = false
             return true
             
+        } catch is CancellationError {
+            self.isSaving = false
+            return false
         } catch {
             self.errorMessage = error.localizedDescription
             self.isSaving = false

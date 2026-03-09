@@ -3,54 +3,67 @@ import Supabase
 
 struct InspectionsView: View {
     @State private var viewModel = InspectionsViewModel()
-    @State private var joinedInspection: InspectionModel?
-    @State private var inspectionToDelete: InspectionModel?
-    @State private var showingDeleteAlert = false
+    @Bindable private var notificationManager = NotificationManager.shared
+    
+    @State private var showDeleteAlert = false
+    @State private var inspectionToDelete: InspectionModel? = nil
     
     var body: some View {
+        @Bindable var viewModel = viewModel
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // MARK: - Filter Header
-                    filterHeaderSection()
-                    
-                    // MARK: - Inspections Content
-                    if viewModel.isLoading {
-                        loadingState
-                    } else if viewModel.inspections.isEmpty {
-                        emptyState
-                    } else {
-                        inspectionsSection
+            List {
+                // MARK: - Filter Header
+                Section {
+                    HStack {
+                        Label("Show records for", systemImage: "calendar")
+                        Spacer()
+                        DatePicker("", selection: $viewModel.selectedDate, displayedComponents: .date)
+                            .labelsHidden()
                     }
-                    
-                    Spacer().frame(height: 32)
+                    if viewModel.isFilteringByDate {
+                        Button(action: {
+                            withAnimation { viewModel.isFilteringByDate = false }
+                        }) {
+                            Label("Clear Filters (Show All)", systemImage: "xmark.circle")
+                                .foregroundColor(.red)
+                        }
+                    }
                 }
-                .padding(.top, 16)
-            }
-            .navigationTitle("Inspections")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                
+                // MARK: - Inspections Content
+                if viewModel.isLoading && viewModel.inspections.isEmpty {
+                    Section {
+                        HStack {
+                            Spacer()
+                            ProgressView()
+                            Spacer()
+                        }
+                    }
+                }
+                
+                inspectionsSection
+                
+                // MARK: - Add Section
+                Section {
                     Button(action: {
                         HapticManager.shared.impact(style: .light)
                         viewModel.showingStartInspection = true
                     }) {
-                        HStack(spacing: 8) {
-                            Image(systemName: "plus.circle")
-                                .symbolRenderingMode(.hierarchical)
-                            Text("New Inspection")
-                        }
+                        Label("New Inspection", systemImage: "plus.circle.fill")
                     }
                 }
             }
+            .listStyle(.insetGrouped)
+            .navigationTitle("Inspections")
+            .navigationBarTitleDisplayMode(.large)
             .refreshable {
-                async let fetchI: () = viewModel.fetchInspections()
-                async let fetchP: () = viewModel.fetchProperties()
+                async let fetchI: () = self.viewModel.fetchInspections()
+                async let fetchP: () = self.viewModel.fetchProperties()
                 _ = await (fetchI, fetchP)
             }
             .task {
-                async let fetchI: () = viewModel.fetchInspections()
-                async let fetchP: () = viewModel.fetchProperties()
+                async let fetchI: () = self.viewModel.fetchInspections()
+                async let fetchP: () = self.viewModel.fetchProperties()
                 _ = await (fetchI, fetchP)
             }
             .sheet(isPresented: $viewModel.showingStartInspection, onDismiss: {
@@ -58,276 +71,193 @@ struct InspectionsView: View {
             }) {
                 StartInspectionSheet()
             }
-            .navigationDestination(item: $joinedInspection) { inspection in
+            .navigationDestination(item: $notificationManager.joiningInspection) { inspection in
                 InspectionHubView(inspection: inspection)
             }
             .onReceive(NotificationCenter.default.publisher(for: AppFormatter.joinInspectionNotification)) { output in
                 if let id = output.object as? UUID {
-                    handleJoinNotification(id)
+                    Task { await notificationManager.handleJoinRequest(id: id) }
                 }
             }
-            .alert("Delete Inspection?", isPresented: $showingDeleteAlert) {
-                Button("Cancel", role: .cancel) {
-                    inspectionToDelete = nil
-                }
+            .alert("Join Error", isPresented: Binding<Bool>(get: { notificationManager.joinError != nil }, set: { if !$0 { notificationManager.joinError = nil } })) {
+                Button("OK") { notificationManager.joinError = nil }
+            } message: {
+                Text(notificationManager.joinError ?? "An unknown error occurred.")
+            }
+            .alert("Delete Inspection?", isPresented: $showDeleteAlert) {
+                Button("Cancel", role: .cancel) { }
                 Button("Delete", role: .destructive) {
-                    if let inspection = inspectionToDelete {
-                        Task { await viewModel.deleteInspection(inspection) }
+                    if let toDelete = inspectionToDelete {
+                        Task { await viewModel.deleteInspection(toDelete) }
                     }
-                    inspectionToDelete = nil
                 }
             } message: {
-                Text("This will permanently delete this inspection record and all associated data. This cannot be undone.")
+                Text("This will permanently remove this inspection and all its recorded data. This cannot be undone.")
             }
         }
     }
     
     // MARK: - Subviews
     
-    private func filterHeaderSection() -> some View {
-        HStack(spacing: 0) {
-            Label(viewModel.isFilteringByDate ? "Filtered View" : "All Records", systemImage: viewModel.isFilteringByDate ? "line.3.horizontal.decrease.circle.fill" : "calendar")
-                .font(.subheadline)
-                .foregroundColor(viewModel.isFilteringByDate ? .accentColor : .secondary)
-
-            Spacer()
-
-            if viewModel.isFilteringByDate {
-                Button("Clear") {
-                    withAnimation { viewModel.isFilteringByDate = false }
-                }
-                .font(.caption.bold())
-                .foregroundColor(.red)
-                .padding(.trailing, 12)
-            }
-
-            DatePicker("", selection: $viewModel.selectedDate, displayedComponents: .date)
-                .labelsHidden()
-                .datePickerStyle(.compact)
-                .onChange(of: viewModel.selectedDate) { _, _ in
-                    withAnimation { viewModel.isFilteringByDate = true }
-                }
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .padding(.horizontal)
-    }
-    
+    @ViewBuilder
     private var inspectionsSection: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            let displayList = viewModel.filteredInspections
-            
-            if displayList.isEmpty {
-                noFilteredResultsState
-            } else {
-                let active = displayList.filter { $0.status == "in_progress" }
-                let completed = displayList.filter { $0.status == "completed" }
-                let cancelled = displayList.filter { $0.status == "cancelled" }
-                
-                if !active.isEmpty {
-                    inspectionGroup(title: "Active Walks", inspections: active, color: .accentColor)
-                }
-                
-                if !completed.isEmpty {
-                    inspectionGroup(title: "Completed", inspections: completed, color: .secondary)
-                }
-                
-                if !cancelled.isEmpty {
-                    inspectionGroup(title: "Cancelled", inspections: cancelled, color: .secondary)
-                }
-            }
+        let active = viewModel.filteredInspections.filter { $0.status == "in_progress" }
+        let completed = viewModel.filteredInspections.filter { $0.status == "completed" }
+        let cancelled = viewModel.filteredInspections.filter { $0.status == "cancelled" }
+        
+        if !active.isEmpty {
+            inspectionGroup(title: "Active Walks", inspections: active)
+        }
+        
+        if !completed.isEmpty {
+            inspectionGroup(title: "Completed", inspections: completed)
+        }
+        
+        if !cancelled.isEmpty {
+            inspectionGroup(title: "Cancelled", inspections: cancelled)
         }
     }
     
-    private func inspectionGroup(title: String, inspections: [InspectionModel], color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(title)
-                .font(.title3.bold())
-                .foregroundColor(.primary.opacity(0.8))
-                .padding(.horizontal)
-            
-            VStack(spacing: 12) {
-                ForEach(inspections) { inspection in
-                    let propertyName = viewModel.properties.first(where: { $0.id == inspection.property_id })?.name
-                    let anomalyCount = viewModel.anomalyCounts[inspection.id] ?? 0
-                    let resolvedCount = viewModel.resolvedCounts[inspection.id] ?? 0
-                    
-                    NavigationLink {
-                        if inspection.status == "in_progress" {
-                            InspectionHubView(inspection: inspection)
-                        } else {
-                            InspectionReportView(inspection: inspection)
-                        }
-                    } label: {
-                        InspectionCard(
-                            inspection: inspection,
-                            propertyName: propertyName,
-                            anomalyCount: anomalyCount,
-                            resolvedCount: resolvedCount
-                        )
+    @ViewBuilder
+    private func inspectionGroup(title: String, inspections: [InspectionModel]) -> some View {
+        Section(title) {
+            ForEach(inspections) { inspection in
+                let propertyName = viewModel.properties.first(where: { $0.id == inspection.property_id })?.name
+                let anomalyCount = viewModel.anomalyCounts[inspection.id] ?? 0
+                let resolvedCount = viewModel.resolvedCounts[inspection.id] ?? 0
+                
+                NavigationLink {
+                    if inspection.status == "in_progress" {
+                        InspectionHubView(inspection: inspection)
+                    } else {
+                        InspectionReportView(inspection: inspection)
                     }
-                    .buttonStyle(.plain)
-                    .contextMenu {
-                        if inspection.status == "cancelled" {
-                            Button {
-                                Task { await viewModel.reopenInspection(inspection) }
-                            } label: {
-                                Label("Reopen", systemImage: "arrow.uturn.backward")
-                            }
+                } label: {
+                    InspectionRow(
+                        inspection: inspection,
+                        propertyName: propertyName ?? "Unknown Property",
+                        anomalyCount: anomalyCount,
+                        resolvedCount: resolvedCount
+                    )
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    if inspection.status != "completed" {
+                        Button(role: .destructive) {
+                            inspectionToDelete = inspection
+                            showDeleteAlert = true
+                        } label: {
+                            Label("Delete", systemImage: "trash")
                         }
+                    }
+                    
+                    if inspection.status == "in_progress" {
+                        Button {
+                            Task { await viewModel.cancelInspection(inspection) }
+                        } label: {
+                            Label("Cancel", systemImage: "xmark.circle")
+                        }
+                        .tint(.orange)
+                    }
+                }
+                .swipeActions(edge: .leading) {
+                    if inspection.status == "cancelled" {
+                        Button {
+                            Task { await viewModel.reopenInspection(inspection) }
+                        } label: {
+                            Label("Reopen", systemImage: "arrow.uturn.backward")
+                        }
+                        .tint(.blue)
+                    }
+                }
+                .contextMenu {
+                    if inspection.status == "in_progress" {
+                        Button {
+                            Task { await viewModel.cancelInspection(inspection) }
+                        } label: {
+                            Label("Cancel Walk", systemImage: "xmark.circle")
+                        }
+                    } else if inspection.status == "cancelled" {
+                        Button {
+                            Task { await viewModel.reopenInspection(inspection) }
+                        } label: {
+                            Label("Reopen", systemImage: "arrow.uturn.backward")
+                        }
+                    }
+                    
+                    if inspection.status != "completed" {
+                        Divider()
                         
                         Button(role: .destructive) {
                             inspectionToDelete = inspection
-                            showingDeleteAlert = true
+                            showDeleteAlert = true
                         } label: {
-                            Label("Delete Record", systemImage: "trash")
+                            Label("Delete Forever", systemImage: "trash")
                         }
                     }
                 }
-            }
-            .padding(.horizontal)
-        }
-    }
-    
-    private var loadingState: some View {
-        ProgressView()
-            .frame(maxWidth: .infinity, minHeight: 200)
-    }
-    
-    private var emptyState: some View {
-        VStack(spacing: 20) {
-            Image(systemName: "checklist.checked")
-                .font(.system(size: 48))
-                .foregroundColor(.accentColor.opacity(0.3))
-            
-            VStack(spacing: 8) {
-                Text("Ready for Walkthrough?")
-                    .font(.headline)
-                Text("Start your first property inspection to track item conditions and history.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-            
-            Button("Start Inspection") {
-                viewModel.showingStartInspection = true
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-        }
-        .padding(.top, 80)
-    }
-    
-    private var noFilteredResultsState: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "calendar.badge.exclamationmark")
-                .font(.title2)
-                .foregroundColor(.secondary.opacity(0.5))
-            Text("No records found for this date")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 40)
-    }
-    
-    private func handleJoinNotification(_ id: UUID) {
-        Task {
-            do {
-                let inspection: [InspectionModel] = try await supabase
-                    .from("inspections")
-                    .select()
-                    .eq("id", value: id.uuidString.lowercased())
-                    .execute()
-                    .value
-                
-                if let first = inspection.first {
-                    await MainActor.run {
-                        self.joinedInspection = first
-                    }
-                }
-            } catch {
-                print("Error joining: \(error)")
+                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             }
         }
     }
+    
+
 }
 
-// MARK: - Balanced Inspection Card
+// MARK: - Inspection Row
 
-struct InspectionCard: View {
+struct InspectionRow: View {
     let inspection: InspectionModel
-    let propertyName: String?
+    let propertyName: String
     let anomalyCount: Int
-    var resolvedCount: Int = 0
+    var resolvedCount: Int
     
     private var isActive: Bool { inspection.status == "in_progress" }
-    private var isCancelled: Bool { inspection.status == "cancelled" }
-    private var isResolved: Bool { resolvedCount > 0 && anomalyCount == 0 }
     private var hasIssues: Bool { anomalyCount > 0 && !isActive }
     
-    private var typeIcon: String { AppFormatter.inspectionTypeIcon(for: inspection.inspection_type) }
-    private var typeColor: Color { AppFormatter.inspectionTypeColor(for: inspection.inspection_type) }
-    
     var body: some View {
-        HStack(spacing: 16) {
-            // Consistent 60x60 square icon
+        HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 12, style: .continuous)
-                    .fill(isActive ? typeColor.opacity(0.12) : Color.gray.opacity(0.08))
-                    .frame(width: 60, height: 60)
-                
-                Image(systemName: typeIcon)
-                    .font(.title3)
-                    .foregroundColor(isActive ? typeColor : .secondary)
+                Circle()
+                    .fill(AppFormatter.inspectionTypeColor(for: inspection.inspection_type).opacity(0.1))
+                    .frame(width: 40, height: 40)
+                Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
+                    .foregroundColor(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
             }
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                    .font(.headline.bold())
-                    .foregroundColor(isActive ? .primary : .secondary)
+            VStack(alignment: .leading, spacing: 2) {
+                HStack {
+                    Text(propertyName)
+                        .font(.headline)
+                    
+                    if isActive {
+                        Spacer()
+                        Circle()
+                            .fill(Color.accentColor)
+                            .frame(width: 8, height: 8)
+                    }
+                }
                 
-                Text(propertyName ?? "Unknown Property")
-                    .font(.subheadline)
+                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                    .font(.caption)
                     .foregroundColor(.secondary)
                 
-                HStack(spacing: 8) {
+                HStack(spacing: 4) {
                     Text(AppFormatter.formatDate(isActive ? inspection.started_at : (inspection.completed_at ?? inspection.started_at)))
-                        .font(.footnote.weight(.medium))
-                        .foregroundColor(.secondary.opacity(0.8))
                     
                     if hasIssues {
                         Text("•")
-                        Text("\(anomalyCount) Issues")
-                            .font(.footnote.weight(.bold))
-                            .foregroundColor(.red)
-                    } else if isResolved {
+                        Label("\(anomalyCount) Issues", systemImage: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                    } else if !isActive && anomalyCount == 0 {
                         Text("•")
-                        Text("Resolved")
-                            .font(.footnote.weight(.bold))
-                            .foregroundColor(.blue)
+                        Label("Cleared", systemImage: "checkmark.circle.fill")
+                            .foregroundColor(.green)
                     }
                 }
-            }
-            
-            Spacer()
-            
-            // Status Indicator
-            if isActive {
-                Circle()
-                    .fill(Color.green)
-                    .frame(width: 8, height: 8)
-                    .shadow(color: .green.opacity(0.3), radius: 3)
-            } else {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.secondary.opacity(0.3))
+                .font(.caption2)
+                .foregroundColor(.secondary)
             }
         }
-        .padding(14)
-        .contentShape(Rectangle())
-        .glassEffect(in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .padding(.vertical, 4)
     }
 }

@@ -1,8 +1,8 @@
 import SwiftUI
 import Supabase
 
-@Observable
-final class ContentViewModel {
+@Observable @MainActor
+final class PropertyViewModel {
     var showingAddProperty = false
     var isLoading = false
     var errorMessage: String?
@@ -26,6 +26,8 @@ final class ContentViewModel {
                 .value
                 
             self.properties = fetchedProperties
+            self.isLoading = false
+        } catch is CancellationError {
             self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription

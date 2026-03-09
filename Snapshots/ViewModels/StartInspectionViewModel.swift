@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class StartInspectionViewModel {
     var selectedPropertyId: UUID?
     var inspectionType = "routine"
@@ -26,6 +26,8 @@ final class StartInspectionViewModel {
                 .value
             
             self.properties = fetched
+            self.isLoadingProperties = false
+        } catch is CancellationError {
             self.isLoadingProperties = false
         } catch {
             self.errorMessage = error.localizedDescription
@@ -105,6 +107,9 @@ final class StartInspectionViewModel {
             
             isSaving = false
             return created.first?.id
+        } catch is CancellationError {
+            self.isSaving = false
+            return nil
         } catch {
             if error.localizedDescription.contains("unq_active_inspection_per_property") || error.localizedDescription.contains("duplicate key value") {
                 self.errorMessage = "An inspection is already in progress for this property. Please wait for it to be completed or cancelled."
