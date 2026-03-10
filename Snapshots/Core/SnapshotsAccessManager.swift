@@ -26,20 +26,11 @@ final class SnapshotsAccessManager {
     
     private func initialize() async {
         isCheckingAccess = true
-
-        // 1. Detect sandbox environment
         _isSandbox = await checkIsSandbox()
-
-        // 2. Fetch Profile for VIP/Lifetime status
-        await self.fetchProfile()
-
-        // 3. Cache StoreKit products used by the paywall/subscription state.
+        await fetchProfile()
         await cacheSubscriptionProductsIfNeeded()
-
-        // 4. Check StoreKit 2 for active subscription
-        await self.updateSubscriptionStatus()
+        await updateSubscriptionStatus()
         startListeningForTransactionUpdates()
-
         isCheckingAccess = false
     }
     
@@ -56,13 +47,11 @@ final class SnapshotsAccessManager {
     }
 
     var isDirectSubscriber: Bool {
-        if self.profile?.isPro ?? false { return true }
-        return activeProductTier != "free"
+        (profile?.isPro ?? false) || activeProductTier != "free"
     }
 
     var isDirectSubscriberEnterprise: Bool {
-        if self.profile?.isEnterprise ?? false { return true }
-        return activeProductTier == "enterprise"
+        (profile?.isEnterprise ?? false) || activeProductTier == "enterprise"
     }
     
     func refreshProfile() async {
@@ -87,11 +76,7 @@ final class SnapshotsAccessManager {
     }
 
     func refreshEntitlementsForCurrentUser() async {
-        isCheckingAccess = true
-        await fetchProfile()
-        await cacheSubscriptionProductsIfNeeded()
-        await updateSubscriptionStatus()
-        isCheckingAccess = false
+        await reloadEntitlements()
     }
 
     func clearEntitlementsForSignedOutUser() {
@@ -104,20 +89,7 @@ final class SnapshotsAccessManager {
     // MARK: - StoreKit 2 Logic
     
     func updateSubscriptionStatus() async {
-        var highestTierFound = "free"
-
-        for await result in Transaction.currentEntitlements {
-            guard case .verified(let transaction) = result else { continue }
-            
-            if transaction.revocationDate == nil && (transaction.expirationDate == nil || transaction.expirationDate! > Date()) {
-                if transaction.productID == enterpriseProductId {
-                    highestTierFound = "enterprise"
-                    break // Enterprise is the highest, no need to keep checking
-                } else if transaction.productID == proProductId {
-                    highestTierFound = "pro"
-                }
-            }
-        }
+        let highestTierFound = await currentEntitledTier()
         self.activeProductTier = highestTierFound
         if let productID = productID(forTier: highestTierFound) {
             self.activeSubscription = productCache[productID]
@@ -156,6 +128,14 @@ final class SnapshotsAccessManager {
         _isSandbox
     }
 
+    private func reloadEntitlements() async {
+        isCheckingAccess = true
+        await fetchProfile()
+        await cacheSubscriptionProductsIfNeeded()
+        await updateSubscriptionStatus()
+        isCheckingAccess = false
+    }
+
     private func cacheSubscriptionProductsIfNeeded() async {
         guard productCache.isEmpty else { return }
         do {
@@ -164,6 +144,26 @@ final class SnapshotsAccessManager {
         } catch {
             print("Access Manager: Product cache error: \(error)")
         }
+    }
+
+    private func currentEntitledTier() async -> String {
+        var highestTierFound = "free"
+
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else { continue }
+            guard transaction.revocationDate == nil else { continue }
+            guard transaction.expirationDate == nil || transaction.expirationDate! > Date() else { continue }
+
+            if transaction.productID == enterpriseProductId {
+                return "enterprise"
+            }
+
+            if transaction.productID == proProductId {
+                highestTierFound = "pro"
+            }
+        }
+
+        return highestTierFound
     }
 
     private func productID(forTier tier: String) -> String? {
@@ -180,25 +180,19 @@ final class SnapshotsAccessManager {
     // MARK: - Property-Specific Access Logic
     
     func isPro(for property: PropertyModel?) -> Bool {
-        if isCheckingAccess { return false }
-        if self.isSandbox() { return true }
-        if isDirectSubscriber { return true }
-        // Inherit from owner of the specific property
-        if let tier = property?.ownerTier {
-            return tier == "pro" || tier == "enterprise" || tier == "lifetime"
-        }
-        return false
+        hasAccess(
+            directAccess: isDirectSubscriber,
+            ownerTier: property?.ownerTier,
+            matchingTiers: ["pro", "enterprise", "lifetime"]
+        )
     }
 
     func isEnterprise(for property: PropertyModel?) -> Bool {
-        if isCheckingAccess { return false }
-        if self.isSandbox() { return true }
-        if isDirectSubscriberEnterprise { return true }
-        // Inherit from owner of the specific property
-        if let tier = property?.ownerTier {
-            return tier == "enterprise" || tier == "lifetime"
-        }
-        return false
+        hasAccess(
+            directAccess: isDirectSubscriberEnterprise,
+            ownerTier: property?.ownerTier,
+            matchingTiers: ["enterprise", "lifetime"]
+        )
     }
 
     // MARK: - Helper Methods
@@ -213,5 +207,13 @@ final class SnapshotsAccessManager {
         if isEnterprise(for: property) { return true }
         if isPro(for: property) { return currentMemberCount < 5 }
         return false
+    }
+
+    private func hasAccess(directAccess: Bool, ownerTier: String?, matchingTiers: Set<String>) -> Bool {
+        if isCheckingAccess { return false }
+        if isSandbox() { return true }
+        if directAccess { return true }
+        guard let ownerTier else { return false }
+        return matchingTiers.contains(ownerTier)
     }
 }

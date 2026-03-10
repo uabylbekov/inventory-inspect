@@ -24,6 +24,7 @@ final class NotificationManager: @unchecked Sendable {
         supabaseURL: EnvConfig.supabaseURL,
         supabaseKey: EnvConfig.supabaseKey
     )
+    private let notificationQueryLimit = 50
     
     private init() {}
     
@@ -40,12 +41,7 @@ final class NotificationManager: @unchecked Sendable {
     }
 
     func bootstrapForAuthenticatedUser() async {
-        let userId: UUID
-        do {
-            let session = try await supabase.auth.session
-            userId = session.user.id
-        } catch {
-            print("Error bootstrapping notifications: \(error)")
+        guard let userId = await currentUserID() else {
             return
         }
 
@@ -62,8 +58,7 @@ final class NotificationManager: @unchecked Sendable {
     func resetForSignedOutUser() async {
         await teardownRealtime()
         observedUserId = nil
-        notifications = []
-        unreadCount = 0
+        applyNotifications([])
     }
     
     func handleJoinRequest(id: UUID) async {
@@ -86,21 +81,20 @@ final class NotificationManager: @unchecked Sendable {
     
     func registerDeviceToken(_ token: String) async {
         self.currentToken = token
+        guard let userId = await currentUserID() else {
+            return
+        }
+
+        let pushToken = [
+            "user_id": userId.uuidString.lowercased(),
+            "device_token": token,
+            "platform": "ios"
+        ]
+
         do {
-            let session = try await supabase.auth.session
-            let userId = session.user.id
-            
-            let pushToken = [
-                "user_id": userId.uuidString.lowercased(),
-                "device_token": token,
-                "platform": "ios"
-            ]
-            
             try await supabase.from("user_push_tokens")
                 .upsert(pushToken, onConflict: "user_id,device_token")
                 .execute()
-                
-            print("Successfully registered push token")
         } catch {
             print("Error registering push token: \(error)")
         }
@@ -126,19 +120,11 @@ final class NotificationManager: @unchecked Sendable {
                 .from("notifications")
                 .select()
                 .order("created_at", ascending: false)
-                .limit(50)
+                .limit(notificationQueryLimit)
                 .execute()
                 .value
             
-            self.notifications = fetched
-            self.unreadCount = fetched.filter { !$0.is_read }.count
-            
-            // Clear the app icon badge number if we're up to date
-            UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { error in
-                if let error = error {
-                    print("Error setting badge count: \(error)")
-                }
-            }
+            applyNotifications(fetched)
         } catch {
             print("Error fetching notifications: \(error)")
         }
@@ -150,7 +136,7 @@ final class NotificationManager: @unchecked Sendable {
         
         // Optimistic UI update
         notifications[index].is_read = true
-        self.unreadCount = notifications.filter { !$0.is_read }.count
+        syncUnreadCount()
         
         do {
             try await supabase
@@ -159,8 +145,7 @@ final class NotificationManager: @unchecked Sendable {
                 .eq("id", value: notification.id)
                 .execute()
             
-            // Sync badge count
-            UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
+            updateBadgeCount()
         } catch {
             print("Error marking notification as read: \(error)")
             // Re-fetch on actual failure
@@ -175,7 +160,7 @@ final class NotificationManager: @unchecked Sendable {
         
         // Remove locally first (MainActor ensures thread-safety for @Observable)
         notifications.remove(atOffsets: offsets)
-        self.unreadCount = notifications.filter { !$0.is_read }.count
+        syncUnreadCount()
         
         Task {
             do {
@@ -186,8 +171,7 @@ final class NotificationManager: @unchecked Sendable {
                     .in("id", values: idsToDelete)
                     .execute()
                 
-                // Sync the badge count locally
-                UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
+                updateBadgeCount()
             } catch {
                 print("Error batch deleting notifications: \(error)")
                 // Background re-fetch in case of failure to keep UI synced
@@ -223,7 +207,7 @@ final class NotificationManager: @unchecked Sendable {
                 case .insert(let action):
                     if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
                         self.notifications.insert(newNotification, at: 0)
-                        self.unreadCount += 1
+                        self.syncUnreadCount()
                         self.triggerLocalNotification(for: newNotification)
                     }
                 default:
@@ -262,6 +246,34 @@ final class NotificationManager: @unchecked Sendable {
         
         UNUserNotificationCenter.current().add(request)
         HapticManager.shared.notification(type: .success)
+    }
+
+    private func currentUserID() async -> UUID? {
+        do {
+            let session = try await supabase.auth.session
+            return session.user.id
+        } catch {
+            print("Error resolving current user for notifications: \(error)")
+            return nil
+        }
+    }
+
+    private func applyNotifications(_ fetched: [NotificationModel]) {
+        notifications = fetched
+        syncUnreadCount()
+    }
+
+    private func syncUnreadCount() {
+        unreadCount = notifications.filter { !$0.is_read }.count
+        updateBadgeCount()
+    }
+
+    private func updateBadgeCount() {
+        UNUserNotificationCenter.current().setBadgeCount(unreadCount) { error in
+            if let error {
+                print("Error setting badge count: \(error)")
+            }
+        }
     }
 }
 

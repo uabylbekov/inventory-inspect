@@ -261,12 +261,10 @@ struct PropertyDetailView: View {
             }
         }
         .task {
-            await viewModel.fetchRooms()
-            await viewModel.fetchRecentInspections()
+            await viewModel.fetchData()
         }
         .refreshable {
-            await viewModel.fetchRooms()
-            await viewModel.fetchRecentInspections()
+            await viewModel.fetchData()
         }
     }
     

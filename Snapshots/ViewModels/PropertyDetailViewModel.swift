@@ -14,13 +14,12 @@ final class PropertyDetailViewModel {
         self.property = property
     }
     
-    // Checks if the current user is an owner based on the joined property_members array
     var isOwner: Bool {
-        property.property_members?.contains(where: { $0.role == "owner" }) ?? false
+        hasRole("owner")
     }
 
     var isManager: Bool {
-        property.property_members?.contains(where: { $0.role == "manager" }) ?? false
+        hasRole("manager")
     }
     
     func fetchRooms() async {
@@ -28,16 +27,7 @@ final class PropertyDetailViewModel {
         errorMessage = nil
         
         do {
-            let fetchedRooms: [PropertyRoomModel] = try await supabase
-                .from("property_rooms")
-                .select()
-                .eq("property_id", value: property.id)
-                .order("sort_order", ascending: true)
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-                
-            self.rooms = fetchedRooms
+            rooms = try await loadRooms()
             self.isLoading = false
         } catch is CancellationError {
             self.isLoading = false
@@ -46,20 +36,18 @@ final class PropertyDetailViewModel {
             self.isLoading = false
         }
     }
+
+    func fetchData() async {
+        async let roomsTask: Void = fetchRooms()
+        async let inspectionsTask: Void = fetchRecentInspections()
+        _ = await (roomsTask, inspectionsTask)
+    }
     
     func fetchRecentInspections() async {
         do {
-            let fetched: [InspectionModel] = try await supabase
-                .from("inspections")
-                .select()
-                .eq("property_id", value: property.id.uuidString.lowercased())
-                .order("started_at", ascending: false)
-                .limit(5)
-                .execute()
-                .value
-            self.recentInspections = fetched
+            recentInspections = try await loadRecentInspections()
         } catch {
-            print("Failed to fetch recent inspections: \(error)")
+            recentInspections = []
         }
     }
     
@@ -67,17 +55,10 @@ final class PropertyDetailViewModel {
     func activeInspectionItemCount(at offsets: IndexSet) async -> Int {
         let roomIds = offsets.map { rooms[$0].id.uuidString.lowercased() }
         do {
-            // Find in-progress inspections for this property
-            let activeInspections: [InspectionModel] = try await supabase
-                .from("inspections")
-                .select()
-                .eq("property_id", value: property.id.uuidString.lowercased())
-                .eq("status", value: "in_progress")
-                .execute()
-                .value
+            let activeInspections = try await loadActiveInspections()
             guard !activeInspections.isEmpty else { return 0 }
             let inspectionIds = activeInspections.map { $0.id.uuidString.lowercased() }
-            // Count items in those rooms belonging to active inspections
+
             let items: [InspectionItemModel] = try await supabase
                 .from("inspection_items")
                 .select()
@@ -96,19 +77,58 @@ final class PropertyDetailViewModel {
         
         for item in itemsToDelete {
             do {
-                try await supabase
-                    .from("property_rooms")
-                    .delete()
-                    .eq("id", value: item.id.uuidString.lowercased())
-                    .execute()
+                try await deleteRoom(item)
                 
                 if let index = rooms.firstIndex(where: { $0.id == item.id }) {
                     rooms.remove(at: index)
                 }
             } catch {
-                print("Failed to delete room: \(error)")
                 self.errorMessage = "Could not delete room. Please try again."
             }
         }
+    }
+
+    private func hasRole(_ role: String) -> Bool {
+        property.property_members?.contains(where: { $0.role == role }) ?? false
+    }
+
+    private func loadRooms() async throws -> [PropertyRoomModel] {
+        try await supabase
+            .from("property_rooms")
+            .select()
+            .eq("property_id", value: property.id)
+            .order("sort_order", ascending: true)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
+    private func loadRecentInspections() async throws -> [InspectionModel] {
+        try await supabase
+            .from("inspections")
+            .select()
+            .eq("property_id", value: property.id.uuidString.lowercased())
+            .order("started_at", ascending: false)
+            .limit(5)
+            .execute()
+            .value
+    }
+
+    private func loadActiveInspections() async throws -> [InspectionModel] {
+        try await supabase
+            .from("inspections")
+            .select()
+            .eq("property_id", value: property.id.uuidString.lowercased())
+            .eq("status", value: "in_progress")
+            .execute()
+            .value
+    }
+
+    private func deleteRoom(_ room: PropertyRoomModel) async throws {
+        try await supabase
+            .from("property_rooms")
+            .delete()
+            .eq("id", value: room.id.uuidString.lowercased())
+            .execute()
     }
 }
