@@ -366,3 +366,25 @@
 "image.filename" = "inspection-photo.jpg";
 "image.saved_to_photos" = "Saved to Photos";
 "common.unknown" = "Unknown";
+
+"settings.version" = "Version";
+"settings.build" = "Build";
+"settings.feedback" = "Send Feedback";
+"settings.feedback_subject" = "Snapshots Feedback";
+"settings.feedback_missing" = "Feedback email is not configured. Add SUPPORT_EMAIL to Info.plist or your build settings.";
+"settings.feedback_unavailable" = "Mail is not available on this device right now.";
+
+"feedback.title" = "Feedback";
+"feedback.type" = "Type";
+"feedback.type_footer" = "Choose the kind of feedback so it lands in Discord with the right context.";
+"feedback.category.bug" = "Bug / Error";
+"feedback.category.feature_request" = "Feature Request";
+"feedback.category.billing" = "Billing / Subscription";
+"feedback.category.usability" = "UI / Usability";
+"feedback.category.other" = "Other";
+"feedback.message" = "Message";
+"feedback.message_placeholder" = "Describe what happened or what you want to see improved.";
+"feedback.minimum_length" = "Minimum 10 characters";
+"feedback.submit" = "Send";
+"feedback.success.title" = "Feedback Sent";
+"feedback.success.message" = "Your feedback was sent to the team.";

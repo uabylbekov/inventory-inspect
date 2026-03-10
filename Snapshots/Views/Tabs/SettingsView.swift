@@ -4,6 +4,7 @@ import Supabase
 struct SettingsView: View {
     @State private var isSigningOut = false
     @State private var showingSignOutAlert = false
+    @State private var showingFeedbackSheet = false
     @State private var userName: String = ""
     @Environment(SnapshotsAccessManager.self) private var accessManager
     
@@ -83,7 +84,7 @@ struct SettingsView: View {
                 // MARK: - App Section
                 Section {
                     HStack {
-                        Label("Version", systemImage: "info.circle")
+                        Label("settings.version", systemImage: "info.circle")
                         Spacer()
                         Text("1.0.0")
                             .foregroundColor(.secondary)
@@ -91,10 +92,21 @@ struct SettingsView: View {
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                     
                     HStack {
-                        Label("Build", systemImage: "hammer")
+                        Label("settings.build", systemImage: "hammer")
                         Spacer()
                         Text("2026.3")
                             .foregroundColor(.secondary)
+                    }
+                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+
+                    Button(action: { showingFeedbackSheet = true }) {
+                        HStack {
+                            Label("settings.feedback", systemImage: "bubble.left.and.pencil")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                 } header: {
@@ -125,6 +137,12 @@ struct SettingsView: View {
                 Button("settings.sign_out", role: .destructive, action: signOut)
             } message: {
                 Text("settings.sign_out_message")
+            }
+            .sheet(isPresented: $showingFeedbackSheet) {
+                FeedbackSheet(
+                    userName: userName,
+                    personalTier: accessManager.profile?.subscription_tier ?? accessManager.activeProductTier
+                )
             }
             .onAppear {
                 fetchEmail()
