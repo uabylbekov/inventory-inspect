@@ -186,37 +186,52 @@ final class InspectionReportViewModel {
     }
     
     @MainActor
-    func generatePDF() -> Data? {
+    func generatePDF() async -> Data? {
         guard let property = property else { return nil }
-        
+
         isGeneratingPDF = true
+        await Task.yield() // Let SwiftUI render the spinner before blocking
         defer { isGeneratingPDF = false }
-        
+
+        // Fetch company logo if user has Pro/Enterprise plan
+        var logoImage: UIImage? = nil
+        let accessManager = SnapshotsAccessManager.shared
+        if accessManager.isPro,
+           let logoUrlStr = accessManager.profile?.company_logo_url,
+           let logoUrl = URL(string: logoUrlStr),
+           let (data, _) = try? await URLSession.shared.data(from: logoUrl) {
+            logoImage = UIImage(data: data)
+        }
+
+        let isWhiteLabel = accessManager.isEnterprise
+
         let pdfView = InspectionPDFView(
             property: property,
             inspection: inspection,
             inspectorName: inspectorName,
             anomalies: anomalies,
             resolvedItems: resolvedItems,
-            presentItems: presentItems
+            presentItems: presentItems,
+            logoImage: logoImage,
+            isWhiteLabel: isWhiteLabel
         )
-        
+
         let renderer = ImageRenderer(content: pdfView)
-        
+
         let pdfData = NSMutableData()
         renderer.render { size, context in
             var box = CGRect(origin: .zero, size: size)
-            
+
             guard let consumer = CGDataConsumer(data: pdfData as CFMutableData),
                   let pdfContext = CGContext(consumer: consumer, mediaBox: &box, nil)
             else { return }
-            
+
             pdfContext.beginPDFPage(nil)
             context(pdfContext)
             pdfContext.endPDFPage()
             pdfContext.closePDF()
         }
-        
+
         return pdfData.length == 0 ? nil : (pdfData as Data)
     }
 }

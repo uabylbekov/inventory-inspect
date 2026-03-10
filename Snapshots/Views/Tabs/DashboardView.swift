@@ -12,8 +12,11 @@ struct DashboardView: View {
                 // MARK: - Welcome Section
                 Section {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(greetingText)
-                            .font(.headline)
+                        HStack(spacing: 6) {
+                            Text(greetingText)
+                                .font(.headline)
+                            PlanBadge()
+                        }
                         Text(subtitleText)
                             .font(.subheadline)
                             .foregroundColor(.secondary)

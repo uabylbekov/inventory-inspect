@@ -25,13 +25,18 @@ Snapshots uses **StoreKit 2**. For local testing in the Simulator or on a physic
 TestFlight uses the **App Store Sandbox** environment.
 
 ### A. Environment Detection
-The app automatically detects the Sandbox environment using the following logic in `SnapshotsAccessManager`:
+The app detects the Sandbox environment using StoreKit 2's `AppTransaction.shared` in `SnapshotsAccessManager`:
 ```swift
-private func isSandbox() -> Bool {
-    guard let url = Bundle.main.appStoreReceiptURL else { return false }
-    return url.lastPathComponent == "sandboxReceipt"
+private func checkIsSandbox() async -> Bool {
+    if let result = try? await AppTransaction.shared,
+       case .verified(let appTransaction) = result {
+        return appTransaction.environment == .xcode || appTransaction.environment == .sandbox
+    }
+    return false
 }
 ```
+The result is cached at app startup in `_isSandbox` so it can be read synchronously.
+
 *   **Automatic Pro**: In TestFlight/Sandbox, all users are treated as **Enterprise** so they can test every feature (Team Management, Branded Reports, Unlimited Properties) for free.
 
 ### B. Verification Flow

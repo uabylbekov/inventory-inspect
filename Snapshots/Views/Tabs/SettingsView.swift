@@ -6,7 +6,7 @@ struct SettingsView: View {
     @State private var showingSignOutAlert = false
     @State private var userName: String = ""
     @State private var showingPaywall = false
-    @State private var accessManager = SnapshotsAccessManager.shared
+    @Environment(SnapshotsAccessManager.self) private var accessManager
     
     var body: some View {
         NavigationStack {
@@ -15,15 +15,43 @@ struct SettingsView: View {
                 Section {
                     NavigationLink(destination: EditProfileView()) {
                         HStack(spacing: 14) {
-                            // Avatar
-                            ZStack {
-                                Circle()
-                                    .fill(Color.accentColor.gradient)
-                                    .frame(width: 56, height: 56)
-                                
-                                Text(userName.prefix(1).uppercased())
-                                    .font(.system(.title2, design: .rounded, weight: .bold))
-                                    .foregroundColor(.white)
+                            // Avatar / Company Logo
+                            if let logoUrlStr = accessManager.profile?.company_logo_url,
+                               let logoUrl = URL(string: logoUrlStr) {
+                                AsyncImage(url: logoUrl) { phase in
+                                    switch phase {
+                                    case .success(let img):
+                                        img.resizable()
+                                            .scaledToFill()
+                                            .frame(width: 56, height: 56)
+                                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                                    case .empty:
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color.secondary.opacity(0.15))
+                                            .frame(width: 56, height: 56)
+                                            .overlay(ProgressView().scaleEffect(0.7))
+                                    default:
+                                        // Failure — fall back to letter avatar
+                                        ZStack {
+                                            Circle()
+                                                .fill(Color.accentColor.gradient)
+                                                .frame(width: 56, height: 56)
+                                            Text(userName.prefix(1).uppercased())
+                                                .font(.system(.title2, design: .rounded, weight: .bold))
+                                                .foregroundColor(.white)
+                                        }
+                                    }
+                                }
+                                .id(logoUrlStr)
+                            } else {
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.accentColor.gradient)
+                                        .frame(width: 56, height: 56)
+                                    Text(userName.prefix(1).uppercased())
+                                        .font(.system(.title2, design: .rounded, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
@@ -54,29 +82,30 @@ struct SettingsView: View {
                                     .font(.subheadline)
                                     .foregroundColor(accessManager.isPro ? .white : .secondary)
                             }
-                            
+
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Snapshots Plan")
                                     .font(.subheadline)
                                     .foregroundColor(.primary)
-                                Text(accessManager.isPro ? "PRO Partner" : "Standard Tier")
+                                Text(accessManager.isEnterprise ? "Enterprise" : accessManager.isPro ? "Professional" : "Standard")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                             }
-                            
+
                             Spacer()
-                            
-                            if !accessManager.isPro {
+
+                            if accessManager.isPro {
+                                PlanBadge()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.bold())
+                                    .foregroundColor(.secondary.opacity(0.5))
+                            } else {
                                 Text("Upgrade")
                                     .font(.caption2.bold())
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 4)
                                     .background(Capsule().fill(Color.accentColor))
                                     .foregroundColor(.white)
-                            } else {
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.bold())
-                                    .foregroundColor(.secondary.opacity(0.5))
                             }
                         }
                     }
@@ -88,9 +117,6 @@ struct SettingsView: View {
                     } else {
                         Text("Manage 1 property for free. Upgrade for unlimited properties and team collaboration.")
                     }
-                }
-                .sheet(isPresented: $showingPaywall) {
-                    PremiumPaywallView()
                 }
                 
                 // MARK: - App Section
@@ -133,6 +159,9 @@ struct SettingsView: View {
             .listStyle(.insetGrouped)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.large)
+            .sheet(isPresented: $showingPaywall) {
+                PremiumPaywallView()
+            }
             .alert("Sign Out", isPresented: $showingSignOutAlert) {
                 Button("Cancel", role: .cancel) { }
                 Button("Sign Out", role: .destructive, action: signOut)

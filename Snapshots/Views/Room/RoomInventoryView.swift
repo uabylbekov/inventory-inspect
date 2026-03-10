@@ -108,7 +108,10 @@ struct RoomInventoryView: View {
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { viewModel.showingAddItem = true }) {
-                    Label("Add Item", systemImage: "plus")
+                    HStack(spacing: 4) {
+                        Image(systemName: "plus")
+                        Text("Add Item")
+                    }
                 }
             }
         }

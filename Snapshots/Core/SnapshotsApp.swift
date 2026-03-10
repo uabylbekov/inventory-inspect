@@ -51,6 +51,7 @@ struct InspectionsApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(SnapshotsAccessManager.shared)
                 .onOpenURL { url in
                     Task {
                         do {

@@ -28,11 +28,10 @@ The app uses a three-tier model that scales with the size of the user's property
 
 | Feature | **Standard (Free)** | **PRO (Professional)** | **ENTERPRISE** |
 | :--- | :--- | :--- | :--- |
-| **Properties** | **Max 1 Unit** | **Up to 10 Units** | **Unlimited** |
-| **Managers** | 1 User Only | **Up to 5 Managers** | **Unlimited** |
-| **PDF Branding** | Snapshots Logo | **Custom Company Logo** | **Full White-label** |
-| **Sync Strategy** | Individual | Shared Team Cloud | Real-time Cloud |
-| **Support** | Community | Priority Email | Dedicated Manager |
+| **Properties** | Max 1 Unit | Up to 10 Units | **Unlimited** |
+| **Managers** | 1 User Only | Up to 5 Managers | **Unlimited** |
+| **Photo Attachments** | ❌ Text-only | ✅ Included | ✅ Included |
+| **PDF Branding** | Snapshots Logo | Custom Company Logo | **Full White-label** |
 
 ---
 

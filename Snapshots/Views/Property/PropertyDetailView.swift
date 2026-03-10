@@ -79,7 +79,9 @@ struct PropertyDetailView: View {
                     HStack {
                         Label("Manage Team", systemImage: "person.2.fill")
                         Spacer()
-                        if !accessManager.isPro {
+                        if accessManager.isPro {
+                            PlanBadge()
+                        } else {
                             Text("PRO")
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 6)
@@ -183,7 +185,10 @@ struct PropertyDetailView: View {
             if viewModel.isOwner {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { viewModel.showingAddRoom = true }) {
-                        Label("Add Room", systemImage: "plus")
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("Add Room")
+                        }
                     }
                 }
             }

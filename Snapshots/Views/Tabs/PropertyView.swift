@@ -75,10 +75,14 @@ struct PropertyView: View {
                         }
                     }) {
                         if viewModel.canAddProperty() {
-                            Label("Add Property", systemImage: "plus")
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                Text("Add Property")
+                            }
                         } else {
                             HStack(spacing: 4) {
-                                Label("Add Property", systemImage: "plus")
+                                Image(systemName: "plus")
+                                Text("Add Property")
                                 Text("PRO")
                                     .font(.caption2.bold())
                                     .padding(.horizontal, 6)

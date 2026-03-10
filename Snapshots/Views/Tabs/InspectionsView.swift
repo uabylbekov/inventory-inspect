@@ -53,7 +53,10 @@ struct InspectionsView: View {
                         HapticManager.shared.impact(style: .light)
                         viewModel.showingStartInspection = true
                     }) {
-                        Label("Add Inspection", systemImage: "plus")
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("Add Inspection")
+                        }
                     }
                 }
             }

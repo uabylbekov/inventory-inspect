@@ -40,13 +40,29 @@ struct StartInspectionSheet: View {
                     
                     // MARK: - Type Selection
                     Section("Inspection Type") {
-                        Picker("Type", selection: $viewModel.inspectionType) {
-                            Label("Routine", systemImage: "wrench.adjustable.fill").tag("routine")
-                            Label("Check-In", systemImage: "door.left.hand.open").tag("check-in")
-                            Label("Check-Out", systemImage: "door.right.hand.closed").tag("check-out")
-                        }
-                        .pickerStyle(.inline)
-                        .labelsHidden()
+                        InspectionTypeRow(
+                            icon: "wrench.adjustable.fill",
+                            iconColor: .blue,
+                            title: "Routine",
+                            tip: "General walkthrough to check condition, maintenance needs, and overall state of the property.",
+                            isSelected: viewModel.inspectionType == "routine"
+                        ) { viewModel.inspectionType = "routine" }
+
+                        InspectionTypeRow(
+                            icon: "door.left.hand.open",
+                            iconColor: .green,
+                            title: "Check-In",
+                            tip: "Document the property condition before a new tenant or guest arrives. Creates a baseline record.",
+                            isSelected: viewModel.inspectionType == "check-in"
+                        ) { viewModel.inspectionType = "check-in" }
+
+                        InspectionTypeRow(
+                            icon: "door.right.hand.closed",
+                            iconColor: .orange,
+                            title: "Check-Out",
+                            tip: "Compare against the check-in report to identify any damage or changes after a tenant or guest leaves.",
+                            isSelected: viewModel.inspectionType == "check-out"
+                        ) { viewModel.inspectionType = "check-out" }
                     }
                     
                     // MARK: - Active Sessions
@@ -146,10 +162,51 @@ struct StartInspectionSheet: View {
             showDuplicateAlert = true
         } else {
             let id = await viewModel.startInspection()
-            if id != nil { 
+            if id != nil {
                 HapticManager.shared.notification(type: .success)
-                dismiss() 
+                dismiss()
             }
+        }
+    }
+}
+
+private struct InspectionTypeRow: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let tip: String
+    let isSelected: Bool
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 10)
+                        .fill(iconColor.gradient)
+                        .frame(width: 36, height: 36)
+                    Image(systemName: icon)
+                        .font(.subheadline)
+                        .foregroundColor(.white)
+                }
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                        .font(.subheadline)
+                        .foregroundColor(.primary)
+                    Text(tip)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer()
+
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundColor(.accentColor)
+                    .opacity(isSelected ? 1 : 0)
+            }
+            .padding(.vertical, 4)
         }
     }
 }

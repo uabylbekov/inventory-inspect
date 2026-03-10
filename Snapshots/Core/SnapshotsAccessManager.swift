@@ -51,6 +51,10 @@ final class SnapshotsAccessManager {
         return activeProductTier == "enterprise"
     }
     
+    func refreshProfile() async {
+        await fetchProfile()
+    }
+
     private func fetchProfile() async {
         do {
             let session = try await supabase.auth.session
@@ -101,7 +105,7 @@ final class SnapshotsAccessManager {
     // MARK: - Environment Detection
     
     private func checkIsSandbox() async -> Bool {
-        #if targetEnvironment(simulator)
+        #if DEBUG
         return true
         #else
         if let result = try? await AppTransaction.shared,
@@ -117,10 +121,16 @@ final class SnapshotsAccessManager {
     }
     
     // MARK: - Helper Methods
-    
+
     func canAddProperty(currentCount: Int) -> Bool {
         if isEnterprise { return true }
         if isPro { return currentCount < 10 }
         return currentCount < 1
+    }
+
+    func canAddTeamMember(currentManagerCount: Int) -> Bool {
+        if isEnterprise { return true }
+        if isPro { return currentManagerCount < 5 }
+        return false
     }
 }

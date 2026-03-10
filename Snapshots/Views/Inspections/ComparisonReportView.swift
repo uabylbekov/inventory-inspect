@@ -6,7 +6,6 @@ struct ComparisonReportView: View {
     @State private var isGeneratingPDF = false
     @State private var pdfShareItem: ShareablePDF?
     @State private var showingPaywall = false
-    private let accessManager = SnapshotsAccessManager.shared
     
     init(base: InspectionModel, current: InspectionModel) {
         _viewModel = State(initialValue: ComparisonReportViewModel(base: base, current: current))
@@ -138,12 +137,25 @@ struct ComparisonReportView: View {
                 Button {
                     isGeneratingPDF = true
                     Task {
+                        await Task.yield() // Let SwiftUI render the spinner before blocking
+                        
+                        var logoImage: UIImage? = nil
+                        let accessManager = SnapshotsAccessManager.shared
+                        if accessManager.isPro,
+                           let logoUrlStr = accessManager.profile?.company_logo_url,
+                           let logoUrl = URL(string: logoUrlStr),
+                           let (logoData, _) = try? await URLSession.shared.data(from: logoUrl) {
+                            logoImage = UIImage(data: logoData)
+                        }
+                        
                         let data = PDFReportGenerator.generate(
                             inspection: viewModel.newer,
                             property: viewModel.property,
                             inspectorName: viewModel.inspectorName,
                             anomalies: viewModel.anomalies,
-                            presentItems: viewModel.presentItems
+                            presentItems: viewModel.presentItems,
+                            logoImage: logoImage,
+                            isWhiteLabel: accessManager.isEnterprise
                         )
                         pdfShareItem = ShareablePDF(data: data, filename: "ComparisonReport.pdf")
                         isGeneratingPDF = false
@@ -152,18 +164,7 @@ struct ComparisonReportView: View {
                     if isGeneratingPDF {
                         ProgressView()
                     } else {
-                        HStack(spacing: 4) {
-                            if !accessManager.isPro {
-                                Text("PRO")
-                                    .font(.system(size: 8, weight: .black))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Color.accentColor)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(4)
-                            }
-                            Label("Share PDF", systemImage: "square.and.arrow.up")
-                        }
+                        Label("Share PDF", systemImage: "square.and.arrow.up")
                     }
                 }
                 .disabled(viewModel.isLoading || isGeneratingPDF)

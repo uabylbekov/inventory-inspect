@@ -7,16 +7,16 @@ The Snapshots monetization system is a hybrid entitlement engine that combines *
 
 | Tier | Property Limit | Team Limit | Features |
 | :--- | :--- | :--- | :--- |
-| **Standard (Free)** | 1 Property | Single User | Basic PDF Reports |
-| **Professional** | 10 Properties | 5 Managers | Custom PDF Branding |
-| **Enterprise** | Unlimited | Unlimited | Full White-label + Admin Tools |
+| **Standard (Free)** | 1 Property | Single User | Text-only Inspections, Snapshots-branded PDF |
+| **Professional** | 10 Properties | 5 Managers | Photo Attachments, Custom Company Logo on PDF |
+| **Enterprise** | Unlimited | Unlimited | Full White-label PDF (no Snapshots branding) |
 
 ## 3. Entitlement Logic (`SnapshotsAccessManager`)
 The system follows a "Highest Tier Wins" logic. Access is granted if ANY of the following sources verify the status:
 
 ### A. Environment Check (TestFlight/Sandbox)
 *   **Simulator**: Returns `isPro = true` and `isEnterprise = true` automatically.
-*   **Sandbox/TestFlight**: If the `appStoreReceiptURL` contains `sandboxReceipt`, the user is granted full access for testing purposes.
+*   **Sandbox/TestFlight**: Uses `AppTransaction.shared` (StoreKit 2) to check if the environment is `.xcode` or `.sandbox`. The result is cached at startup. All sandbox users are granted full access for testing purposes.
 
 ### B. Database Check (Supabase `profiles`)
 The profiles table stores a `subscription_tier` string:
@@ -37,13 +37,14 @@ The app listens to `Transaction.currentEntitlements`.
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'free', 
 ADD COLUMN IF NOT EXISTS company_logo_url TEXT,
-ADD COLUMN IF NOT EXISTS business_details JSONB; -- Stores address, phone etc.
+ADD COLUMN IF NOT EXISTS business_details TEXT; -- Stored as a plain string in ProfileModel
 ```
 
 ### Visual Gating (SwiftUI)
-*   **Gating Check**: Uses `accessManager.canAddProperty(currentCount:)`.
-*   **UI Trigger**: If the check fails, the app presents the `PremiumPaywallView` sheet.
-*   **Feature Labels**: Buttons for locked features (e.g., Manage Team) display a "PRO" or "ENTERPRISE" badge.
+*   **Property Gating**: `accessManager.canAddProperty(currentCount:)` — Free: 1, Pro: 10, Enterprise: unlimited.
+*   **Team Member Gating**: `accessManager.canAddTeamMember(currentManagerCount:)` — Free: not allowed, Pro: 5 managers, Enterprise: unlimited.
+*   **UI Trigger**: If a check fails, the app presents the `PremiumPaywallView` sheet.
+*   **Feature Labels**: Buttons for locked features display a "PRO" or "ENTERPRISE" badge.
 
 ## 5. Security & Persistence
 1.  **JWT Verification**: Supabase RLS (Row Level Security) ensures only the user can see their own subscription level.

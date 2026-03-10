@@ -5,8 +5,7 @@ struct InspectionReportView: View {
     @State private var showingInspectionSelection = false
     @State private var shareablePDF: ShareablePDF?
     @State private var showingPaywall = false
-    private let accessManager = SnapshotsAccessManager.shared
-    
+
     init(inspection: InspectionModel) {
         _viewModel = State(initialValue: InspectionReportViewModel(inspection: inspection))
     }
@@ -180,24 +179,15 @@ struct InspectionReportView: View {
                     ProgressView()
                 } else {
                     Button(action: {
-                        if let data = viewModel.generatePDF() {
-                            let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
-                            self.shareablePDF = ShareablePDF(data: data, filename: filename)
+                        Task {
+                            if let data = await viewModel.generatePDF() {
+                                let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
+                                self.shareablePDF = ShareablePDF(data: data, filename: filename)
+                            }
                         }
                     }) {
-                        HStack(spacing: 4) {
-                            if !accessManager.isPro {
-                                Text("PRO")
-                                    .font(.system(size: 8, weight: .black))
-                                    .padding(.horizontal, 4)
-                                    .padding(.vertical, 2)
-                                    .background(Color.accentColor)
-                                    .foregroundColor(.white)
-                                    .cornerRadius(4)
-                            }
-                            Image(systemName: "square.and.arrow.up")
-                                .imageScale(.large)
-                        }
+                        Image(systemName: "square.and.arrow.up")
+                            .imageScale(.large)
                     }
                 }
             }

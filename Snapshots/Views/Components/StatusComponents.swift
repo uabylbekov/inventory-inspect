@@ -32,6 +32,36 @@ struct StatusUI {
     }
 }
 
+// MARK: - Plan Badge
+
+struct PlanBadge: View {
+    @Environment(SnapshotsAccessManager.self) private var accessManager
+
+    private var label: String {
+        if accessManager.isEnterprise { return "ENTERPRISE" }
+        if accessManager.isPro { return "PRO" }
+        return ""
+    }
+
+    private var color: Color {
+        accessManager.isEnterprise ? .purple : .accentColor
+    }
+
+    var body: some View {
+        if accessManager.isPro {
+            Text(label)
+                .font(.system(size: 9, weight: .black))
+                .tracking(0.5)
+                .foregroundColor(.white)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(Capsule().fill(color.gradient))
+        }
+    }
+}
+
+// MARK: - Status Badge
+
 struct StatusBadge: View {
     let status: String
     

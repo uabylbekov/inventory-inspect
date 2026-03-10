@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct InspectionPDFView: View {
     let property: PropertyModel
@@ -7,7 +8,9 @@ struct InspectionPDFView: View {
     let anomalies: [ReportItem]
     let resolvedItems: [ReportItem]
     let presentItems: [ReportItem]
-    
+    var logoImage: UIImage? = nil
+    var isWhiteLabel: Bool = false
+
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
             // Header
@@ -20,12 +23,20 @@ struct InspectionPDFView: View {
                         .foregroundColor(.secondary)
                 }
                 Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("INSPECTION REPORT")
-                        .font(.system(size: 14, weight: .black))
-                        .foregroundColor(.accentColor)
-                    Text(AppFormatter.formatInspectionType(inspection.inspection_type).uppercased())
-                        .font(.system(size: 12, weight: .bold))
+                if let logo = logoImage {
+                    Image(uiImage: logo)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(width: 60, height: 60)
+                        .cornerRadius(8)
+                } else {
+                    VStack(alignment: .trailing, spacing: 4) {
+                        Text("INSPECTION REPORT")
+                            .font(.system(size: 14, weight: .black))
+                            .foregroundColor(.accentColor)
+                        Text(AppFormatter.formatInspectionType(inspection.inspection_type).uppercased())
+                            .font(.system(size: 12, weight: .bold))
+                    }
                 }
             }
             .padding(.bottom, 10)

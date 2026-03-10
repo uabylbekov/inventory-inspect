@@ -24,7 +24,9 @@ struct InspectionItemDetailView: View {
     @State private var showingLibrary = false
     @State private var capturedImage: UIImage?
     @State private var isProcessingImage = false
+    @State private var showingPaywall = false
     @Environment(\.dismiss) private var dismiss
+    private let accessManager = SnapshotsAccessManager.shared
     
     init(item: RoomInventoryItemModel, inspection: InspectionModel, room: PropertyRoomModel, initialRecord: InspectionItemModel?) {
         self.item = item
@@ -76,10 +78,39 @@ struct InspectionItemDetailView: View {
             
             // MARK: - Evidence Section
             Section {
-                evidenceRow
+                if accessManager.isPro {
+                    evidenceRow
+                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                } else {
+                    Button(action: { showingPaywall = true }) {
+                        HStack(spacing: 12) {
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.secondary.opacity(0.15))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "camera.fill")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                            }
+                            Text("Add Photo Evidence")
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Text("PRO")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(Capsule().fill(Color.accentColor))
+                                .foregroundColor(.white)
+                        }
+                    }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                }
             } header: {
                 Text("Evidence")
+            } footer: {
+                if !accessManager.isPro {
+                    Text("Upgrade to Professional to attach photo evidence to inspections.")
+                }
             }
             
             // MARK: - Notes Section
@@ -143,6 +174,9 @@ struct InspectionItemDetailView: View {
             } else if let urlStr = imageURL, let publicURL = URL(string: urlStr) {
                 FullScreenImageView(image: .remote(publicURL))
             }
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PremiumPaywallView()
         }
         .photosPicker(isPresented: $showingLibrary, selection: $selectedPhoto, matching: .images)
         .onChange(of: selectedPhoto) { _, newValue in
