@@ -30,8 +30,8 @@ final class InspectionsViewModel {
         }
     }
     
-    func fetchInspections() async {
-        if inspections.isEmpty {
+    func fetchInspections(showLoadingState: Bool = true) async {
+        if showLoadingState && inspections.isEmpty {
             isLoading = true
         }
         errorMessage = nil

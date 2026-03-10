@@ -45,39 +45,11 @@ struct EditProfileView: View {
             if accessManager.isPro {
                 Section {
                     HStack(spacing: 14) {
-                        // Logo preview
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 10)
-                                .fill(Color(UIColor.secondarySystemGroupedBackground))
-                                .frame(width: 56, height: 56)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 10)
-                                        .stroke(Color(UIColor.separator), lineWidth: 0.5)
-                                )
-                            if let image = selectedLogoImage {
-                                Image(uiImage: image)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 56, height: 56)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
-                            } else if let logoUrlStr = accessManager.profile?.company_logo_url,
-                                      let logoUrl = URL(string: logoUrlStr) {
-                                AsyncImage(url: logoUrl) { phase in
-                                    if let img = phase.image {
-                                        img.resizable().scaledToFill()
-                                            .frame(width: 56, height: 56)
-                                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                                    } else {
-                                        Image(systemName: "photo")
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                .id(logoUrlStr)
-                            } else {
-                                Image(systemName: "photo")
-                                    .foregroundColor(.secondary)
-                            }
-                        }
+                        LogoPreview(
+                            selectedLogoImage: selectedLogoImage,
+                            logoURLString: accessManager.profile?.company_logo_url,
+                            isUploading: isUploadingLogo
+                        )
 
                         VStack(alignment: .leading, spacing: 3) {
                             Text("profile.company_logo")
@@ -374,5 +346,64 @@ struct EditProfileView: View {
 #Preview {
     NavigationStack {
         EditProfileView()
+    }
+}
+
+private struct LogoPreview: View {
+    let selectedLogoImage: UIImage?
+    let logoURLString: String?
+    let isUploading: Bool
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                .frame(width: 56, height: 56)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                )
+
+            if let image = selectedLogoImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+            } else if let logoURLString,
+                      let logoURL = URL(string: logoURLString) {
+                AsyncImage(url: logoURL) { phase in
+                    switch phase {
+                    case .success(let image):
+                        image
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 56, height: 56)
+                            .clipShape(RoundedRectangle(cornerRadius: 10))
+                    case .empty:
+                        ProgressView()
+                            .scaleEffect(0.75)
+                    case .failure:
+                        Image(systemName: "photo")
+                            .foregroundColor(.secondary)
+                    @unknown default:
+                        Image(systemName: "photo")
+                            .foregroundColor(.secondary)
+                    }
+                }
+            } else {
+                Image(systemName: "photo")
+                    .foregroundColor(.secondary)
+            }
+
+            if isUploading {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.black.opacity(0.18))
+                    .frame(width: 56, height: 56)
+
+                ProgressView()
+                    .scaleEffect(0.8)
+            }
+        }
     }
 }

@@ -11,6 +11,9 @@ final class NotificationManager: @unchecked Sendable {
     var unreadCount: Int = 0
     private var channel: RealtimeChannelV2?
     private var currentToken: String?
+    private var observedUserId: UUID?
+    private var realtimeTask: Task<Void, Never>?
+    private var hasRequestedNotificationPermission = false
     
     // Deep linking state
     var selectedNotificationID: UUID?
@@ -25,6 +28,8 @@ final class NotificationManager: @unchecked Sendable {
     private init() {}
     
     func requestPermission() {
+        guard !hasRequestedNotificationPermission else { return }
+        hasRequestedNotificationPermission = true
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
             if granted {
                 DispatchQueue.main.async {
@@ -32,6 +37,33 @@ final class NotificationManager: @unchecked Sendable {
                 }
             }
         }
+    }
+
+    func bootstrapForAuthenticatedUser() async {
+        let userId: UUID
+        do {
+            let session = try await supabase.auth.session
+            userId = session.user.id
+        } catch {
+            print("Error bootstrapping notifications: \(error)")
+            return
+        }
+
+        requestPermission()
+
+        guard observedUserId != userId || channel == nil else { return }
+
+        await teardownRealtime()
+        observedUserId = userId
+        await fetchNotifications()
+        await setupRealtime()
+    }
+
+    func resetForSignedOutUser() async {
+        await teardownRealtime()
+        observedUserId = nil
+        notifications = []
+        unreadCount = 0
     }
     
     func handleJoinRequest(id: UUID) async {
@@ -174,6 +206,8 @@ final class NotificationManager: @unchecked Sendable {
     }
     
     func setupRealtime() async {
+        guard channel == nil else { return }
+
         let channel = supabase.channel("public:notifications")
         
         let observation = channel.postgresChange(
@@ -182,7 +216,8 @@ final class NotificationManager: @unchecked Sendable {
             table: "notifications"
         )
         
-        Task {
+        realtimeTask = Task { [weak self] in
+            guard let self else { return }
             for await change in observation {
                 switch change {
                 case .insert(let action):
@@ -199,6 +234,15 @@ final class NotificationManager: @unchecked Sendable {
         
         try? await channel.subscribeWithError()
         self.channel = channel
+    }
+
+    private func teardownRealtime() async {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        if let channel {
+            try? await channel.unsubscribe()
+            self.channel = nil
+        }
     }
     
     private func triggerLocalNotification(for notification: NotificationModel) {

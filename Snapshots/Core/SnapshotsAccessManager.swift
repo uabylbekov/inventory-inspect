@@ -13,6 +13,7 @@ final class SnapshotsAccessManager {
     var activeProductTier: String = "free"
     private var _isSandbox = false
     private var transactionUpdatesTask: Task<Void, Never>?
+    private var productCache: [String: Product] = [:]
     
     private let proProductId = "com.ulukskywalker.snapshots.pro"
     private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise"
@@ -32,7 +33,10 @@ final class SnapshotsAccessManager {
         // 2. Fetch Profile for VIP/Lifetime status
         await self.fetchProfile()
 
-        // 3. Check StoreKit 2 for active subscription
+        // 3. Cache StoreKit products used by the paywall/subscription state.
+        await cacheSubscriptionProductsIfNeeded()
+
+        // 4. Check StoreKit 2 for active subscription
         await self.updateSubscriptionStatus()
         startListeningForTransactionUpdates()
 
@@ -85,6 +89,7 @@ final class SnapshotsAccessManager {
     func refreshEntitlementsForCurrentUser() async {
         isCheckingAccess = true
         await fetchProfile()
+        await cacheSubscriptionProductsIfNeeded()
         await updateSubscriptionStatus()
         isCheckingAccess = false
     }
@@ -99,30 +104,25 @@ final class SnapshotsAccessManager {
     // MARK: - StoreKit 2 Logic
     
     func updateSubscriptionStatus() async {
-        do {
-            var highestTierFound = "free"
-            var foundProduct: Product?
+        var highestTierFound = "free"
 
-            for await result in Transaction.currentEntitlements {
-                guard case .verified(let transaction) = result else { continue }
-                
-                if transaction.revocationDate == nil && (transaction.expirationDate == nil || transaction.expirationDate! > Date()) {
-                    if transaction.productID == enterpriseProductId {
-                        highestTierFound = "enterprise"
-                        let products = try await Product.products(for: [enterpriseProductId])
-                        foundProduct = products.first
-                        break // Enterprise is the highest, no need to keep checking
-                    } else if transaction.productID == proProductId {
-                        highestTierFound = "pro"
-                        let products = try await Product.products(for: [proProductId])
-                        foundProduct = products.first
-                    }
+        for await result in Transaction.currentEntitlements {
+            guard case .verified(let transaction) = result else { continue }
+            
+            if transaction.revocationDate == nil && (transaction.expirationDate == nil || transaction.expirationDate! > Date()) {
+                if transaction.productID == enterpriseProductId {
+                    highestTierFound = "enterprise"
+                    break // Enterprise is the highest, no need to keep checking
+                } else if transaction.productID == proProductId {
+                    highestTierFound = "pro"
                 }
             }
-            self.activeProductTier = highestTierFound
-            self.activeSubscription = foundProduct
-        } catch {
-            print("Access Manager: StoreKit error: \(error)")
+        }
+        self.activeProductTier = highestTierFound
+        if let productID = productID(forTier: highestTierFound) {
+            self.activeSubscription = productCache[productID]
+        } else {
+            self.activeSubscription = nil
         }
     }
 
@@ -154,6 +154,27 @@ final class SnapshotsAccessManager {
 
     private func isSandbox() -> Bool {
         _isSandbox
+    }
+
+    private func cacheSubscriptionProductsIfNeeded() async {
+        guard productCache.isEmpty else { return }
+        do {
+            let products = try await Product.products(for: [proProductId, enterpriseProductId])
+            productCache = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
+        } catch {
+            print("Access Manager: Product cache error: \(error)")
+        }
+    }
+
+    private func productID(forTier tier: String) -> String? {
+        switch tier {
+        case "enterprise":
+            enterpriseProductId
+        case "pro":
+            proProductId
+        default:
+            nil
+        }
     }
     
     // MARK: - Property-Specific Access Logic

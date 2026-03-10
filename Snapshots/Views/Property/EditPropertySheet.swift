@@ -4,9 +4,11 @@ struct EditPropertySheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: EditPropertyViewModel
     @State private var showValidation = false
+    let onSaved: (() -> Void)?
 
-    init(propertyId: UUID) {
+    init(propertyId: UUID, onSaved: (() -> Void)? = nil) {
         _viewModel = State(initialValue: EditPropertyViewModel(propertyId: propertyId))
+        self.onSaved = onSaved
     }
 
     var body: some View {
@@ -141,6 +143,7 @@ struct EditPropertySheet: View {
             let success = await viewModel.saveToSupabase()
             if success {
                 HapticManager.shared.notification(type: .success)
+                onSaved?()
                 dismiss()
             } else {
                 HapticManager.shared.notification(type: .error)

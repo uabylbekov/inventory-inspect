@@ -5,70 +5,42 @@ struct SettingsView: View {
     @State private var isSigningOut = false
     @State private var showingSignOutAlert = false
     @State private var showingFeedbackSheet = false
+    @State private var showingEditProfile = false
     @State private var userName: String = ""
     @Environment(SnapshotsAccessManager.self) private var accessManager
     
     var body: some View {
         NavigationStack {
             List {
-                // MARK: - Profile Section
                 Section {
-                    NavigationLink(destination: EditProfileView()) {
-                        HStack(spacing: 14) {
-                            // Avatar / Company Logo
-                            if let logoUrlStr = accessManager.profile?.company_logo_url,
-                               let logoUrl = URL(string: logoUrlStr) {
-                                AsyncImage(url: logoUrl) { phase in
-                                    switch phase {
-                                    case .success(let img):
-                                        img.resizable()
-                                            .scaledToFill()
-                                            .frame(width: 56, height: 56)
-                                            .clipShape(RoundedRectangle(cornerRadius: 12))
-                                    case .empty:
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color.secondary.opacity(0.15))
-                                            .frame(width: 56, height: 56)
-                                            .overlay(ProgressView().scaleEffect(0.7))
-                                    default:
-                                        // Failure — fall back to letter avatar
-                                        ZStack {
-                                            Circle()
-                                                .fill(Color.accentColor.gradient)
-                                                .frame(width: 56, height: 56)
-                                            Text(userName.prefix(1).uppercased())
-                                                .font(.system(.title2, design: .rounded, weight: .bold))
-                                                .foregroundColor(.white)
-                                        }
-                                    }
-                                }
-                                .id(logoUrlStr)
-                            } else {
-                                ZStack {
-                                    Circle()
-                                        .fill(Color.accentColor.gradient)
-                                        .frame(width: 56, height: 56)
-                                    Text(userName.prefix(1).uppercased())
-                                        .font(.system(.title2, design: .rounded, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text("settings.signed_in")
+                    Button(action: { showingEditProfile = true }) {
+                        HStack(spacing: 12) {
+                            Image(systemName: "person.crop.circle.fill")
+                                .font(.title2)
+                                .foregroundColor(.accentColor)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(displayName)
                                     .font(.headline)
-                                Text(userName.isEmpty ? "Loading..." : userName)
+                                    .foregroundStyle(.primary)
+                                Text("settings.profile.subtitle")
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
+                                    .foregroundStyle(.secondary)
+                                Label(currentPlanName, systemImage: "star.circle.fill")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
+
+                            Spacer()
+
+                            Image(systemName: "chevron.right")
+                                .font(.footnote.weight(.semibold))
+                                .foregroundStyle(.tertiary)
                         }
-                        .padding(.vertical, 6)
                     }
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                    .buttonStyle(.plain)
                 }
                 
-                // MARK: - Subscription Section
                 Section {
                     SubscriptionPlanRow()
                 } header: {
@@ -81,39 +53,45 @@ struct SettingsView: View {
                     }
                 }
                 
-                // MARK: - App Section
                 Section {
-                    HStack {
-                        Label("settings.version", systemImage: "info.circle")
-                        Spacer()
-                        Text("1.0.0")
-                            .foregroundColor(.secondary)
-                    }
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                    
-                    HStack {
-                        Label("settings.build", systemImage: "hammer")
-                        Spacer()
-                        Text("2026.3")
-                            .foregroundColor(.secondary)
-                    }
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-
-                    Button(action: { showingFeedbackSheet = true }) {
-                        HStack {
-                            Label("settings.feedback", systemImage: "bubble.left.and.pencil")
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundColor(.secondary)
+                    Button {
+                        showingFeedbackSheet = true
+                    } label: {
+                        LabeledContent {
+                            Image(systemName: "square.and.pencil")
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("settings.feedback")
+                                Text("settings.feedback.subtitle")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                } header: {
+                    Text("settings.support")
+                }
+
+                Section {
+                    NavigationLink {
+                        SettingsAboutView(
+                            version: appVersion,
+                            build: buildNumber
+                        )
+                    } label: {
+                        LabeledContent {
+                            Text("\(String(localized: "settings.version")) \(appVersion) • \(String(localized: "settings.build")) \(buildNumber)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } label: {
+                            Label("settings.about", systemImage: "info.circle")
+                        }
+                    }
                 } header: {
                     Text("settings.app")
                 }
                 
-                // MARK: - Account Actions
                 Section {
                     Button(role: .destructive, action: { showingSignOutAlert = true }) {
                         HStack {
@@ -144,10 +122,31 @@ struct SettingsView: View {
                     personalTier: accessManager.profile?.subscription_tier ?? accessManager.activeProductTier
                 )
             }
+            .navigationDestination(isPresented: $showingEditProfile) {
+                EditProfileView()
+            }
             .onAppear {
                 fetchEmail()
             }
         }
+    }
+
+    private var displayName: String {
+        userName.isEmpty ? String(localized: "settings.loading") : userName
+    }
+
+    private var currentPlanName: String {
+        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
+        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        return String(localized: "plan.standard")
+    }
+
+    private var appVersion: String {
+        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2026.3"
     }
     
     private func fetchEmail() {
@@ -183,4 +182,46 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+}
+
+private struct SettingsAboutView: View {
+    let version: String
+    let build: String
+
+    var body: some View {
+        List {
+            Section {
+                SettingsStaticValueRow(
+                    titleKey: "settings.version",
+                    value: version,
+                    systemImage: "info.circle"
+                )
+
+                SettingsStaticValueRow(
+                    titleKey: "settings.build",
+                    value: build,
+                    systemImage: "hammer"
+                )
+            }
+        }
+        .listStyle(.insetGrouped)
+        .navigationTitle("settings.about")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct SettingsStaticValueRow: View {
+    let titleKey: LocalizedStringKey
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Label(titleKey, systemImage: systemImage)
+            Spacer()
+            Text(value)
+                .foregroundColor(.secondary)
+        }
+        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+    }
 }

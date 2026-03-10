@@ -13,29 +13,22 @@ struct RootView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(uiColor: .systemBackground))
-                .transition(.opacity)
             } else if authManager.isAuthenticated {
                 if authManager.isProfileComplete {
                     MainTabView()
-                        .transition(.opacity)
                 } else {
                     CompleteProfileView()
-                        .transition(.opacity)
                 }
             } else {
                 LoginView()
-                    .transition(.opacity)
             }
         }
-        .animation(.default, value: authManager.isCheckingSession)
-        .animation(.default, value: authManager.isAuthenticated)
-        .animation(.default, value: authManager.isProfileComplete)
         .environment(authManager)
         .task(id: authManager.isAuthenticated) {
             if authManager.isAuthenticated {
-                await NotificationManager.shared.setupRealtime()
-                await NotificationManager.shared.fetchNotifications()
-                NotificationManager.shared.requestPermission()
+                await NotificationManager.shared.bootstrapForAuthenticatedUser()
+            } else {
+                await NotificationManager.shared.resetForSignedOutUser()
             }
         }
     }

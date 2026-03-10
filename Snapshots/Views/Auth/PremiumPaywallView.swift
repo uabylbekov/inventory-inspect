@@ -20,44 +20,20 @@ struct PremiumPaywallView: View {
                 // MARK: - Current Plan Header
                 Section {
                     if accessManager.isCheckingAccess {
-                        HStack(spacing: 14) {
-                            Circle()
-                                .fill(Color.secondary.opacity(0.2).gradient)
-                                .frame(width: 56, height: 56)
-                            VStack(alignment: .leading, spacing: 6) {
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.secondary.opacity(0.2))
-                                    .frame(width: 100, height: 14)
-                                RoundedRectangle(cornerRadius: 4)
-                                    .fill(Color.secondary.opacity(0.15))
-                                    .frame(width: 70, height: 12)
-                            }
+                        HStack {
+                            Spacer()
+                            ProgressView("paywall.current_plan")
+                            Spacer()
                         }
-                        .padding(.vertical, 6)
                     } else {
-                        HStack(spacing: 14) {
-                            ZStack {
-                                Circle()
-                                    .fill(currentPlanColor.gradient)
-                                    .frame(width: 56, height: 56)
-                                Image(systemName: currentPlanIcon)
-                                    .font(.title2)
-                                    .foregroundColor(.white)
-                            }
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(currentPlanName)
-                                    .font(.headline)
-                                    .lineLimit(2)
-                                Text("paywall.current_plan")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(2)
-                            }
+                        LabeledContent("paywall.current_plan") {
+                            Label(currentPlanName, systemImage: currentPlanIcon)
+                                .foregroundStyle(currentPlanColor)
                         }
-                        .padding(.vertical, 6)
 
                         ForEach(currentPlanFeatures, id: \.self) { feature in
-                            FeatureRow(feature)
+                            Label(feature, systemImage: "checkmark")
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
@@ -74,19 +50,15 @@ struct PremiumPaywallView: View {
                 } else if !products.isEmpty {
                     if let proProduct = products.first(where: { $0.id == proProductId }) {
                         Section {
-                            PlanRow(
-                                icon: "star.fill",
-                                iconColor: .accentColor,
-                                name: String(localized: "plan.professional"),
-                                price: proProduct.displayPrice,
-                                isActive: accessManager.activeProductTier == "pro",
-                                isBusy: isPurchasing,
-                                action: { Task { await purchase(proProduct) } }
-                            )
-                            FeatureRow(String(localized: "paywall.professional.feature_1"))
-                            FeatureRow(String(localized: "paywall.professional.feature_2"))
-                            FeatureRow(String(localized: "paywall.professional.feature_3"))
-                            FeatureRow(String(localized: "paywall.professional.feature_4"))
+                            LabeledContent("plan.professional") {
+                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), proProduct.displayPrice))
+                                    .foregroundStyle(.secondary)
+                            }
+                            paywallAction(for: proProduct, isActive: accessManager.activeProductTier == "pro")
+                            Label("paywall.professional.feature_1", systemImage: "checkmark")
+                            Label("paywall.professional.feature_2", systemImage: "checkmark")
+                            Label("paywall.professional.feature_3", systemImage: "checkmark")
+                            Label("paywall.professional.feature_4", systemImage: "checkmark")
                         } header: {
                             Text("plan.professional")
                         }
@@ -94,18 +66,14 @@ struct PremiumPaywallView: View {
 
                     if let entProduct = products.first(where: { $0.id == enterpriseProductId }) {
                         Section {
-                            PlanRow(
-                                icon: "building.2.fill",
-                                iconColor: .purple,
-                                name: String(localized: "plan.enterprise"),
-                                price: entProduct.displayPrice,
-                                isActive: accessManager.activeProductTier == "enterprise",
-                                isBusy: isPurchasing,
-                                action: { Task { await purchase(entProduct) } }
-                            )
-                            FeatureRow(String(localized: "paywall.enterprise.feature_1"))
-                            FeatureRow(String(localized: "paywall.enterprise.feature_2"))
-                            FeatureRow(String(localized: "paywall.enterprise.feature_3"))
+                            LabeledContent("plan.enterprise") {
+                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), entProduct.displayPrice))
+                                    .foregroundStyle(.secondary)
+                            }
+                            paywallAction(for: entProduct, isActive: accessManager.activeProductTier == "enterprise")
+                            Label("paywall.enterprise.feature_1", systemImage: "checkmark")
+                            Label("paywall.enterprise.feature_2", systemImage: "checkmark")
+                            Label("paywall.enterprise.feature_3", systemImage: "checkmark")
                         } header: {
                             Text("plan.enterprise")
                         }
@@ -223,6 +191,20 @@ struct PremiumPaywallView: View {
         return .secondary
     }
 
+    @ViewBuilder
+    private func paywallAction(for product: Product, isActive: Bool) -> some View {
+        if isActive {
+            Label("paywall.current_plan", systemImage: "checkmark.circle.fill")
+                .foregroundColor(.accentColor)
+        } else {
+            Button("paywall.subscribe") {
+                Task { await purchase(product) }
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(isPurchasing)
+        }
+    }
+
     private var currentPlanFeatures: [String] {
         if accessManager.isDirectSubscriberEnterprise {
             return [
@@ -312,69 +294,5 @@ struct PremiumPaywallView: View {
             return
         }
         openURL(url)
-    }
-}
-
-private struct PlanRow: View {
-    let icon: String
-    let iconColor: Color
-    let name: String
-    let price: String
-    let isActive: Bool
-    let isBusy: Bool
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(iconColor.gradient)
-                    .frame(width: 32, height: 32)
-                Image(systemName: icon)
-                    .font(.subheadline)
-                    .foregroundColor(.white)
-            }
-            VStack(alignment: .leading, spacing: 2) {
-                Text(name)
-                    .font(.subheadline)
-                    .foregroundColor(.primary)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), price))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .lineLimit(2)
-            }
-            Spacer()
-            if isActive {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.accentColor)
-            } else {
-                Button("paywall.subscribe", action: action)
-                    .font(.caption.bold())
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(Capsule().fill(iconColor))
-                    .foregroundColor(.white)
-                    .disabled(isBusy)
-            }
-        }
-    }
-}
-
-private struct FeatureRow: View {
-    let text: String
-    init(_ text: String) { self.text = text }
-
-    var body: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "checkmark.circle.fill")
-                .font(.caption)
-                .foregroundColor(.accentColor)
-            Text(text)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
     }
 }

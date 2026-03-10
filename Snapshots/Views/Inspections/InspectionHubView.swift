@@ -231,7 +231,6 @@ struct InspectionHubView: View {
         } message: {
             Text("inspection_hub.complete_message")
         }
-        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.inspectionItems.count)
     }
 }
 

@@ -12,7 +12,6 @@ struct InspectionReportView: View {
     
     var body: some View {
         List {
-            // Error Banner (Inline in List)
             if let error = viewModel.errorMessage {
                 Section {
                     HStack {
@@ -24,7 +23,6 @@ struct InspectionReportView: View {
                 }
             }
             
-            // Header Section
             Section {
                 VStack(spacing: 12) {
                     if let prop = viewModel.property {
@@ -69,7 +67,14 @@ struct InspectionReportView: View {
             }
             .redacted(reason: viewModel.isLoading ? .placeholder : [])
 
-            // MARK: - Anomalies Section
+            if !viewModel.isLoading {
+                Section {
+                    LabeledContent("report.anomalies", value: "\(viewModel.anomalies.count)")
+                    LabeledContent("report.resolved_issues", value: "\(viewModel.resolvedItems.count)")
+                    LabeledContent("report.present_intact", value: "\(viewModel.presentItems.count)")
+                }
+            }
+
             if !viewModel.anomalies.isEmpty {
                 Section {
                     ForEach(viewModel.anomalies) { item in
@@ -125,7 +130,6 @@ struct InspectionReportView: View {
                 }
             }
             
-            // MARK: - Resolved Section
             if !viewModel.resolvedItems.isEmpty {
                 Section {
                     ForEach(viewModel.resolvedItems) { item in
@@ -141,7 +145,6 @@ struct InspectionReportView: View {
                 }
             }
             
-            // MARK: - Present Items Section
             if !viewModel.presentItems.isEmpty {
                 Section {
                     ForEach(viewModel.presentItems) { item in

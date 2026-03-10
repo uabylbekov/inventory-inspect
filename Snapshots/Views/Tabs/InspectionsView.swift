@@ -11,40 +11,55 @@ struct InspectionsView: View {
     var body: some View {
         @Bindable var viewModel = viewModel
         NavigationStack {
-            List {
-                // MARK: - Filter Header
-                Section {
-                    HStack {
-                        Label("inspections.filter.show_records_for", systemImage: "calendar")
-                        Spacer()
-                        DatePicker("", selection: $viewModel.selectedDate, displayedComponents: .date)
-                            .labelsHidden()
-                    }
-                    if viewModel.isFilteringByDate {
-                        Button(action: {
-                            withAnimation { viewModel.isFilteringByDate = false }
-                        }) {
-                            Label("inspections.filter.clear", systemImage: "xmark.circle")
-                                .foregroundColor(.red)
+            Group {
+                if !viewModel.isLoading && viewModel.filteredInspections.isEmpty {
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            filterHeader
+                                .padding(.horizontal)
+
+                            ContentUnavailableView(
+                                "inspections.empty.title",
+                                systemImage: "checklist",
+                                description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
+                            )
+                            .frame(maxWidth: .infinity)
+                            .padding(.top, 56)
                         }
+                        .padding(.top, 8)
+                    }
+                    .refreshable {
+                        async let fetchI: () = self.viewModel.fetchInspections(showLoadingState: false)
+                        async let fetchP: () = self.viewModel.fetchProperties()
+                        _ = await (fetchI, fetchP)
+                    }
+                } else {
+                    List {
+                        Section {
+                            filterHeader
+                        }
+                        .listRowBackground(Color.clear)
+
+                        if viewModel.isLoading && viewModel.inspections.isEmpty {
+                            Section {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                    Spacer()
+                                }
+                            }
+                        }
+
+                        inspectionsSection
+                    }
+                    .listStyle(.insetGrouped)
+                    .refreshable {
+                        async let fetchI: () = self.viewModel.fetchInspections(showLoadingState: false)
+                        async let fetchP: () = self.viewModel.fetchProperties()
+                        _ = await (fetchI, fetchP)
                     }
                 }
-                
-                // MARK: - Inspections Content
-                if viewModel.isLoading && viewModel.inspections.isEmpty {
-                    Section {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
-                    }
-                }
-                
-                inspectionsSection
-                
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("inspections.title")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
@@ -60,20 +75,15 @@ struct InspectionsView: View {
                     }
                 }
             }
-            .refreshable {
-                async let fetchI: () = self.viewModel.fetchInspections()
-                async let fetchP: () = self.viewModel.fetchProperties()
-                _ = await (fetchI, fetchP)
-            }
             .task {
                 async let fetchI: () = self.viewModel.fetchInspections()
                 async let fetchP: () = self.viewModel.fetchProperties()
                 _ = await (fetchI, fetchP)
             }
-            .sheet(isPresented: $viewModel.showingStartInspection, onDismiss: {
-                Task { await viewModel.fetchInspections() }
-            }) {
-                StartInspectionSheet()
+            .sheet(isPresented: $viewModel.showingStartInspection) {
+                StartInspectionSheet(preloadedProperties: viewModel.properties) {
+                    Task { await viewModel.fetchInspections(showLoadingState: false) }
+                }
             }
             .navigationDestination(item: $notificationManager.joiningInspection) { inspection in
                 InspectionHubView(inspection: inspection)
@@ -109,17 +119,6 @@ struct InspectionsView: View {
         let completed = viewModel.filteredInspections.filter { $0.status == "completed" }
         let cancelled = viewModel.filteredInspections.filter { $0.status == "cancelled" }
 
-        if viewModel.filteredInspections.isEmpty && !viewModel.isLoading {
-            Section {
-                ContentUnavailableView(
-                    "inspections.empty.title",
-                    systemImage: "checklist",
-                    description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
-                )
-                .listRowBackground(Color.clear)
-            }
-        }
-
         if !active.isEmpty {
             inspectionGroup(title: String(localized: "inspections.group.active"), inspections: active)
         }
@@ -130,6 +129,28 @@ struct InspectionsView: View {
 
         if !cancelled.isEmpty {
             inspectionGroup(title: String(localized: "inspections.group.cancelled"), inspections: cancelled)
+        }
+    }
+
+    private var filterHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Label("inspections.filter.show_records_for", systemImage: "calendar")
+                Spacer()
+                DatePicker("", selection: $viewModel.selectedDate, displayedComponents: .date)
+                    .labelsHidden()
+            }
+
+            if viewModel.isFilteringByDate {
+                Button(action: {
+                    viewModel.isFilteringByDate = false
+                }) {
+                    Label("inspections.filter.clear", systemImage: "xmark.circle")
+                }
+                .buttonStyle(.borderless)
+                .foregroundColor(.red)
+                .font(.subheadline)
+            }
         }
     }
     
@@ -243,6 +264,7 @@ struct InspectionRow: View {
                 HStack {
                     Text(propertyName)
                         .font(.headline)
+                        .lineLimit(1)
                     
                     if isActive {
                         Spacer()
@@ -277,6 +299,7 @@ struct InspectionRow: View {
                 }
                 .font(.caption2)
                 .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(.vertical, 4)

@@ -388,3 +388,9 @@
 "feedback.submit" = "Send";
 "feedback.success.title" = "Feedback Sent";
 "feedback.success.message" = "Your feedback was sent to the team.";
+
+"settings.loading" = "Loading...";
+"settings.profile.subtitle" = "Manage your account details, branding, and workspace setup.";
+"settings.support" = "Support";
+"settings.feedback.subtitle" = "Report an issue, request a feature, or share product feedback.";
+"settings.about" = "About";

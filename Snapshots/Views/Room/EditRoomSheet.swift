@@ -3,9 +3,11 @@ import SwiftUI
 struct EditRoomSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: EditRoomViewModel
+    let onSaved: (() -> Void)?
     
-    init(room: PropertyRoomModel) {
+    init(room: PropertyRoomModel, onSaved: (() -> Void)? = nil) {
         _viewModel = State(initialValue: EditRoomViewModel(room: room))
+        self.onSaved = onSaved
     }
     
     var body: some View {
@@ -50,6 +52,7 @@ struct EditRoomSheet: View {
                             let success = await viewModel.saveToSupabase()
                             if success {
                                 HapticManager.shared.notification(type: .success)
+                                onSaved?()
                                 dismiss()
                             } else {
                                 HapticManager.shared.notification(type: .error)

@@ -13,60 +13,72 @@ struct PropertyView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                // MARK: - Properties Section
-                Section("property.your_properties") {
-                    if viewModel.isLoading && viewModel.properties.isEmpty {
-                        HStack {
-                            Spacer()
-                            ProgressView()
-                            Spacer()
-                        }
-                    } else if viewModel.properties.isEmpty {
+            Group {
+                if !viewModel.isLoading && viewModel.properties.isEmpty {
+                    ScrollView {
                         ContentUnavailableView(
                             "property.empty.title",
                             systemImage: "building.2",
                             description: Text("property.empty.subtitle")
                         )
-                        .listRowBackground(Color.clear)
-                    } else {
-                        ForEach(viewModel.properties) { property in
-                            NavigationLink {
-                                PropertyDetailView(property: property)
-                            } label: {
-                                PropertyRow(property: property)
-                            }
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    initiateDelete(for: property)
-                                } label: {
-                                    Label("common.delete", systemImage: "trash")
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 96)
+                    }
+                    .refreshable {
+                        await viewModel.fetchProperties(showLoadingState: false)
+                    }
+                } else {
+                    List {
+                        Section("property.your_properties") {
+                            if viewModel.isLoading && viewModel.properties.isEmpty {
+                                HStack {
+                                    Spacer()
+                                    ProgressView()
+                                    Spacer()
+                                }
+                            } else {
+                                ForEach(viewModel.properties) { property in
+                                    NavigationLink {
+                                        PropertyDetailView(property: property)
+                                    } label: {
+                                        PropertyRow(property: property)
+                                    }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                        Button(role: .destructive) {
+                                            initiateDelete(for: property)
+                                        } label: {
+                                            Label("common.delete", systemImage: "trash")
+                                        }
+                                    }
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            editingProperty = property
+                                        } label: {
+                                            Label("common.edit", systemImage: "pencil")
+                                        }
+                                        .tint(.accentColor)
+                                    }
+                                    .contextMenu {
+                                        Button { editingProperty = property } label: { Label("common.edit", systemImage: "pencil") }
+                                        Button(role: .destructive) { initiateDelete(for: property) } label: { Label("common.delete", systemImage: "trash") }
+                                    }
+                                    .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                                 }
                             }
-                            .swipeActions(edge: .leading) {
-                                Button {
-                                    editingProperty = property
-                                } label: {
-                                    Label("common.edit", systemImage: "pencil")
-                                }
-                                .tint(.accentColor)
-                            }
-                            .contextMenu {
-                                Button { editingProperty = property } label: { Label("common.edit", systemImage: "pencil") }
-                                Button(role: .destructive) { initiateDelete(for: property) } label: { Label("common.delete", systemImage: "trash") }
-                            }
-                            .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                         }
                     }
+                    .listStyle(.insetGrouped)
+                    .refreshable {
+                        await viewModel.fetchProperties(showLoadingState: false)
+                    }
                 }
-                
             }
-            .listStyle(.insetGrouped)
             .navigationTitle("property.title")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
+                        guard !viewModel.isResolvingAddPropertyAccess else { return }
                         HapticManager.shared.impact(style: .light)
                         if viewModel.canAddProperty() {
                             viewModel.showingAddProperty = true
@@ -74,25 +86,14 @@ struct PropertyView: View {
                             viewModel.showingPaywall = true
                         }
                     }) {
-                        if viewModel.canAddProperty() {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                Text("property.add")
-                            }
-                        } else {
-                            HStack(spacing: 6) {
-                                Image(systemName: "lock.fill")
-                                    .imageScale(.small)
-                                Text("property.add")
-                            }
-                            .foregroundColor(.secondary)
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("property.add")
                         }
                     }
+                    .disabled(viewModel.isResolvingAddPropertyAccess)
                 }
             }
-                .refreshable {
-                    await viewModel.fetchProperties()
-                }
                 .task {
                     await viewModel.fetchProperties()
                 }
@@ -129,18 +130,18 @@ struct PropertyView: View {
                         propertyToDelete?.name ?? String(localized: "property.this_property")
                     ))
                 }
-                .sheet(isPresented: $viewModel.showingAddProperty, onDismiss: {
-                    Task { await viewModel.fetchProperties() }
-                }) {
-                    AddPropertySheet()
+                .sheet(isPresented: $viewModel.showingAddProperty) {
+                    AddPropertySheet {
+                        Task { await viewModel.fetchProperties(showLoadingState: false) }
+                    }
                 }
                 .sheet(isPresented: $viewModel.showingPaywall) {
                     PremiumPaywallView()
                 }
-                .sheet(item: $editingProperty, onDismiss: {
-                    Task { await viewModel.fetchProperties() }
-                }) { property in
-                    EditPropertySheet(propertyId: property.id)
+                .sheet(item: $editingProperty) { property in
+                    EditPropertySheet(propertyId: property.id) {
+                        Task { await viewModel.fetchProperties(showLoadingState: false) }
+                    }
                 }
             }
         }
@@ -178,11 +179,13 @@ struct PropertyRow: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text(property.name)
                     .font(.headline)
+                    .lineLimit(1)
                 
                 Text(property.address_line1 ?? String(localized: "property.no_address"))
                     .font(.caption)
                     .foregroundColor(.secondary)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
                 
                 HStack(spacing: 10) {
                     Label("\(property.bedrooms_count)", systemImage: "bed.double")

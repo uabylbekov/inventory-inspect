@@ -6,23 +6,34 @@ struct NotificationsView: View {
     
     var body: some View {
         NavigationStack {
-            List {
+            Group {
                 if notificationManager.notifications.isEmpty {
-                    ContentUnavailableView(
-                        "notifications.empty.title",
-                        systemImage: "bell.slash",
-                        description: Text("notifications.empty.description")
-                    )
-                    .listRowBackground(Color.clear)
-                } else {
-                    ForEach(notificationManager.notifications) { notification in
-                        NotificationRow(notification: notification)
-                            .onTapGesture {
-                                Task { await notificationManager.markAsRead(notification) }
-                            }
+                    ScrollView {
+                        ContentUnavailableView(
+                            "notifications.empty.title",
+                            systemImage: "bell.slash",
+                            description: Text("notifications.empty.description")
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 96)
                     }
-                    .onDelete { offsets in
-                        notificationManager.deleteNotifications(at: offsets)
+                    .refreshable {
+                        await notificationManager.fetchNotifications()
+                    }
+                } else {
+                    List {
+                        ForEach(notificationManager.notifications) { notification in
+                            NotificationRow(notification: notification)
+                                .onTapGesture {
+                                    Task { await notificationManager.markAsRead(notification) }
+                                }
+                        }
+                        .onDelete { offsets in
+                            notificationManager.deleteNotifications(at: offsets)
+                        }
+                    }
+                    .refreshable {
+                        await notificationManager.fetchNotifications()
                     }
                 }
             }
@@ -40,9 +51,6 @@ struct NotificationsView: View {
                         }
                     }
                 }
-            }
-            .refreshable {
-                await notificationManager.fetchNotifications()
             }
         }
         .task {

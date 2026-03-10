@@ -13,102 +13,87 @@ struct RoomInventoryView: View {
     }
     
     var body: some View {
-        List {
-            // MARK: - Room Header
-            Section {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 16) {
-                        ZStack {
-                            Circle()
-                                .fill(PropertyUI.roomColor(for: room.room_type ?? "").opacity(0.1))
-                                .frame(width: 60, height: 60)
-                            Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
-                                .font(.title2)
-                                .foregroundColor(PropertyUI.roomColor(for: room.room_type ?? ""))
-                        }
-                        
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(room.name)
-                                .font(.title3.bold())
-                            Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                        }
+        Group {
+            if !viewModel.isLoading && viewModel.items.isEmpty {
+                ScrollView {
+                    VStack(spacing: 24) {
+                        roomHeader
+                            .padding(.horizontal)
+
+                        ContentUnavailableView(
+                            "room_inventory.empty_title",
+                            systemImage: "cube.box",
+                            description: Text("room_inventory.empty_message")
+                        )
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, 40)
+                    }
+                    .padding(.top, 8)
+                }
+                .refreshable {
+                    await viewModel.fetchItems(showLoadingState: false)
+                }
+            } else {
+                List {
+                    Section {
+                        roomHeader
                     }
                     
-                    HStack(spacing: 20) {
-                        Label(
-                            String.localizedStringWithFormat(
-                                NSLocalizedString("room_inventory.items_count", comment: ""),
-                                viewModel.items.count
-                            ),
-                            systemImage: "cube.box"
-                        )
+                    Section("room_inventory.inventory") {
+                        if viewModel.isLoading && viewModel.items.isEmpty {
+                            HStack {
+                                Spacer()
+                                ProgressView()
+                                Spacer()
+                            }
+                        } else {
+                            ForEach(viewModel.items) { item in
+                                NavigationLink {
+                                    InventoryItemDetailView(item: item)
+                                        .onAppear { HapticManager.shared.impact(style: .light) }
+                                } label: {
+                                    InventoryItemRow(item: item)
+                                }
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        itemToDelete = item
+                                        showingItemDeleteAlert = true
+                                    } label: {
+                                        Label("common.delete", systemImage: "trash")
+                                    }
+                                }
+                                .swipeActions(edge: .leading) {
+                                    Button {
+                                        editingItem = item
+                                    } label: {
+                                        Label("common.edit", systemImage: "pencil")
+                                    }
+                                    .tint(.accentColor)
+                                }
+                                .contextMenu {
+                                    Button {
+                                        editingItem = item
+                                    } label: {
+                                        Label("room_inventory.edit_item", systemImage: "pencil")
+                                    }
+                                    Button(role: .destructive) {
+                                        itemToDelete = item
+                                        showingItemDeleteAlert = true
+                                    } label: {
+                                        Label("common.delete", systemImage: "trash")
+                                    }
+                                }
+                                .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
+                            }
+                        }
                     }
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
                 }
-                .padding(.vertical, 8)
-            }
-            
-            // MARK: - Inventory Section
-            Section("room_inventory.inventory") {
-                if viewModel.isLoading && viewModel.items.isEmpty {
-                    HStack {
-                        Spacer()
-                        ProgressView()
-                        Spacer()
-                    }
-                } else if viewModel.items.isEmpty {
-                    ContentUnavailableView(
-                        "room_inventory.empty_title",
-                        systemImage: "cube.box",
-                        description: Text("room_inventory.empty_message")
-                    )
-                    .listRowBackground(Color.clear)
-                } else {
-                    ForEach(viewModel.items) { item in
-                        NavigationLink {
-                            InventoryItemDetailView(item: item)
-                                .onAppear { HapticManager.shared.impact(style: .light) }
-                        } label: {
-                            InventoryItemRow(item: item)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                itemToDelete = item
-                                showingItemDeleteAlert = true
-                            } label: {
-                                Label("common.delete", systemImage: "trash")
-                            }
-                        }
-                        .swipeActions(edge: .leading) {
-                            Button {
-                                editingItem = item
-                            } label: {
-                                Label("common.edit", systemImage: "pencil")
-                            }
-                            .tint(.accentColor)
-                        }
-                        .contextMenu {
-                            Button {
-                                editingItem = item
-                            } label: {
-                                Label("room_inventory.edit_item", systemImage: "pencil")
-                            }
-                            Button(role: .destructive) {
-                                itemToDelete = item
-                                showingItemDeleteAlert = true
-                            } label: {
-                                Label("common.delete", systemImage: "trash")
-                            }
-                        }
-                        .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                    }
+                .listStyle(.insetGrouped)
+                .refreshable {
+                    await viewModel.fetchItems(showLoadingState: false)
                 }
             }
         }
-        .listStyle(.insetGrouped)
         .navigationTitle(room.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -136,22 +121,55 @@ struct RoomInventoryView: View {
         } message: {
             Text("room_inventory.delete_message")
         }
-        .sheet(isPresented: $viewModel.showingAddItem, onDismiss: {
-            Task { await viewModel.fetchItems() }
-        }) {
-            AddItemSheet(roomId: room.id)
+        .sheet(isPresented: $viewModel.showingAddItem) {
+            AddItemSheet(roomId: room.id) {
+                Task { await viewModel.fetchItems(showLoadingState: false) }
+            }
         }
-        .sheet(item: $editingItem, onDismiss: {
-            Task { await viewModel.fetchItems() }
-        }) { item in
-            EditItemSheet(item: item)
+        .sheet(item: $editingItem) { item in
+            EditItemSheet(item: item) {
+                Task { await viewModel.fetchItems(showLoadingState: false) }
+            }
         }
         .task {
             await viewModel.fetchItems()
         }
-        .refreshable {
-            await viewModel.fetchItems()
+    }
+
+    private var roomHeader: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 16) {
+                ZStack {
+                    Circle()
+                        .fill(PropertyUI.roomColor(for: room.room_type ?? "").opacity(0.1))
+                        .frame(width: 60, height: 60)
+                    Image(systemName: PropertyUI.roomIcon(for: room.room_type ?? ""))
+                        .font(.title2)
+                        .foregroundColor(PropertyUI.roomColor(for: room.room_type ?? ""))
+                }
+                
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(room.name)
+                        .font(.title3.bold())
+                    Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+                }
+            }
+            
+            HStack(spacing: 20) {
+                Label(
+                    String.localizedStringWithFormat(
+                        NSLocalizedString("room_inventory.items_count", comment: ""),
+                        viewModel.items.count
+                    ),
+                    systemImage: "cube.box"
+                )
+            }
+            .font(.subheadline)
+            .foregroundColor(.secondary)
         }
+        .padding(.vertical, 8)
     }
 }
 

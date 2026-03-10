@@ -5,6 +5,11 @@ struct AddPropertySheet: View {
 
     @State private var viewModel = AddPropertyViewModel()
     @State private var showValidation = false
+    let onSaved: (() -> Void)?
+
+    init(onSaved: (() -> Void)? = nil) {
+        self.onSaved = onSaved
+    }
 
     var body: some View {
         NavigationStack {
@@ -144,6 +149,7 @@ struct AddPropertySheet: View {
             let success = await viewModel.saveToSupabase()
             if success {
                 HapticManager.shared.notification(type: .success)
+                onSaved?()
                 dismiss()
             } else {
                 HapticManager.shared.notification(type: .error)

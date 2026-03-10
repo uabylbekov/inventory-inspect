@@ -21,14 +21,20 @@ final class PropertyViewModel {
         let membership_role: String
     }
 
+    var isResolvingAddPropertyAccess: Bool {
+        accessManager.isCheckingAccess
+    }
+
     func canAddProperty() -> Bool {
         guard let userId = accessManager.profile?.id else { return false }
         let ownedCount = properties.filter { $0.owner_id == userId }.count
         return accessManager.canAddProperty(ownedCount: ownedCount)
     }
 
-    func fetchProperties() async {
-        isLoading = true
+    func fetchProperties(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        }
         errorMessage = nil
         
         do {

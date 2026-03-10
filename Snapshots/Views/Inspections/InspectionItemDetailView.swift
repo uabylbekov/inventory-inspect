@@ -169,7 +169,6 @@ struct InspectionItemDetailView: View {
                         if saveError == nil {
                             savedSuccessfully = true
                             HapticManager.shared.notification(type: .success)
-                            try? await Task.sleep(nanoseconds: 500_000_000)
                             dismiss()
                         }
                     }

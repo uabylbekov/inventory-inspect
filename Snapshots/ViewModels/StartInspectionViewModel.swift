@@ -13,8 +13,18 @@ final class StartInspectionViewModel {
     
     var properties: [PropertyModel] = []
     var isLoadingProperties = true
+
+    init(preloadedProperties: [PropertyModel] = []) {
+        self.properties = preloadedProperties
+        self.isLoadingProperties = preloadedProperties.isEmpty
+    }
     
-    func fetchProperties() async {
+    func fetchProperties(forceRefresh: Bool = false) async {
+        if !forceRefresh && !properties.isEmpty {
+            isLoadingProperties = false
+            return
+        }
+
         isLoadingProperties = true
         errorMessage = nil
         do {

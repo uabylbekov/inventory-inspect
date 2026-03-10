@@ -4,6 +4,12 @@ struct StartInspectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel = StartInspectionViewModel()
     @State private var showDuplicateAlert = false
+    let onStarted: (() -> Void)?
+
+    init(preloadedProperties: [PropertyModel] = [], onStarted: (() -> Void)? = nil) {
+        _viewModel = State(initialValue: StartInspectionViewModel(preloadedProperties: preloadedProperties))
+        self.onStarted = onStarted
+    }
     
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -40,29 +46,16 @@ struct StartInspectionSheet: View {
                     
                     // MARK: - Type Selection
                     Section("start_inspection.type_section") {
-                        InspectionTypeRow(
-                            icon: "wrench.adjustable.fill",
-                            iconColor: .blue,
-                            title: String(localized: "start_inspection.type.routine.title"),
-                            tip: String(localized: "start_inspection.type.routine.tip"),
-                            isSelected: viewModel.inspectionType == "routine"
-                        ) { viewModel.inspectionType = "routine" }
+                        Picker("start_inspection.type_section", selection: $viewModel.inspectionType) {
+                            Text("start_inspection.type.routine.title").tag("routine")
+                            Text("start_inspection.type.check_in.title").tag("check-in")
+                            Text("start_inspection.type.check_out.title").tag("check-out")
+                        }
 
-                        InspectionTypeRow(
-                            icon: "door.left.hand.open",
-                            iconColor: .green,
-                            title: String(localized: "start_inspection.type.check_in.title"),
-                            tip: String(localized: "start_inspection.type.check_in.tip"),
-                            isSelected: viewModel.inspectionType == "check-in"
-                        ) { viewModel.inspectionType = "check-in" }
-
-                        InspectionTypeRow(
-                            icon: "door.right.hand.closed",
-                            iconColor: .orange,
-                            title: String(localized: "start_inspection.type.check_out.title"),
-                            tip: String(localized: "start_inspection.type.check_out.tip"),
-                            isSelected: viewModel.inspectionType == "check-out"
-                        ) { viewModel.inspectionType = "check-out" }
+                        Text(selectedInspectionTip)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     
                     // MARK: - Active Sessions
@@ -133,7 +126,7 @@ struct StartInspectionSheet: View {
                     Button("common.cancel") { dismiss() }
                 }
             }
-            .task { 
+            .task {
                 await viewModel.fetchProperties()
             }
             .onChange(of: viewModel.selectedPropertyId) { _, _ in
@@ -142,13 +135,14 @@ struct StartInspectionSheet: View {
             .alert("start_inspection.duplicate.title", isPresented: $showDuplicateAlert) {
                 Button("common.cancel", role: .cancel) {}
                 Button("start_inspection.duplicate.confirm", role: .destructive) {
-                    Task {
-                        let id = await viewModel.startInspection()
-                        if id != nil { 
-                            HapticManager.shared.notification(type: .success)
-                            dismiss() 
+                        Task {
+                            let id = await viewModel.startInspection()
+                            if id != nil { 
+                                HapticManager.shared.notification(type: .success)
+                                onStarted?()
+                                dismiss() 
+                            }
                         }
-                    }
                 }
             } message: {
                 let typeName = viewModel.inspectionType == "check-in"
@@ -169,49 +163,20 @@ struct StartInspectionSheet: View {
             let id = await viewModel.startInspection()
             if id != nil {
                 HapticManager.shared.notification(type: .success)
+                onStarted?()
                 dismiss()
             }
         }
     }
-}
 
-private struct InspectionTypeRow: View {
-    let icon: String
-    let iconColor: Color
-    let title: String
-    let tip: String
-    let isSelected: Bool
-    let onTap: () -> Void
-
-    var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(iconColor.gradient)
-                        .frame(width: 36, height: 36)
-                    Image(systemName: icon)
-                        .font(.subheadline)
-                        .foregroundColor(.white)
-                }
-
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(title)
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
-                    Text(tip)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                Spacer()
-
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.accentColor)
-                    .opacity(isSelected ? 1 : 0)
-            }
-            .padding(.vertical, 4)
+    private var selectedInspectionTip: String {
+        switch viewModel.inspectionType {
+        case "check-in":
+            return String(localized: "start_inspection.type.check_in.tip")
+        case "check-out":
+            return String(localized: "start_inspection.type.check_out.tip")
+        default:
+            return String(localized: "start_inspection.type.routine.tip")
         }
     }
 }

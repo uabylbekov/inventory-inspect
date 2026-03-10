@@ -13,8 +13,10 @@ final class RoomInventoryViewModel {
         self.room = room
     }
     
-    func fetchItems() async {
-        isLoading = true
+    func fetchItems(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        }
         errorMessage = nil
         
         do {

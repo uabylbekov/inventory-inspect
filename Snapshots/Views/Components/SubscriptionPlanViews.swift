@@ -7,34 +7,16 @@ struct SubscriptionPlanRow: View {
         NavigationLink {
             SubscriptionPlanDetailView()
         } label: {
-            HStack(spacing: 12) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(iconBackground.gradient)
-                        .frame(width: 34, height: 34)
-                    Image(systemName: iconName)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(iconForeground)
-                }
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("plan.your")
-                        .font(.subheadline)
-                        .foregroundColor(.primary)
-                        .lineLimit(2)
-                    Text(currentPlanTitle)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                }
-
-                Spacer()
-
+            LabeledContent {
                 if accessManager.isDirectSubscriber {
                     PlanBadge()
+                } else {
+                    Text(currentPlanTitle)
+                        .foregroundStyle(.secondary)
                 }
+            } label: {
+                Label("plan.your", systemImage: iconName)
             }
-            .padding(.vertical, 2)
         }
     }
 
@@ -43,15 +25,6 @@ struct SubscriptionPlanRow: View {
         if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
     }
-
-    private var iconBackground: Color {
-        accessManager.isDirectSubscriber ? .accentColor : Color.secondary.opacity(0.15)
-    }
-
-    private var iconForeground: Color {
-        accessManager.isDirectSubscriber ? .white : .secondary
-    }
-
     private var iconName: String {
         if accessManager.isDirectSubscriberEnterprise { return "crown.fill" }
         if accessManager.isDirectSubscriber { return "star.fill" }
@@ -69,20 +42,16 @@ struct SubscriptionPlanDetailView: View {
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 8) {
-                        Text(currentPlanTitle)
-                            .font(.headline)
-                        if accessManager.isDirectSubscriber {
-                            PlanBadge()
-                        }
+                LabeledContent("plan.your", value: currentPlanTitle)
+                if accessManager.isDirectSubscriber {
+                    LabeledContent("paywall.current_plan") {
+                        PlanBadge()
                     }
-                    Text(summaryText)
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, 4)
+                Text(summaryText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section("plan.plans") {
@@ -184,42 +153,24 @@ struct SubscriptionPlanDetailView: View {
         note: String
     ) -> some View {
         DisclosureGroup(isExpanded: isExpanded) {
-            VStack(alignment: .leading, spacing: 8) {
-                ForEach(highlights, id: \.self) { item in
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.accentColor)
-                            .padding(.top, 2)
-                        Text(item)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
+            ForEach(highlights, id: \.self) { item in
+                Label {
+                    Text(item)
+                        .fixedSize(horizontal: false, vertical: true)
+                } icon: {
+                    Image(systemName: "checkmark")
+                        .foregroundColor(.accentColor)
                 }
+            }
 
-                Text(note)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.top, 6)
+            Text(note)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.top, 4)
+                .fixedSize(horizontal: false, vertical: true)
         } label: {
-            HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(tint.opacity(0.14))
-                        .frame(width: 28, height: 28)
-                    Image(systemName: icon)
-                        .font(.caption.weight(.bold))
-                        .foregroundColor(tint)
-                }
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Label(title, systemImage: icon)
+                .foregroundStyle(tint)
         }
     }
 }
