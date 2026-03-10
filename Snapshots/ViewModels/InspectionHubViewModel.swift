@@ -79,7 +79,7 @@ final class InspectionHubViewModel {
                 .eq("id", value: inspection.property_id.uuidString.lowercased())
                 .execute()
                 .value
-            self.property = fetchedProperty.first
+            self.property = try await PropertyOwnerProfileLoader.enrich(fetchedProperty).first
             
             var allItems: [RoomInventoryItemModel] = []
             for room in fetchedRooms {

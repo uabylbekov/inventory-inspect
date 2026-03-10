@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>dashboard.subtitle.attention_count</key>
+	<dict><key>NSStringLocalizedFormatKey</key><string>%#@items@</string><key>items</key><dict><key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string><key>NSStringFormatValueTypeKey</key><string>d</string><key>one</key><string>%d item precisa de atenção.</string><key>other</key><string>%d itens precisam de atenção.</string></dict></dict>
+	<key>inspections.issue_count</key>
+	<dict><key>NSStringLocalizedFormatKey</key><string>%#@issues@</string><key>issues</key><dict><key>NSStringFormatSpecTypeKey</key><string>NSStringPluralRuleType</string><key>NSStringFormatValueTypeKey</key><string>d</string><key>one</key><string>%d problema</string><key>other</key><string>%d problemas</string></dict></dict>
+</dict>
+</plist>

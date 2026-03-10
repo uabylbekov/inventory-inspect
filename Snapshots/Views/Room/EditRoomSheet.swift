@@ -11,19 +11,19 @@ struct EditRoomSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Edit Room Details")) {
-                    TextField("Room Name (e.g. Master Bedroom)", text: $viewModel.name)
-                    TextField("Description (e.g. South facing windows)", text: $viewModel.description)
+                Section(header: Text("room_sheet.edit_details")) {
+                    TextField("room_sheet.name_placeholder", text: $viewModel.name)
+                    TextField("room_sheet.description_placeholder", text: $viewModel.description)
                     
-                    Picker("Room Type", selection: $viewModel.roomType) {
-                        Text("Bedroom").tag("Bedroom")
-                        Text("Bathroom").tag("Bathroom")
-                        Text("Kitchen").tag("Kitchen")
-                        Text("Living Room").tag("Living Room")
-                        Text("Dining Room").tag("Dining Room")
-                        Text("Office").tag("Office")
-                        Text("Outdoor Space").tag("Outdoor Space")
-                        Text("Other").tag("Other")
+                    Picker("room_sheet.type", selection: $viewModel.roomType) {
+                        Text("room_type.bedroom").tag("Bedroom")
+                        Text("room_type.bathroom").tag("Bathroom")
+                        Text("room_type.kitchen").tag("Kitchen")
+                        Text("room_type.living_room").tag("Living Room")
+                        Text("room_type.dining_room").tag("Dining Room")
+                        Text("room_type.office").tag("Office")
+                        Text("room_type.outdoor_space").tag("Outdoor Space")
+                        Text("room_type.other").tag("Other")
                     }
                 }
                 
@@ -35,11 +35,11 @@ struct EditRoomSheet: View {
                     }
                 }
             }
-            .navigationTitle("Edit Room")
+            .navigationTitle("room_sheet.edit_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         dismiss()
                     }
                 }
@@ -59,7 +59,7 @@ struct EditRoomSheet: View {
                         if viewModel.isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("common.save")
                         }
                     }
                     .disabled(viewModel.isSaveDisabled)

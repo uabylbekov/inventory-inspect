@@ -11,10 +11,10 @@ struct EditItemSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Edit Item Details")) {
-                    TextField("Item Name (e.g. Sofa, Coffeemaker)", text: $viewModel.name)
-                    TextField("Description (e.g. Black leather, Model: X1)", text: $viewModel.description)
-                    Stepper("Expected Quantity: \(viewModel.expectedQty)", value: $viewModel.expectedQty, in: 1...100)
+                Section(header: Text("item_sheet.edit_details")) {
+                    TextField("item_sheet.name_placeholder", text: $viewModel.name)
+                    TextField("item_sheet.description_placeholder", text: $viewModel.description)
+                    Stepper(String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty), value: $viewModel.expectedQty, in: 1...100)
                 }
                 
                 if let error = viewModel.errorMessage {
@@ -25,11 +25,11 @@ struct EditItemSheet: View {
                     }
                 }
             }
-            .navigationTitle("Edit Item")
+            .navigationTitle("item_sheet.edit_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("common.cancel") {
                         dismiss()
                     }
                 }
@@ -49,7 +49,7 @@ struct EditItemSheet: View {
                         if viewModel.isSaving {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("common.save")
                         }
                     }
                     .disabled(viewModel.isSaveDisabled)

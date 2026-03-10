@@ -88,7 +88,7 @@ struct FullScreenImageView: View {
                     }
                     .sheet(isPresented: $showShareSheet) {
                         if let data = img.jpegData(compressionQuality: 0.9) {
-                            ShareSheet(data: data, filename: "inspection-photo.jpg")
+                            ShareSheet(data: data, filename: String(localized: "image.filename"))
                         }
                     }
                 }
@@ -100,7 +100,7 @@ struct FullScreenImageView: View {
             if savedToPhotos {
                 VStack {
                     Spacer()
-                    Label("Saved to Photos", systemImage: "checkmark.circle.fill")
+                    Label("image.saved_to_photos", systemImage: "checkmark.circle.fill")
                         .font(.subheadline.bold())
                         .foregroundColor(.white)
                         .padding(.horizontal, 20)

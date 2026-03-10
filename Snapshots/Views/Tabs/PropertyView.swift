@@ -15,7 +15,7 @@ struct PropertyView: View {
         NavigationStack {
             List {
                 // MARK: - Properties Section
-                Section("Your Properties") {
+                Section("property.your_properties") {
                     if viewModel.isLoading && viewModel.properties.isEmpty {
                         HStack {
                             Spacer()
@@ -24,9 +24,9 @@ struct PropertyView: View {
                         }
                     } else if viewModel.properties.isEmpty {
                         ContentUnavailableView(
-                            "No Properties",
+                            "property.empty.title",
                             systemImage: "building.2",
-                            description: Text("Add your first property to get started.")
+                            description: Text("property.empty.subtitle")
                         )
                         .listRowBackground(Color.clear)
                     } else {
@@ -40,20 +40,20 @@ struct PropertyView: View {
                                 Button(role: .destructive) {
                                     initiateDelete(for: property)
                                 } label: {
-                                    Label("Delete", systemImage: "trash")
+                                    Label("common.delete", systemImage: "trash")
                                 }
                             }
                             .swipeActions(edge: .leading) {
                                 Button {
                                     editingProperty = property
                                 } label: {
-                                    Label("Edit", systemImage: "pencil")
+                                    Label("common.edit", systemImage: "pencil")
                                 }
                                 .tint(.accentColor)
                             }
                             .contextMenu {
-                                Button { editingProperty = property } label: { Label("Edit", systemImage: "pencil") }
-                                Button(role: .destructive) { initiateDelete(for: property) } label: { Label("Delete", systemImage: "trash") }
+                                Button { editingProperty = property } label: { Label("common.edit", systemImage: "pencil") }
+                                Button(role: .destructive) { initiateDelete(for: property) } label: { Label("common.delete", systemImage: "trash") }
                             }
                             .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                         }
@@ -62,7 +62,7 @@ struct PropertyView: View {
                 
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Properties")
+            .navigationTitle("property.title")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -77,19 +77,15 @@ struct PropertyView: View {
                         if viewModel.canAddProperty() {
                             HStack(spacing: 4) {
                                 Image(systemName: "plus")
-                                Text("Add Property")
+                                Text("property.add")
                             }
                         } else {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus")
-                                Text("Add Property")
-                                Text("PRO")
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 6)
-                                    .padding(.vertical, 2)
-                                    .background(Capsule().fill(Color.accentColor))
-                                    .foregroundColor(.white)
+                            HStack(spacing: 6) {
+                                Image(systemName: "lock.fill")
+                                    .imageScale(.small)
+                                Text("property.add")
                             }
+                            .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -100,19 +96,22 @@ struct PropertyView: View {
                 .task {
                     await viewModel.fetchProperties()
                 }
-                .alert("Active Inspections Found", isPresented: $showingActiveInspectionWarning) {
-                    Button("Cancel", role: .cancel) { propertyToDelete = nil }
-                    Button("Delete Anyway", role: .destructive) { showingPropertyDeleteAlert = true }
+                .alert("property.delete.active_title", isPresented: $showingActiveInspectionWarning) {
+                    Button("common.cancel", role: .cancel) { propertyToDelete = nil }
+                    Button("property.delete.anyway", role: .destructive) { showingPropertyDeleteAlert = true }
                 } message: {
-                    Text("\(activeInspectionWarningCount) active inspection(s) are still in progress for this property. Deleting will remove them permanently.")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("property.delete.active_message", comment: ""),
+                        activeInspectionWarningCount
+                    ))
                 }
-                .alert("Delete Property?", isPresented: $showingPropertyDeleteAlert) {
-                    TextField("Type DELETE to confirm", text: $deleteConfirmationText)
-                    Button("Cancel", role: .cancel) {
+                .alert("property.delete.title", isPresented: $showingPropertyDeleteAlert) {
+                    TextField("property.delete.confirm_placeholder", text: $deleteConfirmationText)
+                    Button("common.cancel", role: .cancel) {
                         propertyToDelete = nil
                         deleteConfirmationText = ""
                     }
-                    Button("Delete", role: .destructive) {
+                    Button("common.delete", role: .destructive) {
                         if let property = propertyToDelete, deleteConfirmationText == "DELETE" {
                             HapticManager.shared.impact(style: .medium)
                             if let index = viewModel.properties.firstIndex(where: { $0.id == property.id }) {
@@ -125,7 +124,10 @@ struct PropertyView: View {
                     }
                     .disabled(deleteConfirmationText != "DELETE")
                 } message: {
-                    Text("This is a permanent action and will remove '\(propertyToDelete?.name ?? "this property")' and all its rooms and items.")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("property.delete.message", comment: ""),
+                        propertyToDelete?.name ?? String(localized: "property.this_property")
+                    ))
                 }
                 .sheet(isPresented: $viewModel.showingAddProperty, onDismiss: {
                     Task { await viewModel.fetchProperties() }
@@ -177,7 +179,7 @@ struct PropertyRow: View {
                 Text(property.name)
                     .font(.headline)
                 
-                Text(property.address_line1 ?? "No address provided")
+                Text(property.address_line1 ?? String(localized: "property.no_address"))
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .lineLimit(1)

@@ -6,6 +6,20 @@
 	<string>Snapshots</string>
 	<key>CFBundleDisplayName</key>
 	<string>Snapshots</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+		<string>fr</string>
+		<string>de</string>
+		<string>pt</string>
+		<string>it</string>
+		<string>ja</string>
+		<string>ko</string>
+		<string>ru</string>
+		<string>zh-Hans</string>
+		<string>nl</string>
+	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -25,8 +39,6 @@
 	<string>Save snapshots photos to your Photos library.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>The app requires access to the camera to take photos for snapshots.</string>
-	<key></key>
-	<string></string>
 	<key>UIPrerenderedIcon</key>
 	<true/>
 </dict>

@@ -10,8 +10,8 @@ struct AddPropertySheet: View {
         NavigationStack {
             List {
                 // MARK: - Basic Details
-                Section("Basic Details") {
-                    TextField("Property Name (e.g. Sunset Villa)", text: $viewModel.name)
+                Section("property_sheet.basic_details") {
+                    TextField("property_sheet.name_placeholder", text: $viewModel.name)
                         .onChange(of: viewModel.name) { _, _ in
                             if showValidation { } 
                         }
@@ -22,39 +22,39 @@ struct AddPropertySheet: View {
                             .foregroundColor(.red)
                     }
 
-                    TextField("Description", text: $viewModel.description, axis: .vertical)
+                    TextField("property_sheet.description", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...10)
                 }
 
                 // MARK: - Classification
-                Section("Classification") {
-                    Picker("Property Type", selection: $viewModel.type) {
-                        Text("Apartment").tag("Apartment")
-                        Text("House").tag("House")
-                        Text("Condo").tag("Condo")
-                        Text("Townhouse").tag("Townhouse")
-                        Text("Other").tag("Other")
+                Section("property_sheet.classification") {
+                    Picker("property_sheet.property_type", selection: $viewModel.type) {
+                        Text("property_type.apartment").tag("Apartment")
+                        Text("property_type.house").tag("House")
+                        Text("property_type.condo").tag("Condo")
+                        Text("property_type.townhouse").tag("Townhouse")
+                        Text("property_type.other").tag("Other")
                     }
 
-                    Picker("Status", selection: $viewModel.status) {
-                        Text("Active").tag("active")
-                        Text("Inactive").tag("inactive")
-                        Text("Draft").tag("draft")
+                    Picker("property_sheet.status", selection: $viewModel.status) {
+                        Text("status.active").tag("active")
+                        Text("status.inactive").tag("inactive")
+                        Text("status.draft").tag("draft")
                     }
                 }
 
                 // MARK: - Location
-                Section("Location") {
-                    TextField("Address Line 1", text: $viewModel.addressLine1)
+                Section("property_sheet.location") {
+                    TextField("property_sheet.address1", text: $viewModel.addressLine1)
                         .textContentType(.streetAddressLine1)
-                    TextField("Address Line 2", text: $viewModel.addressLine2)
+                    TextField("property_sheet.address2", text: $viewModel.addressLine2)
                         .textContentType(.streetAddressLine2)
-                    TextField("City", text: $viewModel.city)
+                    TextField("property_sheet.city", text: $viewModel.city)
                         .textContentType(.addressCity)
-                    TextField("State / Region", text: $viewModel.stateRegion)
+                    TextField("property_sheet.state_region", text: $viewModel.stateRegion)
                         .textContentType(.addressState)
 
-                    TextField("Postal Code", text: $viewModel.postalCode)
+                    TextField("property_sheet.postal_code", text: $viewModel.postalCode)
                         .textContentType(.postalCode)
                         .autocorrectionDisabled()
                     
@@ -64,7 +64,7 @@ struct AddPropertySheet: View {
                             .foregroundColor(.red)
                     }
 
-                    Picker("Country", selection: $viewModel.country) {
+                    Picker("property_sheet.country", selection: $viewModel.country) {
                         ForEach(AddPropertyViewModel.allCountries, id: \.code) { country in
                             Text(country.name).tag(country.name)
                         }
@@ -72,14 +72,14 @@ struct AddPropertySheet: View {
                 }
 
                 // MARK: - Details
-                Section("Interior Details") {
-                    Stepper("Bedrooms: \(viewModel.bedroomsCount)", value: $viewModel.bedroomsCount, in: 0...50)
-                    Stepper("Bathrooms: \(viewModel.bathroomsCount, specifier: "%.1f")", value: $viewModel.bathroomsCount, in: 0...50, step: 0.5)
+                Section("property_sheet.interior_details") {
+                    Stepper(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bedrooms", comment: ""), viewModel.bedroomsCount), value: $viewModel.bedroomsCount, in: 0...50)
+                    Stepper(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount), value: $viewModel.bathroomsCount, in: 0...50, step: 0.5)
 
                     HStack {
-                        Text("Max Guests")
+                        Text("property_sheet.max_guests")
                         Spacer()
-                        TextField("Count", text: $viewModel.maxGuests)
+                        TextField("property_sheet.count", text: $viewModel.maxGuests)
                             .keyboardType(.numberPad)
                             .multilineTextAlignment(.trailing)
                             .frame(width: 80)
@@ -93,11 +93,11 @@ struct AddPropertySheet: View {
                 }
 
                 // MARK: - Listings
-                Section("External Listings") {
-                    TextField("Airbnb Listing ID", text: $viewModel.airbnbListingId)
+                Section("property_sheet.external_listings") {
+                    TextField("property_sheet.airbnb_id", text: $viewModel.airbnbListingId)
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
-                    TextField("VRBO Listing ID", text: $viewModel.vrboListingId)
+                    TextField("property_sheet.vrbo_id", text: $viewModel.vrboListingId)
                         .autocapitalization(.none)
                         .autocorrectionDisabled()
                 }
@@ -110,7 +110,7 @@ struct AddPropertySheet: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text("Add Property")
+                            Text("property.add")
                                 .fontWeight(.bold)
                         }
                         .frame(maxWidth: .infinity)
@@ -121,11 +121,11 @@ struct AddPropertySheet: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Add Property")
+            .navigationTitle("property.add")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }

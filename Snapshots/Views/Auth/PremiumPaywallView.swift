@@ -3,9 +3,13 @@ import StoreKit
 
 struct PremiumPaywallView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     private let accessManager = SnapshotsAccessManager.shared
     @State private var products: [Product] = []
     @State private var isLoadingProducts = true
+    @State private var isPurchasing = false
+    @State private var alertMessage: String?
+    @State private var productLoadError: String?
 
     private let proProductId = "com.ulukskywalker.snapshots.pro"
     private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise"
@@ -43,9 +47,11 @@ struct PremiumPaywallView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(currentPlanName)
                                     .font(.headline)
-                                Text("Current Plan")
+                                    .lineLimit(2)
+                                Text("paywall.current_plan")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .lineLimit(2)
                             }
                         }
                         .padding(.vertical, 6)
@@ -61,27 +67,28 @@ struct PremiumPaywallView: View {
                     Section {
                         HStack {
                             Spacer()
-                            ProgressView("Loading Plans...")
+                            ProgressView("paywall.loading_plans")
                             Spacer()
                         }
                     }
-                } else {
+                } else if !products.isEmpty {
                     if let proProduct = products.first(where: { $0.id == proProductId }) {
                         Section {
                             PlanRow(
                                 icon: "star.fill",
                                 iconColor: .accentColor,
-                                name: "Professional",
+                                name: String(localized: "plan.professional"),
                                 price: proProduct.displayPrice,
                                 isActive: accessManager.activeProductTier == "pro",
+                                isBusy: isPurchasing,
                                 action: { Task { await purchase(proProduct) } }
                             )
-                            FeatureRow("Photo Attachments on Inspections")
-                            FeatureRow("Up to 10 Properties")
-                            FeatureRow("Up to 5 Managers")
-                            FeatureRow("Custom Company Logo on PDFs")
+                            FeatureRow(String(localized: "paywall.professional.feature_1"))
+                            FeatureRow(String(localized: "paywall.professional.feature_2"))
+                            FeatureRow(String(localized: "paywall.professional.feature_3"))
+                            FeatureRow(String(localized: "paywall.professional.feature_4"))
                         } header: {
-                            Text("Professional")
+                            Text("plan.professional")
                         }
                     }
 
@@ -90,49 +97,87 @@ struct PremiumPaywallView: View {
                             PlanRow(
                                 icon: "building.2.fill",
                                 iconColor: .purple,
-                                name: "Enterprise",
+                                name: String(localized: "plan.enterprise"),
                                 price: entProduct.displayPrice,
                                 isActive: accessManager.activeProductTier == "enterprise",
+                                isBusy: isPurchasing,
                                 action: { Task { await purchase(entProduct) } }
                             )
-                            FeatureRow("Everything in Professional")
-                            FeatureRow("Unlimited Properties & Managers")
-                            FeatureRow("Full White-label PDF Reports")
+                            FeatureRow(String(localized: "paywall.enterprise.feature_1"))
+                            FeatureRow(String(localized: "paywall.enterprise.feature_2"))
+                            FeatureRow(String(localized: "paywall.enterprise.feature_3"))
                         } header: {
-                            Text("Enterprise")
+                            Text("plan.enterprise")
                         }
+                    }
+                } else {
+                    Section {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("paywall.unavailable_title")
+                                .font(.headline)
+                            Text(productLoadError ?? String(localized: "paywall.unavailable_message"))
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Label("paywall.unavailable.check_1", systemImage: "checkmark.circle")
+                                Label("paywall.unavailable.check_2", systemImage: "checkmark.circle")
+                                Label("paywall.unavailable.check_3", systemImage: "checkmark.circle")
+                            }
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+
+                            Button("common.try_again") {
+                                Task { await loadProducts() }
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.small)
+                            .padding(.top, 4)
+                        }
+                        .padding(.vertical, 4)
+                    } header: {
+                        Text("paywall.paid_plans")
                     }
                 }
 
                 // MARK: - Included in All Plans
                 Section {
-                    Label("Unlimited Inspections", systemImage: "checkmark.shield.fill")
+                    Label("paywall.all_plans.feature_1", systemImage: "checkmark.shield.fill")
                         .font(.subheadline)
-                    Label("PDF Report Generation", systemImage: "doc.text.fill")
+                    Label("paywall.all_plans.feature_2", systemImage: "doc.text.fill")
                         .font(.subheadline)
-                    Label("Room & Inventory Tracking", systemImage: "list.bullet.clipboard.fill")
+                    Label("paywall.all_plans.feature_3", systemImage: "list.bullet.clipboard.fill")
                         .font(.subheadline)
-                    Label("Cloud Backup", systemImage: "icloud.fill")
+                    Label("paywall.all_plans.feature_4", systemImage: "icloud.fill")
                         .font(.subheadline)
                 } header: {
-                    Text("All Plans Include")
+                    Text("paywall.all_plans")
                 } footer: {
-                    Text("Photo attachments and team collaboration require a paid plan.")
+                    Text("paywall.all_plans_footer")
                 }
 
                 // MARK: - Legal
                 Section {
-                    Button("Restore Purchases") {
-                        Task { await accessManager.updateSubscriptionStatus() }
+                    Button("paywall.restore_purchases") {
+                        Task {
+                            do {
+                                try await AppStore.sync()
+                            } catch {
+                                print("Paywall: Restore failed: \(error)")
+                                alertMessage = String(localized: "paywall.restore_failed")
+                            }
+                            await accessManager.updateSubscriptionStatus()
+                        }
                     }
-                    Button("Terms of Service") { }
-                    Button("Privacy Policy") { }
+                    Button("paywall.terms") { openLegalURL(EnvConfig.termsOfServiceURL) }
+                    Button("paywall.privacy") { openLegalURL(EnvConfig.privacyPolicyURL) }
                 } header: {
-                    Text("Legal")
+                    Text("paywall.legal")
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Choose a Plan")
+            .navigationTitle("paywall.choose_plan")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -150,68 +195,93 @@ struct PremiumPaywallView: View {
         .task {
             await loadProducts()
         }
+        .alert("paywall.subscription", isPresented: Binding(
+            get: { alertMessage != nil },
+            set: { if !$0 { alertMessage = nil } }
+        )) {
+            Button("common.ok", role: .cancel) { alertMessage = nil }
+        } message: {
+            Text(alertMessage ?? "")
+        }
     }
 
     private var currentPlanName: String {
-        if accessManager.isEnterprise { return "Enterprise" }
-        if accessManager.isPro { return "Professional" }
-        return "Standard"
+        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
+        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        return String(localized: "plan.standard")
     }
 
     private var currentPlanIcon: String {
-        if accessManager.isEnterprise { return "building.2.fill" }
-        if accessManager.isPro { return "star.fill" }
+        if accessManager.isDirectSubscriberEnterprise { return "building.2.fill" }
+        if accessManager.isDirectSubscriber { return "star.fill" }
         return "person.fill"
     }
 
     private var currentPlanColor: Color {
-        if accessManager.isEnterprise { return .purple }
-        if accessManager.isPro { return .accentColor }
+        if accessManager.isDirectSubscriberEnterprise { return .purple }
+        if accessManager.isDirectSubscriber { return .accentColor }
         return .secondary
     }
 
     private var currentPlanFeatures: [String] {
-        if accessManager.isEnterprise {
+        if accessManager.isDirectSubscriberEnterprise {
             return [
-                "Unlimited Properties",
-                "Unlimited Team Members",
-                "Photo Attachments on Inspections",
-                "Company Logo on PDFs",
-                "Full White-label PDF Reports",
-                "Unlimited Inspections",
-                "Cloud Backup"
+                String(localized: "paywall.enterprise.feature_2"),
+                String(localized: "plan.enterprise.feature_2"),
+                String(localized: "paywall.professional.feature_1"),
+                String(localized: "paywall.professional.feature_4"),
+                String(localized: "paywall.enterprise.feature_3"),
+                String(localized: "paywall.all_plans.feature_1"),
+                String(localized: "paywall.all_plans.feature_4")
             ]
         }
-        if accessManager.isPro {
+        if accessManager.isDirectSubscriber {
             return [
-                "Up to 10 Properties",
-                "Up to 5 Team Members",
-                "Photo Attachments on Inspections",
-                "Custom Company Logo on PDFs",
-                "Unlimited Inspections",
-                "Cloud Backup"
+                String(localized: "paywall.professional.feature_2"),
+                String(localized: "paywall.professional.feature_3"),
+                String(localized: "paywall.professional.feature_1"),
+                String(localized: "paywall.professional.feature_4"),
+                String(localized: "paywall.all_plans.feature_1"),
+                String(localized: "paywall.all_plans.feature_4")
             ]
         }
         return [
-            "1 Property",
-            "Unlimited Inspections",
-            "PDF Report Generation",
-            "Room & Inventory Tracking",
-            "Cloud Backup"
+            String(localized: "plan.standard.feature_1"),
+            String(localized: "paywall.all_plans.feature_1"),
+            String(localized: "paywall.all_plans.feature_2"),
+            String(localized: "paywall.all_plans.feature_3"),
+            String(localized: "paywall.all_plans.feature_4")
         ]
     }
 
     private func loadProducts() async {
         isLoadingProducts = true
+        productLoadError = nil
         do {
             self.products = try await Product.products(for: [proProductId, enterpriseProductId])
+            if products.isEmpty {
+                productLoadError = "No products were returned for product IDs `\(proProductId)` and `\(enterpriseProductId)`."
+            } else {
+                let loadedIds = Set(products.map(\.id))
+                let expectedIds: Set<String> = [proProductId, enterpriseProductId]
+                let missingIds = expectedIds.subtracting(loadedIds)
+                if !missingIds.isEmpty {
+                    let missingPlanList = missingIds.sorted().joined(separator: ", ")
+                    productLoadError = "Some plans are missing from App Store Connect for this build: \(missingPlanList)."
+                }
+            }
         } catch {
             print("Paywall: Failed to load products: \(error)")
+            productLoadError = error.localizedDescription
+            products = []
         }
         isLoadingProducts = false
     }
 
     private func purchase(_ product: Product) async {
+        guard !isPurchasing else { return }
+        isPurchasing = true
+        defer { isPurchasing = false }
         do {
             let result = try await product.purchase()
             switch result {
@@ -220,15 +290,28 @@ struct PremiumPaywallView: View {
                     await transaction.finish()
                     await accessManager.updateSubscriptionStatus()
                     dismiss()
+                } else {
+                    alertMessage = String(localized: "paywall.purchase_unverified")
                 }
             case .userCancelled, .pending:
-                break
+                if case .pending = result {
+                    alertMessage = String(localized: "paywall.purchase_pending")
+                }
             @unknown default:
-                break
+                alertMessage = String(localized: "paywall.purchase_unexpected")
             }
         } catch {
             print("Paywall: Purchase failed: \(error)")
+            alertMessage = String(localized: "paywall.purchase_failed")
         }
+    }
+
+    private func openLegalURL(_ url: URL?) {
+        guard let url else {
+            alertMessage = String(localized: "paywall.legal_missing")
+            return
+        }
+        openURL(url)
     }
 }
 
@@ -238,6 +321,7 @@ private struct PlanRow: View {
     let name: String
     let price: String
     let isActive: Bool
+    let isBusy: Bool
     let action: () -> Void
 
     var body: some View {
@@ -254,21 +338,25 @@ private struct PlanRow: View {
                 Text(name)
                     .font(.subheadline)
                     .foregroundColor(.primary)
-                Text("\(price) / month")
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), price))
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .lineLimit(2)
             }
             Spacer()
             if isActive {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundColor(.accentColor)
             } else {
-                Button("Subscribe", action: action)
+                Button("paywall.subscribe", action: action)
                     .font(.caption.bold())
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(Capsule().fill(iconColor))
                     .foregroundColor(.white)
+                    .disabled(isBusy)
             }
         }
     }
@@ -286,6 +374,7 @@ private struct FeatureRow: View {
             Text(text)
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

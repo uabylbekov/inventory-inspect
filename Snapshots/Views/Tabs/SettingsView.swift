@@ -5,7 +5,6 @@ struct SettingsView: View {
     @State private var isSigningOut = false
     @State private var showingSignOutAlert = false
     @State private var userName: String = ""
-    @State private var showingPaywall = false
     @Environment(SnapshotsAccessManager.self) private var accessManager
     
     var body: some View {
@@ -55,7 +54,7 @@ struct SettingsView: View {
                             }
                             
                             VStack(alignment: .leading, spacing: 4) {
-                                Text("Signed In")
+                                Text("settings.signed_in")
                                     .font(.headline)
                                 Text(userName.isEmpty ? "Loading..." : userName)
                                     .font(.subheadline)
@@ -70,52 +69,14 @@ struct SettingsView: View {
                 
                 // MARK: - Subscription Section
                 Section {
-                    Button {
-                        showingPaywall = true
-                    } label: {
-                        HStack {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(accessManager.isPro ? Color.accentColor.gradient : Color.secondary.opacity(0.15).gradient)
-                                    .frame(width: 32, height: 32)
-                                Image(systemName: "star.fill")
-                                    .font(.subheadline)
-                                    .foregroundColor(accessManager.isPro ? .white : .secondary)
-                            }
-
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("Snapshots Plan")
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
-                                Text(accessManager.isEnterprise ? "Enterprise" : accessManager.isPro ? "Professional" : "Standard")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-
-                            Spacer()
-
-                            if accessManager.isPro {
-                                PlanBadge()
-                                Image(systemName: "chevron.right")
-                                    .font(.caption2.bold())
-                                    .foregroundColor(.secondary.opacity(0.5))
-                            } else {
-                                Text("Upgrade")
-                                    .font(.caption2.bold())
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(Capsule().fill(Color.accentColor))
-                                    .foregroundColor(.white)
-                            }
-                        }
-                    }
+                    SubscriptionPlanRow()
                 } header: {
-                    Text("Plan")
+                    Text("settings.plan")
                 } footer: {
-                    if accessManager.isPro {
-                        Text("You have unlimited properties and team collaboration.")
+                    if accessManager.isDirectSubscriber {
+                        Text("settings.plan.footer.paid")
                     } else {
-                        Text("Manage 1 property for free. Upgrade for unlimited properties and team collaboration.")
+                        Text("settings.plan.footer.free")
                     }
                 }
                 
@@ -137,14 +98,14 @@ struct SettingsView: View {
                     }
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                 } header: {
-                    Text("App")
+                    Text("settings.app")
                 }
                 
                 // MARK: - Account Actions
                 Section {
                     Button(role: .destructive, action: { showingSignOutAlert = true }) {
                         HStack {
-                            Label("Sign Out", systemImage: "rectangle.portrait.and.arrow.right")
+                            Label("settings.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
                             Spacer()
                             if isSigningOut {
                                 ProgressView()
@@ -153,20 +114,17 @@ struct SettingsView: View {
                     }
                     .disabled(isSigningOut)
                 } header: {
-                    Text("Account")
+                    Text("settings.account")
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Settings")
+            .navigationTitle("settings.title")
             .navigationBarTitleDisplayMode(.large)
-            .sheet(isPresented: $showingPaywall) {
-                PremiumPaywallView()
-            }
-            .alert("Sign Out", isPresented: $showingSignOutAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Sign Out", role: .destructive, action: signOut)
+            .alert("settings.sign_out_title", isPresented: $showingSignOutAlert) {
+                Button("common.cancel", role: .cancel) { }
+                Button("settings.sign_out", role: .destructive, action: signOut)
             } message: {
-                Text("Are you sure you want to sign out?")
+                Text("settings.sign_out_message")
             }
             .onAppear {
                 fetchEmail()

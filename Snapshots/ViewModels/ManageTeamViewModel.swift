@@ -39,6 +39,16 @@ final class ManageTeamViewModel {
         }
         
         do {
+            let session = try await supabase.auth.session
+            if let canInvite = try await remoteCanInviteMember(
+                propertyId: propertyId,
+                userId: session.user.id
+            ), !canInvite {
+                self.errorMessage = "Team member limit reached for this property's plan."
+                self.isSaving = false
+                return false
+            }
+
             struct InvitePayload: Encodable {
                 let email: String
                 let property_id: String
@@ -77,6 +87,28 @@ final class ManageTeamViewModel {
             self.errorMessage = error.localizedDescription
             self.isSaving = false
             return false
+        }
+    }
+
+    private func remoteCanInviteMember(propertyId: UUID, userId: UUID) async throws -> Bool? {
+        let params: [String: AnyJSON] = [
+            "p_property_id": .string(propertyId.uuidString.lowercased()),
+            "p_user_id": .string(userId.uuidString.lowercased())
+        ]
+        do {
+            let allowed: Bool = try await supabase
+                .rpc("can_invite_property_member", params: params)
+                .execute()
+                .value
+            return allowed
+        } catch {
+            let message = error.localizedDescription.lowercased()
+            if message.contains("could not find the function")
+                || message.contains("function public.can_invite_property_member")
+                || message.contains("schema cache") {
+                return nil
+            }
+            throw error
         }
     }
     
@@ -139,4 +171,3 @@ final class ManageTeamViewModel {
         }
     }
 }
-

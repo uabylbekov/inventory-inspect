@@ -24,4 +24,18 @@ enum EnvConfig {
         }
         return key
     }
+
+    static var termsOfServiceURL: URL? {
+        guard let urlString = Bundle.main.infoDictionary?["TERMS_URL"] as? String else {
+            return nil
+        }
+        return URL(string: urlString)
+    }
+
+    static var privacyPolicyURL: URL? {
+        guard let urlString = Bundle.main.infoDictionary?["PRIVACY_URL"] as? String else {
+            return nil
+        }
+        return URL(string: urlString)
+    }
 }

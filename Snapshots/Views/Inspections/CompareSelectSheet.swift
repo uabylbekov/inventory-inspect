@@ -24,7 +24,7 @@ struct CompareSelectSheet: View {
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 32)
-                        Button("Try Again") {
+                        Button("common.try_again") {
                             Task { await fetchInspections() }
                         }
                         .buttonStyle(.bordered)
@@ -36,9 +36,9 @@ struct CompareSelectSheet: View {
                             .foregroundColor(.secondary)
                         
                         VStack(spacing: 8) {
-                            Text("No Previous History")
+                            Text("compare_select.no_history_title")
                                 .font(.headline)
-                            Text("There are no other completed inspections for this property to compare against.")
+                            Text("compare_select.no_history_message")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -81,11 +81,11 @@ struct CompareSelectSheet: View {
                     }
                 }
             }
-            .navigationTitle("Select Inspection")
+            .navigationTitle("compare_select.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
             .task { await fetchInspections() }

@@ -46,7 +46,7 @@ struct InspectionReportView: View {
                     
                     HStack(spacing: 16) {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("DATE")
+                            Text("report.date")
                                 .font(.caption2.bold())
                                 .foregroundColor(.secondary)
                             Text(AppFormatter.formatDate(viewModel.inspection.started_at))
@@ -56,7 +56,7 @@ struct InspectionReportView: View {
                         if let name = viewModel.inspectorName {
                             Spacer()
                             VStack(alignment: .trailing, spacing: 2) {
-                                Text("INSPECTOR")
+                                Text("report.inspector")
                                     .font(.caption2.bold())
                                     .foregroundColor(.secondary)
                                 Text(name)
@@ -84,7 +84,7 @@ struct InspectionReportView: View {
                     }
                 } header: {
                     HStack {
-                        Text("Anomalies")
+                        Text("report.anomalies")
                         Spacer()
                         Text("\(viewModel.anomalies.count)")
                     }
@@ -95,16 +95,16 @@ struct InspectionReportView: View {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 32))
                             .foregroundColor(.blue)
-                        Text("Inspection Resolved")
+                        Text("report.resolved_title")
                             .font(.headline)
-                        Text("All flagged issues have been fixed.")
+                        Text("report.resolved_subtitle")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 16)
                 } header: {
-                    Text("Anomalies")
+                    Text("report.anomalies")
                 }
             } else if !viewModel.isLoading {
                 Section {
@@ -112,16 +112,16 @@ struct InspectionReportView: View {
                         Image(systemName: "checkmark.seal.fill")
                             .font(.system(size: 32))
                             .foregroundColor(.green)
-                            Text("Perfect Inspection")
-                                .font(.headline)
-                            Text("No missing or damaged items found.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
+                        Text("report.perfect_title")
+                            .font(.headline)
+                        Text("report.perfect_subtitle")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
                     }
                     .frame(maxWidth: .infinity, alignment: .center)
                     .padding(.vertical, 16)
                 } header: {
-                    Text("Anomalies")
+                    Text("report.anomalies")
                 }
             }
             
@@ -134,7 +134,7 @@ struct InspectionReportView: View {
                     }
                 } header: {
                     HStack {
-                        Text("Resolved Issues")
+                        Text("report.resolved_issues")
                         Spacer()
                         Text("\(viewModel.resolvedItems.count)")
                     }
@@ -150,7 +150,7 @@ struct InspectionReportView: View {
                     }
                 } header: {
                     HStack {
-                        Text("Present & Intact")
+                        Text("report.present_intact")
                         Spacer()
                         Text("\(viewModel.presentItems.count)")
                     }
@@ -163,7 +163,7 @@ struct InspectionReportView: View {
                 ZStack {
                     Color(UIColor.systemGroupedBackground)
                         .ignoresSafeArea()
-                    ProgressView("Crunching Data…")
+                    ProgressView("report.loading")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -171,7 +171,7 @@ struct InspectionReportView: View {
         }
 
         .animation(.none, value: viewModel.isLoading)
-        .navigationTitle("Report")
+        .navigationTitle("report.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -181,7 +181,14 @@ struct InspectionReportView: View {
                     Button(action: {
                         Task {
                             if let data = await viewModel.generatePDF() {
-                                let filename = "Report_\(viewModel.property?.name ?? "Inspection").pdf"
+                                let filename = ExportFileNameBuilder.pdfFileName(
+                                    prefix: "Report",
+                                    parts: [
+                                        viewModel.property?.name ?? "Inspection",
+                                        AppFormatter.formatInspectionType(viewModel.inspection.inspection_type),
+                                        AppFormatter.formatDate(viewModel.inspection.started_at)
+                                    ]
+                                )
                                 self.shareablePDF = ShareablePDF(data: data, filename: filename)
                             }
                         }
@@ -212,7 +219,7 @@ struct InspectionReportView: View {
             await viewModel.fetchReportData()
         }
         .refreshable {
-            await viewModel.fetchReportData()
+            await viewModel.fetchReportData(showLoadingState: false)
         }
     }
 }
@@ -307,7 +314,7 @@ struct ReportItemRow: View {
                 Button(action: { showingResolveConfirmation = true }) {
                     HStack {
                         Spacer()
-                        Text("Resolve Issue")
+                        Text("report.resolve_issue")
                             .fontWeight(.semibold)
                         Spacer()
                     }
@@ -315,11 +322,11 @@ struct ReportItemRow: View {
                 .buttonStyle(.borderedProminent)
                 .controlSize(.regular)
                 .padding(.top, 4)
-                .alert("Resolve This Issue?", isPresented: $showingResolveConfirmation) {
-                    Button("Cancel", role: .cancel) {}
-                    Button("Mark as Resolved") { onResolve() }
+                .alert("report.resolve_title", isPresented: $showingResolveConfirmation) {
+                    Button("common.cancel", role: .cancel) {}
+                    Button("report.mark_resolved") { onResolve() }
                 } message: {
-                    Text("This will mark the issue as resolved. This action cannot be undone.")
+                    Text("report.resolve_message")
                 }
             }
         }

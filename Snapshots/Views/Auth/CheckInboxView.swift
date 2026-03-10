@@ -10,12 +10,12 @@ struct CheckInboxView: View {
                 .padding(.bottom, 24)
                 .padding(.top, 40)
             
-            Text("Check your inbox")
+            Text("auth.check_inbox.title")
                 .font(.largeTitle)
                 .fontWeight(.bold)
                 .padding(.bottom, 12)
             
-            Text("We've sent a magic link to **\(email)**. Click the link to log in instantly.")
+            Text(String(format: NSLocalizedString("auth.check_inbox.message", comment: ""), email))
                 .font(.body)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 40)

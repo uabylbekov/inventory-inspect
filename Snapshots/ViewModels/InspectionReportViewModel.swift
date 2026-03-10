@@ -20,6 +20,7 @@ final class InspectionReportViewModel {
     var resolvedItems: [ReportItem] = [] // fixed issues
     
     var isLoading = false
+    var isRefreshing = false
     var isGeneratingPDF = false
     var errorMessage: String?
     
@@ -27,12 +28,20 @@ final class InspectionReportViewModel {
         self.inspection = inspection
     }
     
-    func fetchReportData() async {
-        isLoading = true
+    func fetchReportData(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        } else {
+            isRefreshing = true
+        }
         errorMessage = nil
+        defer {
+            isLoading = false
+            isRefreshing = false
+        }
         
         do {
-            // 1. Fetch the Property
+            // 1. Fetch the property, then hydrate owner metadata separately.
             let fetchedProperties: [PropertyModel] = try await supabase
                 .from("properties")
                 .select()
@@ -40,7 +49,7 @@ final class InspectionReportViewModel {
                 .execute()
                 .value
             
-            self.property = fetchedProperties.first
+            self.property = try await PropertyOwnerProfileLoader.enrich(fetchedProperties).first
             
             // 2. Fetch all Rooms for Property
             let fetchedRooms: [PropertyRoomModel] = try await supabase
@@ -113,13 +122,9 @@ final class InspectionReportViewModel {
                 }
             }
             
-            self.isLoading = false
-            
         } catch is CancellationError {
-            self.isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
-            self.isLoading = false
         }
     }
 
@@ -193,17 +198,20 @@ final class InspectionReportViewModel {
         await Task.yield() // Let SwiftUI render the spinner before blocking
         defer { isGeneratingPDF = false }
 
-        // Fetch company logo if user has Pro/Enterprise plan
+        // Fetch company logo if the property has Pro/Enterprise plan
         var logoImage: UIImage? = nil
         let accessManager = SnapshotsAccessManager.shared
-        if accessManager.isPro,
-           let logoUrlStr = accessManager.profile?.company_logo_url,
+        
+        // Use property-specific access
+        let hasPro = accessManager.isPro(for: property)
+        let isWhiteLabel = accessManager.isEnterprise(for: property)
+
+        if hasPro,
+           let logoUrlStr = property.owner?.company_logo_url,
            let logoUrl = URL(string: logoUrlStr),
            let (data, _) = try? await URLSession.shared.data(from: logoUrl) {
             logoImage = UIImage(data: data)
         }
-
-        let isWhiteLabel = accessManager.isEnterprise
 
         let pdfView = InspectionPDFView(
             property: property,

@@ -23,21 +23,21 @@ struct EditProfileView: View {
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $name)
+                TextField("profile.name", text: $name)
                     .textContentType(.name)
                     .autocapitalization(.words)
                     .disabled(!isEditing)
                 
-                TextField("Email", text: $email)
+                TextField("auth.common.email", text: $email)
                     .textContentType(.emailAddress)
                     .autocapitalization(.none)
                     .keyboardType(.emailAddress)
                     .disabled(!isEditing)
             } header: {
-                Text("Account Details")
+                Text("profile.account_details")
             } footer: {
                 if isEditing {
-                    Text("Updating your email will require a verification email and sign you out.")
+                    Text("profile.email_update_notice")
                 }
             }
             
@@ -80,18 +80,19 @@ struct EditProfileView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("Company Logo")
+                            Text("profile.company_logo")
                                 .font(.subheadline)
-                            Text(isEditing ? "Tap to change" : (accessManager.profile?.company_logo_url != nil ? "Logo configured" : "No logo set"))
+                            Text(isEditing ? String(localized: "profile.logo.tap_to_change") : (accessManager.profile?.company_logo_url != nil ? String(localized: "profile.logo.configured") : String(localized: "profile.logo.empty")))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
 
                         Spacer()
 
                         if isEditing {
                             PhotosPicker(selection: $selectedLogoItem, matching: .images) {
-                                Text("Choose")
+                                Text("common.choose")
                                     .font(.caption.bold())
                                     .padding(.horizontal, 10)
                                     .padding(.vertical, 5)
@@ -110,30 +111,30 @@ struct EditProfileView: View {
                         }
                     }
                 } header: {
-                    Text("Company Logo")
+                    Text("profile.company_logo")
                 } footer: {
-                    Text("Appears in the header of your PDF inspection reports.")
+                    Text("profile.logo_footer")
                 }
             }
 
             // MARK: - Business Details (Enterprise only)
             if accessManager.isEnterprise {
                 Section {
-                    TextField("Business Name", text: $businessName)
+                    TextField("profile.business_name", text: $businessName)
                         .disabled(!isEditing)
-                    TextField("Address", text: $businessAddress)
+                    TextField("profile.address", text: $businessAddress)
                         .disabled(!isEditing)
-                    TextField("Phone", text: $businessPhone)
+                    TextField("profile.phone", text: $businessPhone)
                         .keyboardType(.phonePad)
                         .disabled(!isEditing)
-                    TextField("Website", text: $businessWebsite)
+                    TextField("profile.website", text: $businessWebsite)
                         .keyboardType(.URL)
                         .autocapitalization(.none)
                         .disabled(!isEditing)
                 } header: {
-                    Text("Business Details")
+                    Text("profile.business_details")
                 } footer: {
-                    Text("Business details and logo appear on all generated PDF reports. The Snapshots branding is removed.")
+                    Text("profile.business_footer")
                 }
             }
 
@@ -144,23 +145,24 @@ struct EditProfileView: View {
                         HStack {
                             Image(systemName: "briefcase.fill")
                                 .foregroundColor(.accentColor)
-                            Text("Business Branding")
+                            Text("profile.business_branding")
                                 .font(.headline)
                         }
 
-                        Text("Add your company logo to PDF reports. Enterprise users get full white-label reports with business details.")
+                        Text("profile.branding_upsell")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         NavigationLink(destination: PremiumPaywallView()) {
-                            Text("Unlock Professional Branding")
+                            Text("profile.unlock_branding")
                                 .font(.subheadline.bold())
                                 .foregroundColor(.accentColor)
                         }
                     }
                     .padding(.vertical, 8)
                 } header: {
-                    Text("Business Branding")
+                    Text("profile.business_branding")
                 }
             }
             
@@ -168,7 +170,7 @@ struct EditProfileView: View {
                 Section {
                     Button(role: .destructive, action: { showingDeleteAlert = true }) {
                         HStack {
-                            Text("Delete Account")
+                            Text("profile.delete_account")
                             Spacer()
                             if isDeletingAccount {
                                 ProgressView()
@@ -187,26 +189,19 @@ struct EditProfileView: View {
                 }
             }
         }
-        .navigationTitle("Profile")
+        .navigationTitle("profile.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if isEditing {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        isEditing = false
-                        loadUser() // Revert changes
-                    }
-                    .disabled(isSaving || isDeletingAccount)
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button("common.save") {
                         saveProfile()
                     }
                     .disabled(isSaving || isDeletingAccount || isUploadingLogo)
                 }
             } else {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Edit") {
+                    Button("common.edit") {
                         selectedLogoImage = nil
                         selectedLogoItem = nil
                         isEditing = true
@@ -217,11 +212,11 @@ struct EditProfileView: View {
         .task {
             loadUser()
         }
-        .alert("Delete Account", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive, action: deleteAccount)
+        .alert("profile.delete_account", isPresented: $showingDeleteAlert) {
+            Button("common.cancel", role: .cancel) { }
+            Button("common.delete", role: .destructive, action: deleteAccount)
         } message: {
-            Text("Are you sure you want to delete your account? This action cannot be undone.")
+            Text("profile.delete_message")
         }
     }
     

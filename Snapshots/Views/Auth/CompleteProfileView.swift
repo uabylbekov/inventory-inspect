@@ -11,13 +11,13 @@ struct CompleteProfileView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("Full Name", text: $name)
+                    TextField("profile.full_name", text: $name)
                         .textContentType(.name)
                         .autocapitalization(.words)
                 } header: {
-                    Text("Welcome!")
+                    Text("profile.complete.welcome")
                 } footer: {
-                    Text("Please enter your name to continue.")
+                    Text("profile.complete.subtitle")
                 }
                 
                 if let errorMessage {
@@ -35,7 +35,7 @@ struct CompleteProfileView: View {
                             ProgressView()
                                 .padding(.trailing, 8)
                         }
-                        Text("Save Profile")
+                        Text("profile.complete.save")
                             .bold()
                         Spacer()
                     }
@@ -44,7 +44,7 @@ struct CompleteProfileView: View {
                 .listRowBackground(Color.accentColor)
                 .foregroundColor(.white)
             }
-            .navigationTitle("Complete Profile")
+            .navigationTitle("profile.complete.title")
             .interactiveDismissDisabled()
         }
     }

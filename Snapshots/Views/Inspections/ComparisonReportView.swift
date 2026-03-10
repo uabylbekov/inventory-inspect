@@ -61,13 +61,13 @@ struct ComparisonReportView: View {
             if let error = viewModel.errorMessage {
                 Section {
                     VStack(spacing: 12) {
-                        Text("Comparison Failed")
+                        Text("comparison.failed_title")
                             .font(.headline)
                         Text(error)
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .multilineTextAlignment(.center)
-                        Button("Try Again") {
+                        Button("common.try_again") {
                             Task { await viewModel.fetchComparison() }
                         }
                         .buttonStyle(.bordered)
@@ -81,9 +81,9 @@ struct ComparisonReportView: View {
                         Image(systemName: "doc.text.magnifyingglass")
                             .font(.title)
                             .foregroundColor(.secondary)
-                        Text("No Shared Data")
+                        Text("comparison.empty_title")
                             .font(.headline)
-                        Text("No items overlap between these inspections.")
+                        Text("comparison.empty_message")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -99,7 +99,10 @@ struct ComparisonReportView: View {
                                 .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                         }
                     } header: {
-                        Text("\(viewModel.changedItems.count) Changes Found")
+                        Text(String.localizedStringWithFormat(
+                            NSLocalizedString("comparison.changes_found", comment: ""),
+                            viewModel.changedItems.count
+                        ))
                             .foregroundColor(.red)
                     }
                 }
@@ -112,7 +115,10 @@ struct ComparisonReportView: View {
                                 .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                         }
                     } header: {
-                        Text("\(viewModel.unchangedItems.count) Unchanged Items")
+                        Text(String.localizedStringWithFormat(
+                            NSLocalizedString("comparison.unchanged_items", comment: ""),
+                            viewModel.unchangedItems.count
+                        ))
                     }
                 }
             }
@@ -123,14 +129,14 @@ struct ComparisonReportView: View {
                 ZStack {
                     Color(UIColor.systemGroupedBackground)
                         .ignoresSafeArea()
-                    ProgressView("Analyzing Differences…")
+                    ProgressView("comparison.loading")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
             }
         }
         .animation(.none, value: viewModel.isLoading)
-        .navigationTitle("Inspection Comparison")
+        .navigationTitle("comparison.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
@@ -141,8 +147,13 @@ struct ComparisonReportView: View {
                         
                         var logoImage: UIImage? = nil
                         let accessManager = SnapshotsAccessManager.shared
-                        if accessManager.isPro,
-                           let logoUrlStr = accessManager.profile?.company_logo_url,
+                        let hasPro = accessManager.isPro(for: viewModel.property)
+                        let isWhiteLabel = accessManager.isEnterprise(for: viewModel.property)
+                        let logoUrlStr = accessManager.isDirectSubscriber
+                            ? accessManager.profile?.company_logo_url
+                            : viewModel.property?.owner?.company_logo_url
+                        if hasPro,
+                           let logoUrlStr,
                            let logoUrl = URL(string: logoUrlStr),
                            let (logoData, _) = try? await URLSession.shared.data(from: logoUrl) {
                             logoImage = UIImage(data: logoData)
@@ -155,23 +166,31 @@ struct ComparisonReportView: View {
                             anomalies: viewModel.anomalies,
                             presentItems: viewModel.presentItems,
                             logoImage: logoImage,
-                            isWhiteLabel: accessManager.isEnterprise
+                            isWhiteLabel: isWhiteLabel
                         )
-                        pdfShareItem = ShareablePDF(data: data, filename: "ComparisonReport.pdf")
+                        let filename = ExportFileNameBuilder.pdfFileName(
+                            prefix: "ComparisonReport",
+                            parts: [
+                                viewModel.property?.name ?? "Inspection",
+                                AppFormatter.formatDate(viewModel.older.completed_at ?? viewModel.older.started_at),
+                                AppFormatter.formatDate(viewModel.newer.completed_at ?? viewModel.newer.started_at)
+                            ]
+                        )
+                        pdfShareItem = ShareablePDF(data: data, filename: filename)
                         isGeneratingPDF = false
                     }
                 } label: {
                     if isGeneratingPDF {
                         ProgressView()
                     } else {
-                        Label("Share PDF", systemImage: "square.and.arrow.up")
+                        Label("comparison.share_pdf", systemImage: "square.and.arrow.up")
                     }
                 }
                 .disabled(viewModel.isLoading || isGeneratingPDF)
             }
         }
         .sheet(item: $pdfShareItem) { pdf in
-            ShareSheet(data: pdf.data, filename: "InspectionReport.pdf")
+            ShareSheet(data: pdf.data, filename: pdf.filename)
         }
         .sheet(isPresented: $showingPaywall) {
             PremiumPaywallView()
@@ -211,7 +230,7 @@ struct ComparisonReportView: View {
                 HStack(alignment: .top, spacing: 0) {
                     // Previous
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("PREVIOUS")
+                        Text("comparison.previous")
                             .font(.caption2)
                             .fontWeight(.bold)
                             .foregroundColor(.secondary)
@@ -240,7 +259,7 @@ struct ComparisonReportView: View {
                     
                     // Current
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("CURRENT")
+                        Text("comparison.current")
                             .font(.caption2)
                             .fontWeight(.bold)
                             .foregroundColor(.blue)
@@ -275,7 +294,7 @@ struct ComparisonReportView: View {
                 // Highlight notes if new ones exist
                 if let newNotes = diff.newNotes, !newNotes.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Current Notes")
+                        Text("comparison.current_notes")
                             .font(.caption2)
                             .fontWeight(.bold)
                             .foregroundColor(.secondary)

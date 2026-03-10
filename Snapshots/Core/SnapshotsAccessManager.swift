@@ -12,6 +12,7 @@ final class SnapshotsAccessManager {
     var activeSubscription: Product?
     var activeProductTier: String = "free"
     private var _isSandbox = false
+    private var transactionUpdatesTask: Task<Void, Never>?
     
     private let proProductId = "com.ulukskywalker.snapshots.pro"
     private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise"
@@ -33,6 +34,7 @@ final class SnapshotsAccessManager {
 
         // 3. Check StoreKit 2 for active subscription
         await self.updateSubscriptionStatus()
+        startListeningForTransactionUpdates()
 
         isCheckingAccess = false
     }
@@ -40,13 +42,21 @@ final class SnapshotsAccessManager {
     var isPro: Bool {
         if isCheckingAccess { return false }
         if self.isSandbox() { return true }
-        if self.profile?.isPro ?? false { return true }
-        return activeProductTier != "free"
+        return isDirectSubscriber
     }
 
     var isEnterprise: Bool {
         if isCheckingAccess { return false }
         if self.isSandbox() { return true }
+        return isDirectSubscriberEnterprise
+    }
+
+    var isDirectSubscriber: Bool {
+        if self.profile?.isPro ?? false { return true }
+        return activeProductTier != "free"
+    }
+
+    var isDirectSubscriberEnterprise: Bool {
         if self.profile?.isEnterprise ?? false { return true }
         return activeProductTier == "enterprise"
     }
@@ -70,6 +80,20 @@ final class SnapshotsAccessManager {
         } catch {
             print("Access Manager: Error fetching profile: \(error)")
         }
+    }
+
+    func refreshEntitlementsForCurrentUser() async {
+        isCheckingAccess = true
+        await fetchProfile()
+        await updateSubscriptionStatus()
+        isCheckingAccess = false
+    }
+
+    func clearEntitlementsForSignedOutUser() {
+        profile = nil
+        activeSubscription = nil
+        activeProductTier = "free"
+        isCheckingAccess = false
     }
     
     // MARK: - StoreKit 2 Logic
@@ -101,6 +125,18 @@ final class SnapshotsAccessManager {
             print("Access Manager: StoreKit error: \(error)")
         }
     }
+
+    private func startListeningForTransactionUpdates() {
+        guard transactionUpdatesTask == nil else { return }
+        transactionUpdatesTask = Task { [weak self] in
+            guard let self else { return }
+            for await update in Transaction.updates {
+                guard case .verified(let transaction) = update else { continue }
+                await transaction.finish()
+                await self.updateSubscriptionStatus()
+            }
+        }
+    }
     
     // MARK: - Environment Detection
     
@@ -120,17 +156,41 @@ final class SnapshotsAccessManager {
         _isSandbox
     }
     
-    // MARK: - Helper Methods
-
-    func canAddProperty(currentCount: Int) -> Bool {
-        if isEnterprise { return true }
-        if isPro { return currentCount < 10 }
-        return currentCount < 1
+    // MARK: - Property-Specific Access Logic
+    
+    func isPro(for property: PropertyModel?) -> Bool {
+        if isCheckingAccess { return false }
+        if self.isSandbox() { return true }
+        if isDirectSubscriber { return true }
+        // Inherit from owner of the specific property
+        if let tier = property?.ownerTier {
+            return tier == "pro" || tier == "enterprise" || tier == "lifetime"
+        }
+        return false
     }
 
-    func canAddTeamMember(currentManagerCount: Int) -> Bool {
-        if isEnterprise { return true }
-        if isPro { return currentManagerCount < 5 }
+    func isEnterprise(for property: PropertyModel?) -> Bool {
+        if isCheckingAccess { return false }
+        if self.isSandbox() { return true }
+        if isDirectSubscriberEnterprise { return true }
+        // Inherit from owner of the specific property
+        if let tier = property?.ownerTier {
+            return tier == "enterprise" || tier == "lifetime"
+        }
+        return false
+    }
+
+    // MARK: - Helper Methods
+
+    func canAddProperty(ownedCount: Int) -> Bool {
+        if isDirectSubscriberEnterprise { return true }
+        if isDirectSubscriber { return ownedCount < 10 }
+        return ownedCount < 1
+    }
+
+    func canAddTeamMember(for property: PropertyModel?, currentMemberCount: Int) -> Bool {
+        if isEnterprise(for: property) { return true }
+        if isPro(for: property) { return currentMemberCount < 5 }
         return false
     }
 }

@@ -46,11 +46,24 @@ struct PropertyDetailView: View {
                         Label(address, systemImage: "mappin.and.ellipse")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     
                     HStack(spacing: 20) {
-                        Label("\(viewModel.property.bedrooms_count) Beds", systemImage: "bed.double")
-                        Label("\(viewModel.property.bathrooms_count, specifier: "%.1f") Baths", systemImage: "shower")
+                        Label(
+                            String.localizedStringWithFormat(
+                                NSLocalizedString("property_detail.beds_count", comment: ""),
+                                viewModel.property.bedrooms_count
+                            ),
+                            systemImage: "bed.double"
+                        )
+                        Label(
+                            String.localizedStringWithFormat(
+                                NSLocalizedString("property_detail.baths_count", comment: ""),
+                                viewModel.property.bathrooms_count
+                            ),
+                            systemImage: "shower"
+                        )
                     }
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -60,7 +73,7 @@ struct PropertyDetailView: View {
             
             // MARK: - About
             if let desc = viewModel.property.description, !desc.isEmpty {
-                Section("About Property") {
+                Section("property_detail.about") {
                     Text(desc)
                         .font(.body)
                         .foregroundColor(.primary)
@@ -70,19 +83,24 @@ struct PropertyDetailView: View {
             // MARK: - Actions
             Section {
                 Button(action: { 
-                    if accessManager.isPro {
+                    if accessManager.isPro(for: viewModel.property) {
                         showingManageTeam = true 
                     } else {
                         showingPaywall = true
                     }
                 }) {
                     HStack {
-                        Label("Manage Team", systemImage: "person.2.fill")
+                        Label("property_detail.manage_team", systemImage: "person.2.fill")
                         Spacer()
-                        if accessManager.isPro {
-                            PlanBadge()
+                        if accessManager.isPro(for: viewModel.property) {
+                            Text(accessManager.isDirectSubscriber ? "property_detail.included" : "property_detail.included_here")
+                                .font(.caption2.bold())
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Capsule().fill(Color.accentColor.opacity(0.12)))
+                                .foregroundColor(.accentColor)
                         } else {
-                            Text("PRO")
+                            Text("plan.badge.pro")
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -94,7 +112,7 @@ struct PropertyDetailView: View {
             }
             
             // MARK: - Rooms
-            Section("Rooms") {
+            Section("property_detail.rooms") {
                 if viewModel.isLoading && viewModel.rooms.isEmpty {
                     HStack {
                         Spacer()
@@ -102,7 +120,7 @@ struct PropertyDetailView: View {
                         Spacer()
                     }
                 } else if viewModel.rooms.isEmpty {
-                    Text("No rooms added yet")
+                    Text("property_detail.no_rooms")
                         .foregroundColor(.secondary)
                         .italic()
                 } else {
@@ -118,7 +136,7 @@ struct PropertyDetailView: View {
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(room.name)
                                         .font(.headline)
-                                    Text(room.room_type?.capitalized ?? "Room")
+                                    Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
                                         .font(.caption)
                                         .foregroundColor(.secondary)
                                 }
@@ -127,10 +145,10 @@ struct PropertyDetailView: View {
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 confirmDeleteRoom(room)
-                            } label: { Label("Delete", systemImage: "trash") }
+                            } label: { Label("common.delete", systemImage: "trash") }
                         }
                         .swipeActions(edge: .leading) {
-                            Button { editingRoom = room } label: { Label("Edit", systemImage: "pencil") }
+                            Button { editingRoom = room } label: { Label("common.edit", systemImage: "pencil") }
                             .tint(.accentColor)
                         }
                         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
@@ -140,7 +158,7 @@ struct PropertyDetailView: View {
             
             // MARK: - Recent Activity
             if !viewModel.recentInspections.isEmpty {
-                Section("Recent Activity") {
+                Section("property_detail.recent_activity") {
                     ForEach(viewModel.recentInspections) { inspection in
                         NavigationLink {
                             if inspection.status == "in_progress" {
@@ -182,28 +200,31 @@ struct PropertyDetailView: View {
         .navigationTitle(viewModel.property.name)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if viewModel.isOwner {
+            if viewModel.isOwner || viewModel.isManager {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: { viewModel.showingAddRoom = true }) {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
-                            Text("Add Room")
+                            Text("property_detail.add_room")
                         }
                     }
                 }
             }
         }
-        .alert("Active Inspection Found", isPresented: $showingRoomActiveInspectionAlert) {
-            Button("Cancel", role: .cancel) { roomToDeleteOffsets = nil }
-            Button("Delete Anyway", role: .destructive) { showingRoomDeleteAlert = true }
+        .alert("property_detail.active_inspection_title", isPresented: $showingRoomActiveInspectionAlert) {
+            Button("common.cancel", role: .cancel) { roomToDeleteOffsets = nil }
+            Button("property.delete.anyway", role: .destructive) { showingRoomDeleteAlert = true }
         } message: {
-            Text("This room has \(roomActiveInspectionItemCount) checked item(s) in an active inspection. Deleting the room will remove that data permanently.")
+            Text(String.localizedStringWithFormat(
+                NSLocalizedString("property_detail.active_inspection_message", comment: ""),
+                roomActiveInspectionItemCount
+            ))
         }
-        .alert("Delete Room?", isPresented: $showingRoomDeleteAlert) {
-            Button("Cancel", role: .cancel) {
+        .alert("property_detail.delete_room_title", isPresented: $showingRoomDeleteAlert) {
+            Button("common.cancel", role: .cancel) {
                 roomToDeleteOffsets = nil
             }
-            Button("Delete", role: .destructive) {
+            Button("common.delete", role: .destructive) {
                 if let offsets = roomToDeleteOffsets {
                     HapticManager.shared.impact(style: .medium)
                     Task {
@@ -214,7 +235,7 @@ struct PropertyDetailView: View {
                 roomToDeleteOffsets = nil
             }
         } message: {
-            Text("Are you sure you want to delete this room and all its inventory items?")
+            Text("property_detail.delete_room_message")
         }
         .sheet(isPresented: $viewModel.showingAddRoom, onDismiss: {
             Task { await viewModel.fetchRooms() }
@@ -224,7 +245,7 @@ struct PropertyDetailView: View {
         .sheet(isPresented: $showingManageTeam, onDismiss: {
             if didLeaveProperty { dismiss() }
         }) {
-            ManageTeamSheet(propertyId: viewModel.property.id, isOwner: viewModel.isOwner, isManager: viewModel.isManager, didLeave: $didLeaveProperty)
+            ManageTeamSheet(property: viewModel.property, isOwner: viewModel.isOwner, isManager: viewModel.isManager, didLeave: $didLeaveProperty)
         }
         .sheet(isPresented: $showingPaywall) {
             PremiumPaywallView()

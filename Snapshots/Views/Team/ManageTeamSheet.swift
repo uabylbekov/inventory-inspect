@@ -3,15 +3,18 @@ import SwiftUI
 struct ManageTeamSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var viewModel: ManageTeamViewModel
+    let property: PropertyModel
     let isOwner: Bool
     let isManager: Bool
     @Binding var didLeave: Bool
+    private let accessManager = SnapshotsAccessManager.shared
 
-    init(propertyId: UUID, isOwner: Bool, isManager: Bool = false, didLeave: Binding<Bool>) {
+    init(property: PropertyModel, isOwner: Bool, isManager: Bool = false, didLeave: Binding<Bool>) {
+        self.property = property
         self.isOwner = isOwner
         self.isManager = isManager
         self._didLeave = didLeave
-        _viewModel = State(initialValue: ManageTeamViewModel(propertyId: propertyId))
+        _viewModel = State(initialValue: ManageTeamViewModel(propertyId: property.id))
     }
 
     private var canInvite: Bool { isOwner || isManager }
@@ -19,50 +22,85 @@ struct ManageTeamSheet: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: accessManager.isDirectSubscriber ? "star.circle.fill" : "person.crop.circle.badge.checkmark")
+                            .foregroundColor(.accentColor)
+                            .padding(.top, 1)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(accessManager.isDirectSubscriber ? "team.unlocked_by_your_plan" : "inspection_item.included_here")
+                                .font(.subheadline.weight(.semibold))
+                            Text(teamAccessDescription)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer()
+                    }
+                    .padding(.vertical, 2)
+                }
+
                 if canInvite {
-                    Section(header: Text("Invite Team Member")) {
-                        TextField("Email Address", text: $viewModel.newMemberEmail)
-                            .keyboardType(.emailAddress)
-                            .textContentType(.emailAddress)
-                            .autocapitalization(.none)
-                            .autocorrectionDisabled()
-                        
-                        Picker("Role", selection: $viewModel.newMemberRole) {
-                            if isOwner {
-                                Text("Manager").tag("manager")
+                    let canAddMore = accessManager.canAddTeamMember(for: property, currentMemberCount: viewModel.members.count)
+                    
+                    Section(header: Text("team.invite_member")) {
+                        if canAddMore {
+                            TextField("auth.login.email_section", text: $viewModel.newMemberEmail)
+                                .keyboardType(.emailAddress)
+                                .textContentType(.emailAddress)
+                                .autocapitalization(.none)
+                                .autocorrectionDisabled()
+                            
+                            Picker("Role", selection: $viewModel.newMemberRole) {
+                                if isOwner {
+                                    Text("team.role.manager").tag("manager")
+                                }
+                                Text("team.role.cleaner").tag("cleaner")
                             }
-                            Text("Cleaner").tag("cleaner")
+                        } else {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Label("team.limit_reached", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.headline)
+                                    .foregroundColor(.orange)
+                                Text("team.limit_message")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            .padding(.vertical, 4)
                         }
                     }
                     
-                    Section {
-                        Button(action: {
-                            Task {
-                                HapticManager.shared.impact(style: .medium)
-                                let success = await viewModel.inviteMember()
-                                if success {
-                                    HapticManager.shared.notification(type: .success)
-                                    await viewModel.fetchMembers()
+                    if canAddMore {
+                        Section {
+                            Button(action: {
+                                Task {
+                                    HapticManager.shared.impact(style: .medium)
+                                    let success = await viewModel.inviteMember()
+                                    if success {
+                                        HapticManager.shared.notification(type: .success)
+                                        await viewModel.fetchMembers()
+                                    } else {
+                                        HapticManager.shared.notification(type: .error)
+                                    }
+                                }
+                            }) {
+                                if viewModel.isSaving {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 } else {
-                                    HapticManager.shared.notification(type: .error)
+                                    Text("team.send_invite")
+                                        .fontWeight(.bold)
+                                        .frame(maxWidth: .infinity, alignment: .center)
                                 }
                             }
-                        }) {
-                            if viewModel.isSaving {
-                                ProgressView()
-                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                            } else {
-                                Text("Send Invite")
-                                    .fontWeight(.bold)
-                                    .frame(maxWidth: .infinity, alignment: .center)
-                            }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                            .disabled(viewModel.isInviteDisabled)
+                            .listRowInsets(EdgeInsets())
+                            .listRowBackground(Color.clear)
                         }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
-                        .disabled(viewModel.isInviteDisabled)
-                        .listRowInsets(EdgeInsets())
-                        .listRowBackground(Color.clear)
                     }
                 }
                 
@@ -82,12 +120,12 @@ struct ManageTeamSheet: View {
                     }
                 }
                 
-                Section(header: Text("Current Members")) {
+                Section(header: Text("team.current_members")) {
                     if viewModel.isLoadingMembers {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else if viewModel.members.isEmpty {
-                        Text("No other members on this team.")
+                        Text("team.no_other_members")
                             .foregroundColor(.secondary)
                     } else {
                         ForEach(viewModel.members) { member in
@@ -139,22 +177,39 @@ struct ManageTeamSheet: View {
                                 }
                             }
                         }) {
-                            Text("Leave Property")
+                            Text("team.leave_property")
                                 .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
                 }
             }
-            .navigationTitle("Team")
+            .navigationTitle("team.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("common.done") { dismiss() }
                 }
             }
             .task {
                 await viewModel.fetchMembers()
             }
         }
+    }
+
+    private var teamAccessDescription: String {
+        if accessManager.isDirectSubscriber {
+            return String.localizedStringWithFormat(
+                NSLocalizedString("team.access.direct", comment: ""),
+                accessManager.isDirectSubscriberEnterprise ? String(localized: "plan.enterprise") : String(localized: "plan.professional")
+            )
+        }
+        if property.ownerTier == "free" {
+            return String(localized: "team.access.free_owner")
+        }
+        return String.localizedStringWithFormat(
+            NSLocalizedString("team.access.inherited", comment: ""),
+            property.ownerDisplayName,
+            property.ownerTier.capitalized
+        )
     }
 }

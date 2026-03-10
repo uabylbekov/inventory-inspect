@@ -13,24 +13,24 @@ struct StartInspectionSheet: View {
                     Section {
                         HStack {
                             Spacer()
-                            ProgressView("Loading Properties...")
+                            ProgressView("start_inspection.loading_properties")
                             Spacer()
                         }
                     }
                 } else if viewModel.properties.isEmpty {
                     Section {
                         ContentUnavailableView(
-                            "No Properties",
+                            "start_inspection.empty.title",
                             systemImage: "building.2",
-                            description: Text("Add a property first before starting an inspection.")
+                            description: Text("start_inspection.empty.description")
                         )
                         .listRowBackground(Color.clear)
                     }
                 } else {
                     // MARK: - Property Selection
-                    Section("Property") {
-                        Picker("Select Property", selection: $viewModel.selectedPropertyId) {
-                            Text("Select a property").tag(nil as UUID?)
+                    Section("start_inspection.property_section") {
+                        Picker("start_inspection.select_property", selection: $viewModel.selectedPropertyId) {
+                            Text("start_inspection.select_property_placeholder").tag(nil as UUID?)
                             ForEach(viewModel.properties) { property in
                                 Text(property.name).tag(property.id as UUID?)
                             }
@@ -39,28 +39,28 @@ struct StartInspectionSheet: View {
                     }
                     
                     // MARK: - Type Selection
-                    Section("Inspection Type") {
+                    Section("start_inspection.type_section") {
                         InspectionTypeRow(
                             icon: "wrench.adjustable.fill",
                             iconColor: .blue,
-                            title: "Routine",
-                            tip: "General walkthrough to check condition, maintenance needs, and overall state of the property.",
+                            title: String(localized: "start_inspection.type.routine.title"),
+                            tip: String(localized: "start_inspection.type.routine.tip"),
                             isSelected: viewModel.inspectionType == "routine"
                         ) { viewModel.inspectionType = "routine" }
 
                         InspectionTypeRow(
                             icon: "door.left.hand.open",
                             iconColor: .green,
-                            title: "Check-In",
-                            tip: "Document the property condition before a new tenant or guest arrives. Creates a baseline record.",
+                            title: String(localized: "start_inspection.type.check_in.title"),
+                            tip: String(localized: "start_inspection.type.check_in.tip"),
                             isSelected: viewModel.inspectionType == "check-in"
                         ) { viewModel.inspectionType = "check-in" }
 
                         InspectionTypeRow(
                             icon: "door.right.hand.closed",
                             iconColor: .orange,
-                            title: "Check-Out",
-                            tip: "Compare against the check-in report to identify any damage or changes after a tenant or guest leaves.",
+                            title: String(localized: "start_inspection.type.check_out.title"),
+                            tip: String(localized: "start_inspection.type.check_out.tip"),
                             isSelected: viewModel.inspectionType == "check-out"
                         ) { viewModel.inspectionType = "check-out" }
                     }
@@ -69,20 +69,21 @@ struct StartInspectionSheet: View {
                     if let activeId = viewModel.activeInspectionId {
                         Section {
                             VStack(alignment: .leading, spacing: 8) {
-                                Label("Inspection In Progress", systemImage: "person.2.fill")
+                                Label("start_inspection.active.label", systemImage: "person.2.fill")
                                     .font(.headline)
                                     .foregroundColor(.accentColor)
                                 
-                                Text("A team member is already inspecting this property. You can join them to split the work.")
+                                Text("start_inspection.active.description")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                                 
                                 Button(action: {
                                     HapticManager.shared.impact(style: .medium)
                                     dismiss()
                                     NotificationCenter.default.post(name: AppFormatter.joinInspectionNotification, object: activeId)
                                 }) {
-                                    Text("Join Existing Session")
+                                    Text("start_inspection.active.join")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -90,7 +91,7 @@ struct StartInspectionSheet: View {
                             }
                             .padding(.vertical, 4)
                         } header: {
-                            Text("Active Session Found")
+                            Text("start_inspection.active.section")
                         }
                     }
                     
@@ -103,8 +104,9 @@ struct StartInspectionSheet: View {
                                         ProgressView()
                                             .tint(.white)
                                     }
-                                    Text("Start New Inspection")
+                                    Text("start_inspection.start")
                                         .fontWeight(.bold)
+                                        .multilineTextAlignment(.center)
                                 }
                                 .frame(maxWidth: .infinity)
                             }
@@ -124,11 +126,11 @@ struct StartInspectionSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("New Inspection")
+            .navigationTitle("start_inspection.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
             .task { 
@@ -137,9 +139,9 @@ struct StartInspectionSheet: View {
             .onChange(of: viewModel.selectedPropertyId) { _, _ in
                 Task { await viewModel.checkActiveInspection() }
             }
-            .alert("Inspection Already Exists", isPresented: $showDuplicateAlert) {
-                Button("Cancel", role: .cancel) {}
-                Button("Start Anyway", role: .destructive) {
+            .alert("start_inspection.duplicate.title", isPresented: $showDuplicateAlert) {
+                Button("common.cancel", role: .cancel) {}
+                Button("start_inspection.duplicate.confirm", role: .destructive) {
                     Task {
                         let id = await viewModel.startInspection()
                         if id != nil { 
@@ -149,8 +151,11 @@ struct StartInspectionSheet: View {
                     }
                 }
             } message: {
-                let typeName = viewModel.inspectionType == "check-in" ? "check-in" : "check-out"
-                Text("A \(typeName) inspection for this property already exists today. Are you sure you want to create another?")
+                let typeName = viewModel.inspectionType == "check-in"
+                    ? String(localized: "start_inspection.duplicate.type.check_in")
+                    : String(localized: "start_inspection.duplicate.type.check_out")
+                let format = String(localized: "start_inspection.duplicate.message %1$@")
+                Text(String(format: format, locale: Locale.current, typeName))
             }
         }
     }

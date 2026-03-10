@@ -51,6 +51,53 @@ struct PropertyModel: Codable, Identifiable, Hashable {
     let bathrooms_count: Double
     let created_at: String
     var property_members: [PropertyMemberModel]?
+    
+    // Joint data for subscription inheritance
+    struct OwnerProfile: Codable, Hashable {
+        let subscription_tier: String
+        let full_name: String?
+        let email: String?
+        let company_logo_url: String?
+    }
+    let owner: OwnerProfile?
+    
+    var ownerTier: String {
+        owner?.subscription_tier ?? "free"
+    }
+
+    var ownerDisplayName: String {
+        if let name = owner?.full_name, !name.isEmpty { return name }
+        if let email = owner?.email { return email.components(separatedBy: "@").first ?? email }
+        return "Owner"
+    }
+
+    init(
+        id: UUID,
+        owner_id: UUID,
+        name: String,
+        description: String?,
+        property_type: String,
+        country: String,
+        address_line1: String?,
+        bedrooms_count: Int,
+        bathrooms_count: Double,
+        created_at: String,
+        property_members: [PropertyMemberModel]?,
+        owner: OwnerProfile?
+    ) {
+        self.id = id
+        self.owner_id = owner_id
+        self.name = name
+        self.description = description
+        self.property_type = property_type
+        self.country = country
+        self.address_line1 = address_line1
+        self.bedrooms_count = bedrooms_count
+        self.bathrooms_count = bathrooms_count
+        self.created_at = created_at
+        self.property_members = property_members
+        self.owner = owner
+    }
 }
 
 struct PropertyMemberModel: Codable, Hashable {

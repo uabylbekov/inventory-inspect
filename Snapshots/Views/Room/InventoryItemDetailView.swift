@@ -23,7 +23,7 @@ struct InventoryItemDetailView: View {
             }
             .padding(.bottom, 32)
         }
-        .navigationTitle("Item Details")
+        .navigationTitle("inventory_item.title")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await viewModel.fetchHistory()
@@ -52,7 +52,10 @@ struct InventoryItemDetailView: View {
                     .multilineTextAlignment(.center)
                 
                 HStack(spacing: 8) {
-                    Text("QTY \(viewModel.item.expected_qty)")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("inventory_item.qty", comment: ""),
+                        viewModel.item.expected_qty
+                    ))
                         .font(.caption.bold())
                         .foregroundColor(.white)
                         .padding(.horizontal, 10)
@@ -76,7 +79,7 @@ struct InventoryItemDetailView: View {
     
     private func specsSection(_ desc: String) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Notes & Specs")
+            Text("inventory_item.notes_specs")
                 .font(.headline)
             
             Text(desc)
@@ -92,7 +95,7 @@ struct InventoryItemDetailView: View {
     
     private var historySection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Condition History")
+            Text("inventory_item.condition_history")
                 .font(.headline)
                 .padding(.horizontal)
             
@@ -105,7 +108,7 @@ struct InventoryItemDetailView: View {
                     Image(systemName: "clock.badge.questionmark")
                         .font(.title)
                         .foregroundStyle(.tertiary)
-                    Text("No past inspection records.")
+                    Text("inventory_item.no_history")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }

@@ -25,9 +25,9 @@ struct LoginView: View {
                             .font(.system(size: 80))
                         
                         VStack(spacing: 8) {
-                            Text("Snapshots")
+                            Text("auth.login.app_name")
                                 .font(.largeTitle.bold())
-                            Text("Sign in to your account with a magic link. No passwords required.")
+                            Text("auth.login.subtitle")
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                                 .multilineTextAlignment(.center)
@@ -38,8 +38,8 @@ struct LoginView: View {
                     .listRowBackground(Color.clear)
                 }
                 
-                Section("Email Address") {
-                    TextField("email@example.com", text: $email)
+                Section("auth.login.email_section") {
+                    TextField("auth.common.email", text: $email)
                         .keyboardType(.emailAddress)
                         .textContentType(.emailAddress)
                         .autocapitalization(.none)
@@ -48,7 +48,7 @@ struct LoginView: View {
                         .disabled(isLoading)
                     
                     if showValidationError {
-                        Label("Invalid email address", systemImage: "exclamationmark.circle.fill")
+                        Label("auth.login.invalid_email", systemImage: "exclamationmark.circle.fill")
                             .font(.caption)
                             .foregroundColor(.red)
                     }
@@ -61,7 +61,7 @@ struct LoginView: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text("Continue")
+                            Text("auth.common.continue")
                                 .fontWeight(.bold)
                         }
                         .frame(maxWidth: .infinity)
@@ -80,13 +80,13 @@ struct LoginView: View {
             .navigationDestination(isPresented: $isNavigatingToInbox) {
                 CheckInboxView(email: email)
             }
-            .alert("Account Not Found", isPresented: $showCreateAccountPrompt) {
-                Button("Cancel", role: .cancel) { }
-                Button("Create Account") {
+            .alert("auth.login.account_not_found_title", isPresented: $showCreateAccountPrompt) {
+                Button("common.cancel", role: .cancel) { }
+                Button("auth.login.create_account") {
                     createAccountAndSignIn()
                 }
             } message: {
-                Text("An account with this email does not exist. Would you like to create one?")
+                Text("auth.login.account_not_found_message")
             }
         }
     }

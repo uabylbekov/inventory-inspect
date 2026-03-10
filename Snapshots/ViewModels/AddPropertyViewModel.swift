@@ -73,6 +73,12 @@ final class AddPropertyViewModel {
             let session = try await supabase.auth.session
             let ownerId = session.user.id
 
+            if let canCreate = try await remoteCanCreateProperty(userId: ownerId), !canCreate {
+                self.errorMessage = "Property limit reached for your current plan."
+                self.isSaving = false
+                return false
+            }
+
             let newProperty = PropertyInsert(
                 owner_id: ownerId,
                 name: name.trimmingCharacters(in: .whitespaces),
@@ -108,6 +114,25 @@ final class AddPropertyViewModel {
             self.errorMessage = error.localizedDescription
             self.isSaving = false
             return false
+        }
+    }
+
+    private func remoteCanCreateProperty(userId: UUID) async throws -> Bool? {
+        let params: [String: AnyJSON] = ["p_user_id": .string(userId.uuidString.lowercased())]
+        do {
+            let allowed: Bool = try await supabase
+                .rpc("can_user_create_property", params: params)
+                .execute()
+                .value
+            return allowed
+        } catch {
+            let message = error.localizedDescription.lowercased()
+            if message.contains("could not find the function")
+                || message.contains("function public.can_user_create_property")
+                || message.contains("schema cache") {
+                return nil
+            }
+            throw error
         }
     }
 }

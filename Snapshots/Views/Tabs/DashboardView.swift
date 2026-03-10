@@ -1,5 +1,4 @@
 import SwiftUI
-import Supabase
 
 struct DashboardView: View {
     @State private var viewModel = DashboardViewModel()
@@ -23,11 +22,15 @@ struct DashboardView: View {
                     }
                     .padding(.vertical, 4)
                 }
+
+                Section("settings.plan") {
+                    SubscriptionPlanRow()
+                }
                 
                 // MARK: - Priority Alerts
                 Section {
                     if viewModel.recentIssues.isEmpty {
-                        Text("No outstanding issues")
+                        Text("dashboard.no_outstanding_issues")
                             .foregroundColor(.secondary)
                             .italic()
                     } else {
@@ -45,10 +48,10 @@ struct DashboardView: View {
                         }
                     }
                 } header: {
-                    Text("Priority Alerts")
+                    Text("dashboard.priority_alerts")
                 } footer: {
                     if !viewModel.recentIssues.isEmpty {
-                        Text("These items were flagged as missing or damaged in recent inspections.")
+                        Text("dashboard.priority_alerts_footer")
                     }
                 }
                 // MARK: - Quick Actions
@@ -59,12 +62,12 @@ struct DashboardView: View {
                         // Reuse a state for showing sheet
                         showingStartInspection = true
                     }) {
-                        Label("Start New Inspection", systemImage: "plus.circle.fill")
+                        Label("dashboard.start_new_inspection", systemImage: "plus.circle.fill")
                     }
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Dashboard")
+            .navigationTitle("dashboard.title")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -85,8 +88,8 @@ struct DashboardView: View {
             .navigationDestination(item: $notificationManager.joiningInspection) { inspection in
                 InspectionHubView(inspection: inspection)
             }
-            .alert("Unable to Join", isPresented: Binding<Bool>(get: { notificationManager.joinError != nil }, set: { if !$0 { notificationManager.joinError = nil } })) {
-                Button("OK") { notificationManager.joinError = nil }
+            .alert("notifications.unable_to_join", isPresented: Binding<Bool>(get: { notificationManager.joinError != nil }, set: { if !$0 { notificationManager.joinError = nil } })) {
+                Button("common.ok") { notificationManager.joinError = nil }
             } message: {
                 Text(notificationManager.joinError ?? "")
             }
@@ -98,18 +101,19 @@ struct DashboardView: View {
     
     private var greetingText: String {
         let hour = Calendar.current.component(.hour, from: Date())
-        if hour < 12 { return "Good Morning" }
-        if hour < 17 { return "Good Afternoon" }
-        return "Good Evening"
+        if hour < 12 { return String(localized: "dashboard.greeting.morning") }
+        if hour < 17 { return String(localized: "dashboard.greeting.afternoon") }
+        return String(localized: "dashboard.greeting.evening")
     }
 
     private var subtitleText: String {
-        if viewModel.properties.isEmpty { return "Welcome! Let's get started." }
+        if viewModel.properties.isEmpty { return String(localized: "dashboard.subtitle.welcome") }
         if !viewModel.recentIssues.isEmpty {
             let count = viewModel.recentIssues.count
-            return "\(count) item\(count == 1 ? "" : "s") need\(count == 1 ? "s" : "") attention."
+            let format = NSLocalizedString("dashboard.subtitle.attention_count", comment: "")
+            return String.localizedStringWithFormat(format, count)
         }
-        return "Everything looks good today."
+        return String(localized: "dashboard.subtitle.clear")
     }
 }
 

@@ -15,7 +15,7 @@ struct InspectionsView: View {
                 // MARK: - Filter Header
                 Section {
                     HStack {
-                        Label("Show records for", systemImage: "calendar")
+                        Label("inspections.filter.show_records_for", systemImage: "calendar")
                         Spacer()
                         DatePicker("", selection: $viewModel.selectedDate, displayedComponents: .date)
                             .labelsHidden()
@@ -24,7 +24,7 @@ struct InspectionsView: View {
                         Button(action: {
                             withAnimation { viewModel.isFilteringByDate = false }
                         }) {
-                            Label("Clear Filters (Show All)", systemImage: "xmark.circle")
+                            Label("inspections.filter.clear", systemImage: "xmark.circle")
                                 .foregroundColor(.red)
                         }
                     }
@@ -45,7 +45,7 @@ struct InspectionsView: View {
                 
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Inspections")
+            .navigationTitle("inspections.title")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -55,7 +55,7 @@ struct InspectionsView: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "plus")
-                            Text("Add Inspection")
+                            Text("inspections.add")
                         }
                     }
                 }
@@ -83,20 +83,20 @@ struct InspectionsView: View {
                     Task { await notificationManager.handleJoinRequest(id: id) }
                 }
             }
-            .alert("Join Error", isPresented: Binding<Bool>(get: { notificationManager.joinError != nil }, set: { if !$0 { notificationManager.joinError = nil } })) {
-                Button("OK") { notificationManager.joinError = nil }
+            .alert("notifications.join_error", isPresented: Binding<Bool>(get: { notificationManager.joinError != nil }, set: { if !$0 { notificationManager.joinError = nil } })) {
+                Button("common.ok") { notificationManager.joinError = nil }
             } message: {
-                Text(notificationManager.joinError ?? "An unknown error occurred.")
+                Text(notificationManager.joinError ?? String(localized: "common.unknown_error"))
             }
-            .alert("Delete Inspection?", isPresented: $showDeleteAlert) {
-                Button("Cancel", role: .cancel) { }
-                Button("Delete", role: .destructive) {
+            .alert("inspections.delete_title", isPresented: $showDeleteAlert) {
+                Button("common.cancel", role: .cancel) { }
+                Button("common.delete", role: .destructive) {
                     if let toDelete = inspectionToDelete {
                         Task { await viewModel.deleteInspection(toDelete) }
                     }
                 }
             } message: {
-                Text("This will permanently remove this inspection and all its recorded data. This cannot be undone.")
+                Text("inspections.delete_message")
             }
         }
     }
@@ -112,24 +112,24 @@ struct InspectionsView: View {
         if viewModel.filteredInspections.isEmpty && !viewModel.isLoading {
             Section {
                 ContentUnavailableView(
-                    "No Inspections",
+                    "inspections.empty.title",
                     systemImage: "checklist",
-                    description: Text(viewModel.isFilteringByDate ? "No inspections found for this date." : "Start your first inspection to begin tracking.")
+                    description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
                 )
                 .listRowBackground(Color.clear)
             }
         }
 
         if !active.isEmpty {
-            inspectionGroup(title: "Active Walks", inspections: active)
+            inspectionGroup(title: String(localized: "inspections.group.active"), inspections: active)
         }
 
         if !completed.isEmpty {
-            inspectionGroup(title: "Completed", inspections: completed)
+            inspectionGroup(title: String(localized: "inspections.group.completed"), inspections: completed)
         }
 
         if !cancelled.isEmpty {
-            inspectionGroup(title: "Cancelled", inspections: cancelled)
+            inspectionGroup(title: String(localized: "inspections.group.cancelled"), inspections: cancelled)
         }
     }
     
@@ -150,7 +150,7 @@ struct InspectionsView: View {
                 } label: {
                     InspectionRow(
                         inspection: inspection,
-                        propertyName: propertyName ?? "Unknown Property",
+                        propertyName: propertyName ?? String(localized: "property.unknown"),
                         anomalyCount: anomalyCount,
                         resolvedCount: resolvedCount
                     )
@@ -161,7 +161,7 @@ struct InspectionsView: View {
                             inspectionToDelete = inspection
                             showDeleteAlert = true
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label("common.delete", systemImage: "trash")
                         }
                     }
                     
@@ -169,7 +169,7 @@ struct InspectionsView: View {
                         Button {
                             Task { await viewModel.cancelInspection(inspection) }
                         } label: {
-                            Label("Cancel", systemImage: "xmark.circle")
+                            Label("common.cancel", systemImage: "xmark.circle")
                         }
                         .tint(.orange)
                     }
@@ -179,7 +179,7 @@ struct InspectionsView: View {
                         Button {
                             Task { await viewModel.reopenInspection(inspection) }
                         } label: {
-                            Label("Reopen", systemImage: "arrow.uturn.backward")
+                            Label("inspections.reopen", systemImage: "arrow.uturn.backward")
                         }
                         .tint(.blue)
                     }
@@ -189,13 +189,13 @@ struct InspectionsView: View {
                         Button {
                             Task { await viewModel.cancelInspection(inspection) }
                         } label: {
-                            Label("Cancel Walk", systemImage: "xmark.circle")
+                            Label("inspections.cancel_walk", systemImage: "xmark.circle")
                         }
                     } else if inspection.status == "cancelled" {
                         Button {
                             Task { await viewModel.reopenInspection(inspection) }
                         } label: {
-                            Label("Reopen", systemImage: "arrow.uturn.backward")
+                            Label("inspections.reopen", systemImage: "arrow.uturn.backward")
                         }
                     }
                     
@@ -206,7 +206,7 @@ struct InspectionsView: View {
                             inspectionToDelete = inspection
                             showDeleteAlert = true
                         } label: {
-                            Label("Delete Forever", systemImage: "trash")
+                            Label("inspections.delete_forever", systemImage: "trash")
                         }
                     }
                 }
@@ -261,11 +261,17 @@ struct InspectionRow: View {
                     
                     if hasIssues {
                         Text("•")
-                        Label("\(anomalyCount) Issues", systemImage: "exclamationmark.triangle.fill")
+                        Label(
+                            String.localizedStringWithFormat(
+                                NSLocalizedString("inspections.issue_count", comment: ""),
+                                anomalyCount
+                            ),
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
                             .foregroundColor(.orange)
                     } else if !isActive && anomalyCount == 0 {
                         Text("•")
-                        Label("Cleared", systemImage: "checkmark.circle.fill")
+                        Label("inspections.cleared", systemImage: "checkmark.circle.fill")
                             .foregroundColor(.green)
                     }
                 }

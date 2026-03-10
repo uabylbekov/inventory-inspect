@@ -11,13 +11,13 @@ struct AddItemSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Item Details") {
-                    TextField("Item Name (e.g. Sofa, Coffeemaker)", text: $viewModel.name)
+                Section("item_sheet.details") {
+                    TextField("item_sheet.name_placeholder", text: $viewModel.name)
                     
-                    TextField("Description (e.g. Black leather, Model: X1)", text: $viewModel.description, axis: .vertical)
+                    TextField("item_sheet.description_placeholder", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...6)
                     
-                    Stepper("Expected Quantity: \(viewModel.expectedQty)", value: $viewModel.expectedQty, in: 1...100)
+                    Stepper(String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty), value: $viewModel.expectedQty, in: 1...100)
                 }
                 
                 Section {
@@ -38,7 +38,7 @@ struct AddItemSheet: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text("Add Inventory Item")
+                            Text("item_sheet.add_inventory_item")
                                 .fontWeight(.bold)
                         }
                         .frame(maxWidth: .infinity)
@@ -57,11 +57,11 @@ struct AddItemSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Add Item")
+            .navigationTitle("item_sheet.add_title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }

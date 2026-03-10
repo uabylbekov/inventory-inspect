@@ -1,0 +1,87 @@
+{
+  "identifier" : "E7C0E5E6-1B95-4D96-BB78-D0C65E19B9A4",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_applicationInternalID" : "C63A3A5E-DB18-4E53-B3E9-D73499650A47",
+    "_developerTeamID" : "",
+    "_failTransactionsEnabled" : false,
+    "_lastSynchronizedDate" : 763254000,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
+      "localizations" : [
+        {
+          "description" : "Professional and Enterprise plans for Snapshots.",
+          "displayName" : "Snapshots Premium",
+          "locale" : "en_US"
+        }
+      ],
+      "name" : "Snapshots Premium",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "9.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "D4F7A91A-6B21-4B4A-A438-C4CBF9868857",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Up to 10 properties, photo evidence, team access, and company logo PDFs.",
+              "displayName" : "Professional",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.ulukskywalker.snapshots.pro",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Professional",
+          "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "24.99",
+          "familyShareable" : false,
+          "groupNumber" : 2,
+          "internalID" : "232D0AC6-C8C7-41F8-9D5A-8C1B8D3F58AF",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited properties, unlimited team members, and white-label reports.",
+              "displayName" : "Enterprise",
+              "locale" : "en_US"
+            }
+          ],
+          "productID" : "com.ulukskywalker.snapshots.enterprise",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Enterprise",
+          "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

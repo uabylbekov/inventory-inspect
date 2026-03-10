@@ -32,7 +32,7 @@ struct InspectionHubView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(viewModel.property?.name ?? "Loading...")
+                            Text(viewModel.property?.name ?? String(localized: "inspection_hub.loading"))
                                 .font(.headline)
                             Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
                                 .font(.subheadline)
@@ -61,7 +61,11 @@ struct InspectionHubView: View {
                     ProgressView(value: progressValue)
                         .tint(.accentColor)
                     
-                    Text("\(checkedItems) of \(totalItems) items checked")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("inspection_hub.progress", comment: ""),
+                        checkedItems,
+                        totalItems
+                    ))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -73,7 +77,7 @@ struct InspectionHubView: View {
                 Section {
                     HStack {
                         Spacer()
-                        ProgressView("Loading Hub...")
+                        ProgressView("inspection_hub.loading")
                         Spacer()
                     }
                 }
@@ -93,6 +97,7 @@ struct InspectionHubView: View {
                                         item: item,
                                         inspection: viewModel.inspection,
                                         room: room,
+                                        property: viewModel.property,
                                         initialRecord: record
                                     )
                                 } label: {
@@ -108,7 +113,7 @@ struct InspectionHubView: View {
                                     Image(systemName: "checkmark.circle.fill")
                                         .foregroundColor(.green)
                                 } else {
-                                    Text(progress?.progressString ?? "")
+                                    Text(progress?.progressString ?? String(localized: "common.empty"))
                                 }
                             }
                         }
@@ -127,11 +132,14 @@ struct InspectionHubView: View {
                         HStack {
                             Spacer()
                             if viewModel.allRoomsComplete {
-                                Label("Complete Inspection", systemImage: "checkmark.seal.fill")
+                                Label("inspection_hub.complete", systemImage: "checkmark.seal.fill")
                                     .fontWeight(.bold)
                             } else {
                                 let remaining = viewModel.roomProgressList.filter { !$0.isComplete }.count
-                                Text("\(remaining) rooms remaining to check")
+                                Text(String.localizedStringWithFormat(
+                                    NSLocalizedString("inspection_hub.remaining_rooms", comment: ""),
+                                    remaining
+                                ))
                                     .foregroundColor(.secondary)
                             }
                             Spacer()
@@ -144,7 +152,7 @@ struct InspectionHubView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Inspection Hub")
+        .navigationTitle("inspection_hub.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if viewModel.inspection.status == "in_progress" {
@@ -153,7 +161,7 @@ struct InspectionHubView: View {
                         Button {
                             showCancelAlert = true
                         } label: {
-                            Label("Cancel Inspection", systemImage: "xmark.circle")
+                            Label("inspection_hub.cancel", systemImage: "xmark.circle")
                         }
                         
                         Divider()
@@ -161,7 +169,7 @@ struct InspectionHubView: View {
                         Button(role: .destructive) {
                             showDeleteAlert = true
                         } label: {
-                            Label("Delete Permanently", systemImage: "trash")
+                            Label("inspection_hub.delete_permanently", systemImage: "trash")
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")
@@ -169,12 +177,12 @@ struct InspectionHubView: View {
                 }
             }
         }
-        .alert("Cancel Inspection?", isPresented: $showCancelAlert) {
-            TextField("Reason (optional)", text: $cancelReason)
-            Button("Keep Going", role: .cancel) {
+        .alert("inspection_hub.cancel_title", isPresented: $showCancelAlert) {
+            TextField("inspection_hub.reason_optional", text: $cancelReason)
+            Button("inspection_hub.keep_going", role: .cancel) {
                 cancelReason = ""
             }
-            Button("Cancel Inspection", role: .destructive) {
+            Button("inspection_hub.cancel", role: .destructive) {
                 Task {
                     let success = await viewModel.cancelInspection(reason: cancelReason)
                     if success {
@@ -185,11 +193,11 @@ struct InspectionHubView: View {
                 }
             }
         } message: {
-            Text("This inspection will be marked as cancelled. You can't undo this action.")
+            Text("inspection_hub.cancel_message")
         }
-        .alert("Delete Permanently?", isPresented: $showDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete Forever", role: .destructive) {
+        .alert("inspection_hub.delete_title", isPresented: $showDeleteAlert) {
+            Button("common.cancel", role: .cancel) { }
+            Button("inspection_hub.delete_forever", role: .destructive) {
                 Task {
                     let success = await viewModel.deleteInspection()
                     if success {
@@ -199,7 +207,7 @@ struct InspectionHubView: View {
                 }
             }
         } message: {
-            Text("This will completely remove this inspection and all its records from the database. This cannot be undone.")
+            Text("inspection_hub.delete_message")
         }
         .task {
             await viewModel.fetchData()
@@ -208,9 +216,9 @@ struct InspectionHubView: View {
         .onDisappear {
             viewModel.unsubscribe()
         }
-        .alert("Complete Inspection?", isPresented: $showCompleteAlert) {
-            Button("Not Yet", role: .cancel) {}
-            Button("Complete", action: {
+        .alert("inspection_hub.complete_title", isPresented: $showCompleteAlert) {
+            Button("inspection_hub.not_yet", role: .cancel) {}
+            Button("inspection_hub.complete", action: {
                 Task {
                     HapticManager.shared.impact(style: .medium)
                     let success = await viewModel.completeInspection()
@@ -221,7 +229,7 @@ struct InspectionHubView: View {
                 }
             })
         } message: {
-            Text("This will finalize the inspection and generate a report. No further changes can be made after completing.")
+            Text("inspection_hub.complete_message")
         }
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.inspectionItems.count)
     }
@@ -250,7 +258,10 @@ struct TacticalItemRow: View {
                     .font(.body)
                 
                 if item.expected_qty > 1 {
-                    Text("Qty: \(item.expected_qty)")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("inspection_hub.qty", comment: ""),
+                        item.expected_qty
+                    ))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

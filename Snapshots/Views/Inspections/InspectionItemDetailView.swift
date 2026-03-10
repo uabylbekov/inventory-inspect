@@ -6,6 +6,7 @@ struct InspectionItemDetailView: View {
     let item: RoomInventoryItemModel
     let inspection: InspectionModel
     let room: PropertyRoomModel
+    let property: PropertyModel?
     
     @State private var status: String
     @State private var notes: String
@@ -28,10 +29,11 @@ struct InspectionItemDetailView: View {
     @Environment(\.dismiss) private var dismiss
     private let accessManager = SnapshotsAccessManager.shared
     
-    init(item: RoomInventoryItemModel, inspection: InspectionModel, room: PropertyRoomModel, initialRecord: InspectionItemModel?) {
+    init(item: RoomInventoryItemModel, inspection: InspectionModel, room: PropertyRoomModel, property: PropertyModel?, initialRecord: InspectionItemModel?) {
         self.item = item
         self.inspection = inspection
         self.room = room
+        self.property = property
         _status = State(initialValue: initialRecord?.status ?? "present")
         _notes = State(initialValue: initialRecord?.notes ?? "")
         _imageURL = State(initialValue: initialRecord?.image_url)
@@ -66,19 +68,41 @@ struct InspectionItemDetailView: View {
             
             // MARK: - Condition Section
             Section {
-                conditionRow(title: "Present", icon: "checkmark.circle.fill", color: .green, statusKey: "present")
+                conditionRow(title: String(localized: "inspection_item.status.present"), icon: "checkmark.circle.fill", color: .green, statusKey: "present")
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                conditionRow(title: "Missing", icon: "questionmark.circle.fill", color: .orange, statusKey: "missing")
+                conditionRow(title: String(localized: "inspection_item.status.missing"), icon: "questionmark.circle.fill", color: .orange, statusKey: "missing")
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
-                conditionRow(title: "Damaged", icon: "exclamationmark.triangle.fill", color: .red, statusKey: "damaged")
+                conditionRow(title: String(localized: "inspection_item.status.damaged"), icon: "exclamationmark.triangle.fill", color: .red, statusKey: "damaged")
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             } header: {
-                Text("Condition")
+                Text("inspection_item.condition")
             }
             
             // MARK: - Evidence Section
             Section {
-                if accessManager.isPro {
+                if accessManager.isPro(for: property) {
+                    if !accessManager.isDirectSubscriber,
+                       let property,
+                       property.ownerTier != "free" {
+                        HStack(spacing: 10) {
+                            Image(systemName: "person.crop.circle.badge.checkmark")
+                                .foregroundColor(.accentColor)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("inspection_item.included_here")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(String.localizedStringWithFormat(
+                                    NSLocalizedString("inspection_item.inherited_plan", comment: ""),
+                                    property.ownerDisplayName,
+                                    property.ownerTier.capitalized
+                                ))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                            Spacer()
+                        }
+                        .padding(.vertical, 4)
+                    }
                     evidenceRow
                         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                 } else {
@@ -92,10 +116,16 @@ struct InspectionItemDetailView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
-                            Text("Add Photo Evidence")
-                                .foregroundColor(.secondary)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("inspection_item.add_photo")
+                                    .foregroundColor(.primary)
+                                Text("inspection_item.requires_pro")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
                             Spacer()
-                            Text("PRO")
+                            Text("plan.badge.pro")
                                 .font(.caption2.bold())
                                 .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
@@ -106,20 +136,20 @@ struct InspectionItemDetailView: View {
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
                 }
             } header: {
-                Text("Evidence")
+                Text("inspection_item.evidence")
             } footer: {
-                if !accessManager.isPro {
-                    Text("Upgrade to Professional to attach photo evidence to inspections.")
+                if !accessManager.isPro(for: property) {
+                    Text("inspection_item.upgrade_footer")
                 }
             }
             
             // MARK: - Notes Section
             Section {
-                TextField("Add details about the condition...", text: $notes, axis: .vertical)
+                TextField("inspection_item.notes_placeholder", text: $notes, axis: .vertical)
                     .lineLimit(3...6)
                     .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             } header: {
-                Text("Notes")
+                Text("inspection_item.notes")
             } footer: {
                 if let err = saveError {
                     Text(err)
@@ -128,7 +158,7 @@ struct InspectionItemDetailView: View {
             }
         }
         .listStyle(.insetGrouped)
-        .navigationTitle("Check Item")
+        .navigationTitle("inspection_item.title")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -147,7 +177,7 @@ struct InspectionItemDetailView: View {
                     if isSaving {
                         ProgressView()
                     } else {
-                        Text("Save")
+                        Text("common.save")
                     }
                 }
                 .disabled(isSaving || savedSuccessfully)
@@ -155,7 +185,7 @@ struct InspectionItemDetailView: View {
         }
         .overlay {
             if isProcessingImage {
-                LoadingOverlay(message: "Optimizing Photo…")
+                LoadingOverlay(message: String(localized: "inspection_item.optimizing_photo"))
             }
         }
         .sheet(isPresented: $showingAnnotation) {
@@ -241,7 +271,7 @@ struct InspectionItemDetailView: View {
             
             Button(action: { showingImageSource = true }) {
                 HStack {
-                    Label(imageURL == nil && pendingImageData == nil ? "Add Photo Evidence" : "Change Photo", 
+                    Label(imageURL == nil && pendingImageData == nil ? String(localized: "inspection_item.add_photo") : String(localized: "inspection_item.change_photo"), 
                           systemImage: "camera.fill")
                     Spacer()
                     if isUploading {
@@ -252,18 +282,18 @@ struct InspectionItemDetailView: View {
             .disabled(isUploading)
         }
         .padding(.vertical, 4)
-        .confirmationDialog("Attach Photo", isPresented: $showingImageSource) {
-            Button("Camera") { showingCamera = true }
-            Button("Photo Library") { showingLibrary = true }
+        .confirmationDialog("inspection_item.attach_photo", isPresented: $showingImageSource) {
+            Button("inspection_item.camera") { showingCamera = true }
+            Button("inspection_item.photo_library") { showingLibrary = true }
             if imageURL != nil || pendingImageData != nil {
-                Button("Remove Photo", role: .destructive) {
+                Button("inspection_item.remove_photo", role: .destructive) {
                     withAnimation {
                         imageURL = nil
                         pendingImageData = nil
                     }
                 }
             }
-            Button("Cancel", role: .cancel) { }
+            Button("common.cancel", role: .cancel) { }
         }
         .sheet(isPresented: $showingCamera) {
             ImagePicker(image: $capturedImage, sourceType: .camera)
@@ -369,28 +399,6 @@ struct InspectionItemDetailView: View {
                     self.showingAnnotation = true
                 }
             }
-        }
-    }
-}
-
-// MARK: - Tactical Components
-
-
-struct LoadingOverlay: View {
-    let message: String
-    
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.3).ignoresSafeArea()
-            VStack(spacing: 12) {
-                ProgressView()
-                    .tint(.white)
-                Text(message)
-                    .foregroundColor(.white)
-                    .font(.subheadline)
-            }
-            .padding(20)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
         }
     }
 }

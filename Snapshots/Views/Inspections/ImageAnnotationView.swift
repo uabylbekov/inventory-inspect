@@ -34,15 +34,15 @@ struct InventoryImageAnnotationView: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
-            .navigationTitle("Annotate Photo")
+            .navigationTitle("annotation.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { isPresented = false }
+                    Button("common.cancel") { isPresented = false }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
+                    Button("common.done") {
                         saveAnnotatedImage()
                         isPresented = false
                     }

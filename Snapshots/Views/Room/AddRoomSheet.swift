@@ -11,21 +11,21 @@ struct AddRoomSheet: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Room Details") {
-                    TextField("Room Name (e.g. Master Bedroom)", text: $viewModel.name)
+                Section("room_sheet.details") {
+                    TextField("room_sheet.name_placeholder", text: $viewModel.name)
                     
-                    Picker("Room Type", selection: $viewModel.roomType) {
-                        Text("Bedroom").tag("Bedroom")
-                        Text("Bathroom").tag("Bathroom")
-                        Text("Kitchen").tag("Kitchen")
-                        Text("Living Room").tag("Living Room")
-                        Text("Dining Room").tag("Dining Room")
-                        Text("Office").tag("Office")
-                        Text("Outdoor Space").tag("Outdoor Space")
-                        Text("Other").tag("Other")
+                    Picker("room_sheet.type", selection: $viewModel.roomType) {
+                        Text("room_type.bedroom").tag("Bedroom")
+                        Text("room_type.bathroom").tag("Bathroom")
+                        Text("room_type.kitchen").tag("Kitchen")
+                        Text("room_type.living_room").tag("Living Room")
+                        Text("room_type.dining_room").tag("Dining Room")
+                        Text("room_type.office").tag("Office")
+                        Text("room_type.outdoor_space").tag("Outdoor Space")
+                        Text("room_type.other").tag("Other")
                     }
                     
-                    TextField("Description (e.g. South facing windows)", text: $viewModel.description, axis: .vertical)
+                    TextField("room_sheet.description_placeholder", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...6)
                 }
                 
@@ -47,7 +47,7 @@ struct AddRoomSheet: View {
                                 ProgressView()
                                     .tint(.white)
                             }
-                            Text("Add Room")
+                            Text("property_detail.add_room")
                                 .fontWeight(.bold)
                         }
                         .frame(maxWidth: .infinity)
@@ -66,11 +66,11 @@ struct AddRoomSheet: View {
                 }
             }
             .listStyle(.insetGrouped)
-            .navigationTitle("Add Room")
+            .navigationTitle("property_detail.add_room")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("common.cancel") { dismiss() }
                 }
             }
         }

@@ -9,9 +9,9 @@ struct NotificationsView: View {
             List {
                 if notificationManager.notifications.isEmpty {
                     ContentUnavailableView(
-                        "No Notifications",
+                        "notifications.empty.title",
                         systemImage: "bell.slash",
-                        description: Text("Alerts about invitations or inspection activities will appear here.")
+                        description: Text("notifications.empty.description")
                     )
                     .listRowBackground(Color.clear)
                 } else {
@@ -26,16 +26,16 @@ struct NotificationsView: View {
                     }
                 }
             }
-            .navigationTitle("Notifications")
+            .navigationTitle("notifications.title")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") { dismiss() }
+                    Button("common.done") { dismiss() }
                 }
                 
                 ToolbarItem(placement: .primaryAction) {
                     if notificationManager.unreadCount > 0 {
-                        Button("Mark All as Read") {
+                        Button("notifications.mark_all_read") {
                             Task { await notificationManager.markAllAsRead() }
                         }
                     }

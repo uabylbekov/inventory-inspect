@@ -10,9 +10,21 @@ final class PropertyViewModel {
     var properties: [PropertyModel] = []
     
     private let accessManager = SnapshotsAccessManager.shared
+    
+    private struct AccessiblePropertyRow: Codable {
+        let property_id: UUID
+        let owner_id: UUID
+        let owner_tier: String
+        let owner_full_name: String?
+        let owner_email: String?
+        let owner_company_logo_url: String?
+        let membership_role: String
+    }
 
     func canAddProperty() -> Bool {
-        accessManager.canAddProperty(currentCount: properties.count)
+        guard let userId = accessManager.profile?.id else { return false }
+        let ownedCount = properties.filter { $0.owner_id == userId }.count
+        return accessManager.canAddProperty(ownedCount: ownedCount)
     }
 
     func fetchProperties() async {
@@ -21,24 +33,88 @@ final class PropertyViewModel {
         
         do {
             let session = try await supabase.auth.session
-            let ownerId = session.user.id
+            let userId = session.user.id
+
+            if let contractProperties = try await fetchViaAccessContract(userId: userId) {
+                self.properties = contractProperties
+                self.isLoading = false
+                return
+            }
             
-            // Fetch properties tied to the current owner via the property_members table
             let fetchedProperties: [PropertyModel] = try await supabase
                 .from("properties")
                 .select("*, property_members!inner(role)")
-                .eq("property_members.user_id", value: ownerId)
+                .eq("property_members.user_id", value: userId.uuidString.lowercased())
                 .order("created_at", ascending: false)
                 .execute()
                 .value
-                
-            self.properties = fetchedProperties
+
+            self.properties = try await PropertyOwnerProfileLoader.enrich(fetchedProperties)
             self.isLoading = false
         } catch is CancellationError {
             self.isLoading = false
         } catch {
+            print("PropertyViewModel: Fetch Error: \(error)")
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+        }
+    }
+
+    private func fetchViaAccessContract(userId: UUID) async throws -> [PropertyModel]? {
+        let params: [String: AnyJSON] = ["p_user_id": .string(userId.uuidString.lowercased())]
+
+        let accessRows: [AccessiblePropertyRow]
+        do {
+            accessRows = try await supabase
+                .rpc("get_accessible_properties_with_owner_tier", params: params)
+                .execute()
+                .value
+        } catch {
+            let message = error.localizedDescription.lowercased()
+            if message.contains("could not find the function")
+                || message.contains("function public.get_accessible_properties_with_owner_tier")
+                || message.contains("schema cache") {
+                return nil
+            }
+            throw error
+        }
+
+        if accessRows.isEmpty {
+            return []
+        }
+
+        let propertyIds = accessRows.map { $0.property_id.uuidString.lowercased() }
+        let fetchedProperties: [PropertyModel] = try await supabase
+            .from("properties")
+            .select()
+            .in("id", values: propertyIds)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+
+        let accessByPropertyId = Dictionary(uniqueKeysWithValues: accessRows.map { ($0.property_id, $0) })
+
+        return fetchedProperties.compactMap { property in
+            guard let access = accessByPropertyId[property.id] else { return nil }
+            return PropertyModel(
+                id: property.id,
+                owner_id: property.owner_id,
+                name: property.name,
+                description: property.description,
+                property_type: property.property_type,
+                country: property.country,
+                address_line1: property.address_line1,
+                bedrooms_count: property.bedrooms_count,
+                bathrooms_count: property.bathrooms_count,
+                created_at: property.created_at,
+                property_members: [PropertyMemberModel(role: access.membership_role)],
+                owner: PropertyModel.OwnerProfile(
+                    subscription_tier: access.owner_tier,
+                    full_name: access.owner_full_name,
+                    email: access.owner_email,
+                    company_logo_url: access.owner_company_logo_url
+                )
+            )
         }
     }
     

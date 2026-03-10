@@ -38,17 +38,17 @@ struct PlanBadge: View {
     @Environment(SnapshotsAccessManager.self) private var accessManager
 
     private var label: String {
-        if accessManager.isEnterprise { return "ENTERPRISE" }
-        if accessManager.isPro { return "PRO" }
+        if accessManager.isDirectSubscriberEnterprise { return "ENTERPRISE" }
+        if accessManager.isDirectSubscriber { return "PRO" }
         return ""
     }
 
     private var color: Color {
-        accessManager.isEnterprise ? .purple : .accentColor
+        accessManager.isDirectSubscriberEnterprise ? .purple : .accentColor
     }
 
     var body: some View {
-        if accessManager.isPro {
+        if accessManager.isDirectSubscriber {
             Text(label)
                 .font(.system(size: 9, weight: .black))
                 .tracking(0.5)
@@ -74,5 +74,31 @@ struct StatusBadge: View {
             .padding(.vertical, 4)
             .background(StatusUI.color(for: status).opacity(0.12))
             .clipShape(Capsule())
+    }
+}
+// MARK: - Loading Overlay
+
+struct LoadingOverlay: View {
+    let message: String
+    
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.4)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 16) {
+                ProgressView()
+                    .controlSize(.large)
+                    .tint(.white)
+                
+                Text(message)
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
+            .padding(32)
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .shadow(radius: 10)
+        }
     }
 }

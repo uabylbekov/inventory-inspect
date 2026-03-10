@@ -14,7 +14,11 @@ final class InspectionsViewModel {
     var showingStartInspection = false
     
     var isFilteringByDate = false
-    var selectedDate = Date()
+    var selectedDate = Date() {
+        didSet {
+            isFilteringByDate = true
+        }
+    }
     
     var filteredInspections: [InspectionModel] {
         if !isFilteringByDate {

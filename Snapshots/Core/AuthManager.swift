@@ -16,11 +16,15 @@ final class AuthManager {
                     self.checkProfileCompletion(session)
                     self.isCheckingSession = false
                 }
+                await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
             } catch {
                 await MainActor.run {
                     self.isAuthenticated = false
                     self.isProfileComplete = false
                     self.isCheckingSession = false
+                }
+                await MainActor.run {
+                    SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
                 }
             }
             
@@ -32,6 +36,13 @@ final class AuthManager {
                     } else {
                         self.isAuthenticated = false
                         self.isProfileComplete = false
+                    }
+                }
+                if state.session != nil {
+                    await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
+                } else {
+                    await MainActor.run {
+                        SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
                     }
                 }
             }

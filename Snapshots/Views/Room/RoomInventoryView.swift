@@ -30,14 +30,20 @@ struct RoomInventoryView: View {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(room.name)
                                 .font(.title3.bold())
-                            Text(room.room_type?.capitalized ?? "Room")
+                            Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
                                 .font(.subheadline)
                                 .foregroundColor(.secondary)
                         }
                     }
                     
                     HStack(spacing: 20) {
-                        Label("\(viewModel.items.count) Items", systemImage: "cube.box")
+                        Label(
+                            String.localizedStringWithFormat(
+                                NSLocalizedString("room_inventory.items_count", comment: ""),
+                                viewModel.items.count
+                            ),
+                            systemImage: "cube.box"
+                        )
                     }
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -46,7 +52,7 @@ struct RoomInventoryView: View {
             }
             
             // MARK: - Inventory Section
-            Section("Inventory") {
+            Section("room_inventory.inventory") {
                 if viewModel.isLoading && viewModel.items.isEmpty {
                     HStack {
                         Spacer()
@@ -55,9 +61,9 @@ struct RoomInventoryView: View {
                     }
                 } else if viewModel.items.isEmpty {
                     ContentUnavailableView(
-                        "No Items",
+                        "room_inventory.empty_title",
                         systemImage: "cube.box",
-                        description: Text("Add inventory items to track what's in this room.")
+                        description: Text("room_inventory.empty_message")
                     )
                     .listRowBackground(Color.clear)
                 } else {
@@ -73,14 +79,14 @@ struct RoomInventoryView: View {
                                 itemToDelete = item
                                 showingItemDeleteAlert = true
                             } label: {
-                                Label("Delete", systemImage: "trash")
+                                Label("common.delete", systemImage: "trash")
                             }
                         }
                         .swipeActions(edge: .leading) {
                             Button {
                                 editingItem = item
                             } label: {
-                                Label("Edit", systemImage: "pencil")
+                                Label("common.edit", systemImage: "pencil")
                             }
                             .tint(.accentColor)
                         }
@@ -88,13 +94,13 @@ struct RoomInventoryView: View {
                             Button {
                                 editingItem = item
                             } label: {
-                                Label("Edit Item", systemImage: "pencil")
+                                Label("room_inventory.edit_item", systemImage: "pencil")
                             }
                             Button(role: .destructive) {
                                 itemToDelete = item
                                 showingItemDeleteAlert = true
                             } label: {
-                                Label("Delete", systemImage: "trash")
+                                Label("common.delete", systemImage: "trash")
                             }
                         }
                         .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
@@ -110,16 +116,16 @@ struct RoomInventoryView: View {
                 Button(action: { viewModel.showingAddItem = true }) {
                     HStack(spacing: 4) {
                         Image(systemName: "plus")
-                        Text("Add Item")
+                        Text("room_inventory.add_item")
                     }
                 }
             }
         }
-        .alert("Delete Item?", isPresented: $showingItemDeleteAlert) {
-            Button("Cancel", role: .cancel) {
+        .alert("room_inventory.delete_title", isPresented: $showingItemDeleteAlert) {
+            Button("common.cancel", role: .cancel) {
                 itemToDelete = nil
             }
-            Button("Delete", role: .destructive) {
+            Button("common.delete", role: .destructive) {
                 if let item = itemToDelete, let index = viewModel.items.firstIndex(where: { $0.id == item.id }) {
                     HapticManager.shared.impact(style: .medium)
                     viewModel.deleteItems(at: IndexSet(integer: index))
@@ -128,7 +134,7 @@ struct RoomInventoryView: View {
                 itemToDelete = nil
             }
         } message: {
-            Text("Are you sure you want to delete this inventory item? This action cannot be undone.")
+            Text("room_inventory.delete_message")
         }
         .sheet(isPresented: $viewModel.showingAddItem, onDismiss: {
             Task { await viewModel.fetchItems() }

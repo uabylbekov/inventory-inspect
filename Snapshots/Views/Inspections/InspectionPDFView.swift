@@ -18,7 +18,7 @@ struct InspectionPDFView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(property.name)
                         .font(.system(size: 28, weight: .bold))
-                    Text(property.address_line1 ?? "No address recorded")
+                    Text(property.address_line1 ?? String(localized: "pdf.address_missing"))
                         .font(.system(size: 16))
                         .foregroundColor(.secondary)
                 }
@@ -31,7 +31,7 @@ struct InspectionPDFView: View {
                         .cornerRadius(8)
                 } else {
                     VStack(alignment: .trailing, spacing: 4) {
-                        Text("INSPECTION REPORT")
+                        Text(String(localized: "pdf.report.title").uppercased())
                             .font(.system(size: 14, weight: .black))
                             .foregroundColor(.accentColor)
                         Text(AppFormatter.formatInspectionType(inspection.inspection_type).uppercased())
@@ -46,7 +46,7 @@ struct InspectionPDFView: View {
             // Meta Info
             HStack(spacing: 40) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("DATE")
+                    Text(String(localized: "pdf.meta.date").uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
                     Text(AppFormatter.formatDate(inspection.started_at))
@@ -54,15 +54,15 @@ struct InspectionPDFView: View {
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("INSPECTOR")
+                    Text(String(localized: "pdf.meta.inspector").uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
-                    Text(inspectorName ?? "Unknown")
+                    Text(inspectorName ?? String(localized: "common.unknown"))
                         .font(.system(size: 14, weight: .semibold))
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("STATUS")
+                    Text(String(localized: "pdf.meta.status").uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
                     Text(inspection.status.uppercased())
@@ -73,7 +73,7 @@ struct InspectionPDFView: View {
             
             if let notes = inspection.notes, !notes.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("NOTES")
+                    Text(String(localized: "pdf.meta.notes").uppercased())
                         .font(.system(size: 10, weight: .bold))
                         .foregroundColor(.secondary)
                     Text(notes)
@@ -84,14 +84,14 @@ struct InspectionPDFView: View {
             
             // Summary Checklist
             VStack(alignment: .leading, spacing: 12) {
-                Text("EXECUTIVE SUMMARY")
+                Text(String(localized: "pdf.summary.title").uppercased())
                     .font(.system(size: 14, weight: .bold))
                     .padding(.bottom, 4)
                 
                 HStack(spacing: 20) {
-                    summaryBit(label: "Anomalies", count: anomalies.count, color: .red)
-                    summaryBit(label: "Resolved", count: resolvedItems.count, color: .blue)
-                    summaryBit(label: "Present", count: presentItems.count, color: .green)
+                    summaryBit(label: String(localized: "pdf.summary.anomalies"), count: anomalies.count, color: .red)
+                    summaryBit(label: String(localized: "pdf.summary.resolved"), count: resolvedItems.count, color: .blue)
+                    summaryBit(label: String(localized: "pdf.summary.present"), count: presentItems.count, color: .green)
                 }
             }
             .padding()
@@ -101,7 +101,7 @@ struct InspectionPDFView: View {
             // Anomalies Section
             if !anomalies.isEmpty {
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("DETAILED ANOMALIES")
+                    Text(String(localized: "pdf.section.anomalies").uppercased())
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.red)
                     
@@ -114,7 +114,7 @@ struct InspectionPDFView: View {
             // Resolved Section
             if !resolvedItems.isEmpty {
                 VStack(alignment: .leading, spacing: 15) {
-                    Text("RESOLVED DURING INSPECTION")
+                    Text(String(localized: "pdf.section.resolved").uppercased())
                         .font(.system(size: 18, weight: .bold))
                         .foregroundColor(.blue)
                     
@@ -126,7 +126,7 @@ struct InspectionPDFView: View {
             
             Spacer()
             
-            Text("Generated by Snapshots Property Management App")
+            Text("pdf.footer")
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
