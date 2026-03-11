@@ -13,8 +13,6 @@ const normalizeRole = (role: string) => {
   throw new Error("Invalid role")
 }
 
-const displayRole = (role: string) => role.charAt(0).toUpperCase() + role.slice(1)
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
@@ -59,21 +57,8 @@ serve(async (req) => {
     if (rpcError) throw new Error(rpcError.message)
 
     const status = rpcResult?.status
-    const roleLabel = displayRole(normalizedRole)
 
-    if (status === "joined") {
-      const { data: authUser } = await adminClient.auth.admin.getUserByEmail(email.toLowerCase().trim())
-
-      if (authUser?.user?.id) {
-        await adminClient.from("notifications").insert({
-          user_id: authUser.user.id,
-          title: "Property Invitation",
-          body: `${inviterName} added you to "${propertyName}" as a ${roleLabel}.`,
-          type: "invitation",
-          data: { property_id },
-        })
-      }
-    } else if (status === "pending_created") {
+    if (status === "pending_created") {
       const appStoreUrl = Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com"
 
       await adminClient.auth.admin.inviteUserByEmail(email.toLowerCase().trim(), {

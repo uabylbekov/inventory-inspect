@@ -13,6 +13,25 @@ The main layers are:
 - Shared rendering and support utilities in `Snapshots/Utilities` and `Snapshots/Utils`
 - Database schema and backend automation in `supabase/migrations` and `supabase/functions`
 
+## Supabase environments
+
+There are two Supabase branches connected to this repo:
+
+- `main`: production-style branch, project ref `ulsckwhhnaxxebrthzpn`
+- `test`: preview branch, project ref `nmtifjchsgdnfknkpowu`
+
+For junior contributors, the safest rule is:
+
+- `Prod.xcconfig` means you are testing against `main`
+- `Test.xcconfig` means you are testing against `test`
+- if something works in one branch but not the other, do not guess; compare schema state and branch status first
+
+One extra rule that saves time:
+
+- do not create branch-only migration chains unless you truly mean to diverge from `main`
+- if `test` has different migration versions for the same logical feature, branch drift is usually the real bug
+- the clean recovery path is to reset or rebuild `test` from `main`, then re-test
+
 ## Startup sequence
 
 1. `InspectionsApp` configures notification delegation and deep-link handling.
@@ -55,7 +74,7 @@ The important architectural point is that inspection data references inventory t
 Snapshots uses realtime in two distinct ways:
 
 - Inspection collaboration: the inspection hub subscribes to `inspection_items` changes for the active inspection and refreshes state when another user records an item.
-- Notifications: the app listens for new rows in `notifications` and updates the in-app inbox immediately.
+- Notifications: the app listens for new rows in `notifications` for the signed-in user and updates the in-app inbox immediately.
 
 This means QA should treat realtime behavior as a first-class feature, not as a background implementation detail.
 
@@ -72,6 +91,7 @@ This means QA should treat realtime behavior as a first-class feature, not as a 
 - Stores business entities and access relationships
 - Supports RPC fallback and access-contract style queries for property visibility
 - Holds operational tables for alert dedupe and cursor tracking
+- Enforces role rules with RLS so owners and managers can edit template data, while maintainers stay read-only for that part of the app
 
 ### Supabase Storage
 

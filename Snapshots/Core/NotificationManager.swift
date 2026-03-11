@@ -91,6 +91,17 @@ final class NotificationManager: @unchecked Sendable {
             self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
         }
     }
+
+    func handleNotificationTap(userInfo: [AnyHashable: Any]) async {
+        if let inspectionID = parseUUID(from: userInfo["inspection_id"]) {
+            await handleJoinRequest(id: inspectionID)
+            return
+        }
+
+        if let notificationID = parseUUID(from: userInfo["id"]) {
+            await openNotification(id: notificationID)
+        }
+    }
     
     func registerDeviceToken(_ token: String) async {
         self.currentToken = token
@@ -136,10 +147,22 @@ final class NotificationManager: @unchecked Sendable {
     }
     
     func fetchNotifications() async {
+        let userId = if let observedUserId {
+            observedUserId
+        } else {
+            await currentUserID()
+        }
+
+        guard let userId else {
+            applyNotifications([])
+            return
+        }
+
         do {
             let fetched: [NotificationModel] = try await supabase
                 .from("notifications")
                 .select()
+                .eq("user_id", value: userId.uuidString.lowercased())
                 .order("created_at", ascending: false)
                 .limit(notificationQueryLimit)
                 .execute()
@@ -152,18 +175,16 @@ final class NotificationManager: @unchecked Sendable {
     }
     
     func markAsRead(_ notification: NotificationModel) async {
-        // Find local index
-        guard let index = notifications.firstIndex(where: { $0.id == notification.id }) else { return }
-        
-        // Optimistic UI update
-        notifications[index].is_read = true
-        syncUnreadCount()
+        if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
+            notifications[index].is_read = true
+            syncUnreadCount()
+        }
         
         do {
             try await supabase
                 .from("notifications")
                 .update(["is_read": true])
-                .eq("id", value: notification.id)
+                .eq("id", value: notification.id.uuidString.lowercased())
                 .execute()
             
             updateBadgeCount()
@@ -223,13 +244,21 @@ final class NotificationManager: @unchecked Sendable {
     
     func setupRealtime() async {
         guard channel == nil else { return }
+        let userId = if let observedUserId {
+            observedUserId
+        } else {
+            await currentUserID()
+        }
+
+        guard let userId else { return }
 
         let channel = supabase.channel("public:notifications")
         
         let observation = channel.postgresChange(
             AnyAction.self,
             schema: "public",
-            table: "notifications"
+            table: "notifications",
+            filter: .eq("user_id", value: userId.uuidString.lowercased())
         )
         
         realtimeTask = Task { [weak self] in
@@ -266,9 +295,18 @@ final class NotificationManager: @unchecked Sendable {
         content.title = notification.title
         content.body = notification.body
         content.sound = .default
-        
-        // Add data for deep linking
-        content.userInfo = ["id": notification.id.uuidString]
+
+        var userInfo: [AnyHashable: Any] = [
+            "id": notification.id.uuidString,
+            "type": notification.type
+        ]
+        if let inspectionID = notificationInspectionID(notification) {
+            userInfo["inspection_id"] = inspectionID.uuidString
+        }
+        if let propertyID = notificationPropertyID(notification) {
+            userInfo["property_id"] = propertyID.uuidString
+        }
+        content.userInfo = userInfo
         
         let request = UNNotificationRequest(
             identifier: notification.id.uuidString,
@@ -293,6 +331,57 @@ final class NotificationManager: @unchecked Sendable {
     private func applyNotifications(_ fetched: [NotificationModel]) {
         notifications = fetched
         syncUnreadCount()
+    }
+
+    private func openNotification(id: UUID) async {
+        do {
+            let notification: NotificationModel = try await supabase
+                .from("notifications")
+                .select()
+                .eq("id", value: id.uuidString.lowercased())
+                .single()
+                .execute()
+                .value
+
+            await open(notification: notification)
+        } catch {
+            joinError = "Unable to open this notification."
+        }
+    }
+
+    func open(notification: NotificationModel) async {
+        await markAsRead(notification)
+
+        if let inspectionID = notificationInspectionID(notification) {
+            await handleJoinRequest(id: inspectionID)
+            return
+        }
+
+        selectedNotificationID = notification.id
+    }
+
+    private func notificationInspectionID(_ notification: NotificationModel) -> UUID? {
+        parseUUID(from: notification.data["inspection_id"])
+    }
+
+    private func notificationPropertyID(_ notification: NotificationModel) -> UUID? {
+        parseUUID(from: notification.data["property_id"])
+    }
+
+    private func parseUUID(from value: Any?) -> UUID? {
+        if let uuid = value as? UUID {
+            return uuid
+        }
+
+        if let stringValue = value as? String {
+            return UUID(uuidString: stringValue)
+        }
+
+        if let anyJSON = value as? AnyJSON, case .string(let stringValue) = anyJSON {
+            return UUID(uuidString: stringValue)
+        }
+
+        return nil
     }
 
     private func syncUnreadCount() {

@@ -36,8 +36,8 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
         let userInfo = response.notification.request.content.userInfo
-        if let idString = userInfo["id"] as? String, let id = UUID(uuidString: idString) {
-            NotificationManager.shared.selectedNotificationID = id
+        Task {
+            await NotificationManager.shared.handleNotificationTap(userInfo: userInfo)
         }
         completionHandler()
     }
@@ -63,9 +63,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, UNUserNotificationCent
 
     func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
         let userInfo = response.notification.request.content.userInfo
-        if let idString = userInfo["id"] as? String, let id = UUID(uuidString: idString) {
-            NotificationManager.shared.selectedNotificationID = id
-        }
+        await NotificationManager.shared.handleNotificationTap(userInfo: userInfo)
     }
 }
 #endif

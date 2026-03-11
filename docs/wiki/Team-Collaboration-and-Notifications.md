@@ -18,6 +18,12 @@ Snapshots is not only a solo inspection tool. It supports team workflows where o
 
 A property can have members with roles. The UI distinguishes owners and managers when deciding whether to show room-management and team-management controls.
 
+In plain language:
+
+- owner: can manage the property, rooms, inventory, and team
+- manager: can manage the property template and team workflows, but is not the billing owner
+- maintainer: can work inside the property, but should not see edit or delete controls for the property template
+
 Important rule:
 
 - premium access may be inherited from the property owner’s tier, but billing identity still belongs to the purchasing owner
@@ -62,7 +68,7 @@ This is why a notification bug may be caused by:
 
 ## Deep linking behavior
 
-Notifications can carry an inspection identifier. When the user taps a delivered notification, the app stores the selected notification id and can load the corresponding inspection through `handleJoinRequest`.
+Notifications can carry an inspection identifier. When the user taps a delivered notification, the app should read that inspection id and open the inspection flow directly.
 
 This is a key tester scenario because it crosses:
 
@@ -80,6 +86,7 @@ Badge counts are based on unread notifications, not total notifications. The pus
 - Invite or manage a teammate on a premium property.
 - Confirm collaboration controls are available where expected.
 - Confirm collaboration controls are blocked on free properties.
+- Confirm a maintainer can view shared data but does not see property, room, or inventory edit/delete controls.
 - Receive a notification while the app is foregrounded.
 - Receive a notification while the app is backgrounded.
 - Tap a notification and confirm the app navigates correctly.

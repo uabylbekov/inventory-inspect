@@ -19,7 +19,7 @@ struct NotificationsView: View {
                     ForEach(notificationManager.notifications) { notification in
                         NotificationRow(notification: notification)
                             .onTapGesture {
-                                Task { await notificationManager.markAsRead(notification) }
+                                Task { await notificationManager.open(notification: notification) }
                             }
                     }
                     .onDelete { offsets in

@@ -8,6 +8,7 @@ final class RoomInventoryViewModel {
     var isLoading = false
     var errorMessage: String?
     var showingAddItem = false
+    var canManageInventory = false
     
     init(room: PropertyRoomModel) {
         self.room = room
@@ -27,6 +28,16 @@ final class RoomInventoryViewModel {
         } catch {
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+        }
+    }
+
+    func refreshAccess() async {
+        do {
+            let property = try await PropertyDataService.loadProperty(id: room.property_id)
+            let role = property.membershipRole
+            canManageInventory = role == "owner" || role == "manager"
+        } catch {
+            canManageInventory = false
         }
     }
     

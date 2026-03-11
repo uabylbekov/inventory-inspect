@@ -39,23 +39,31 @@ struct PropertyView: View {
                                 PropertyRow(property: property)
                             }
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                                Button(role: .destructive) {
-                                    initiateDelete(for: property)
-                                } label: {
-                                    Label("common.delete", systemImage: "trash")
+                                if property.canDeleteProperty {
+                                    Button(role: .destructive) {
+                                        initiateDelete(for: property)
+                                    } label: {
+                                        Label("common.delete", systemImage: "trash")
+                                    }
                                 }
                             }
                             .swipeActions(edge: .leading) {
-                                Button {
-                                    editingProperty = property
-                                } label: {
-                                    Label("common.edit", systemImage: "pencil")
+                                if property.canEditProperty {
+                                    Button {
+                                        editingProperty = property
+                                    } label: {
+                                        Label("common.edit", systemImage: "pencil")
+                                    }
+                                    .tint(.accentColor)
                                 }
-                                .tint(.accentColor)
                             }
                             .contextMenu {
-                                Button { editingProperty = property } label: { Label("common.edit", systemImage: "pencil") }
-                                Button(role: .destructive) { initiateDelete(for: property) } label: { Label("common.delete", systemImage: "trash") }
+                                if property.canEditProperty {
+                                    Button { editingProperty = property } label: { Label("common.edit", systemImage: "pencil") }
+                                }
+                                if property.canDeleteProperty {
+                                    Button(role: .destructive) { initiateDelete(for: property) } label: { Label("common.delete", systemImage: "trash") }
+                                }
                             }
                         }
                     }

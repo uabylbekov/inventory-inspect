@@ -80,13 +80,17 @@ struct PropertyDetailView: View {
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                confirmDeleteRoom(room)
-                            } label: { Label("common.delete", systemImage: "trash") }
+                            if viewModel.canEditRooms {
+                                Button(role: .destructive) {
+                                    confirmDeleteRoom(room)
+                                } label: { Label("common.delete", systemImage: "trash") }
+                            }
                         }
                         .swipeActions(edge: .leading) {
-                            Button { editingRoom = room } label: { Label("common.edit", systemImage: "pencil") }
-                            .tint(.accentColor)
+                            if viewModel.canEditRooms {
+                                Button { editingRoom = room } label: { Label("common.edit", systemImage: "pencil") }
+                                .tint(.accentColor)
+                            }
                         }
                     }
                 }
@@ -128,38 +132,50 @@ struct PropertyDetailView: View {
         .toolbar {
 #if os(iOS)
             ToolbarItem(placement: .topBarLeading) {
-                Menu {
-                    Button {
-                        editingProperty = true
-                    } label: {
-                        Label("common.edit", systemImage: "pencil")
-                    }
+                if viewModel.property.canEditProperty || viewModel.property.canDeleteProperty {
+                    Menu {
+                        if viewModel.property.canEditProperty {
+                            Button {
+                                editingProperty = true
+                            } label: {
+                                Label("common.edit", systemImage: "pencil")
+                            }
+                        }
 
-                    Button(role: .destructive) {
-                        confirmDeleteProperty()
+                        if viewModel.property.canDeleteProperty {
+                            Button(role: .destructive) {
+                                confirmDeleteProperty()
+                            } label: {
+                                Label("common.delete", systemImage: "trash")
+                            }
+                        }
                     } label: {
-                        Label("common.delete", systemImage: "trash")
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
 #else
             ToolbarItem(placement: .automatic) {
-                Menu {
-                    Button {
-                        editingProperty = true
-                    } label: {
-                        Label("common.edit", systemImage: "pencil")
-                    }
+                if viewModel.property.canEditProperty || viewModel.property.canDeleteProperty {
+                    Menu {
+                        if viewModel.property.canEditProperty {
+                            Button {
+                                editingProperty = true
+                            } label: {
+                                Label("common.edit", systemImage: "pencil")
+                            }
+                        }
 
-                    Button(role: .destructive) {
-                        confirmDeleteProperty()
+                        if viewModel.property.canDeleteProperty {
+                            Button(role: .destructive) {
+                                confirmDeleteProperty()
+                            } label: {
+                                Label("common.delete", systemImage: "trash")
+                            }
+                        }
                     } label: {
-                        Label("common.delete", systemImage: "trash")
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
 #endif

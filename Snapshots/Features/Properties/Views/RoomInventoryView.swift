@@ -49,32 +49,38 @@ struct RoomInventoryView: View {
                             InventoryItemRow(item: item)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                itemToDelete = item
-                                showingItemDeleteAlert = true
-                            } label: {
-                                Label("common.delete", systemImage: "trash")
+                            if viewModel.canManageInventory {
+                                Button(role: .destructive) {
+                                    itemToDelete = item
+                                    showingItemDeleteAlert = true
+                                } label: {
+                                    Label("common.delete", systemImage: "trash")
+                                }
                             }
                         }
                         .swipeActions(edge: .leading) {
-                            Button {
-                                editingItem = item
-                            } label: {
-                                Label("common.edit", systemImage: "pencil")
+                            if viewModel.canManageInventory {
+                                Button {
+                                    editingItem = item
+                                } label: {
+                                    Label("common.edit", systemImage: "pencil")
+                                }
+                                .tint(.accentColor)
                             }
-                            .tint(.accentColor)
                         }
                         .contextMenu {
-                            Button {
-                                editingItem = item
-                            } label: {
-                                Label("room_inventory.edit_item", systemImage: "pencil")
-                            }
-                            Button(role: .destructive) {
-                                itemToDelete = item
-                                showingItemDeleteAlert = true
-                            } label: {
-                                Label("common.delete", systemImage: "trash")
+                            if viewModel.canManageInventory {
+                                Button {
+                                    editingItem = item
+                                } label: {
+                                    Label("room_inventory.edit_item", systemImage: "pencil")
+                                }
+                                Button(role: .destructive) {
+                                    itemToDelete = item
+                                    showingItemDeleteAlert = true
+                                } label: {
+                                    Label("common.delete", systemImage: "trash")
+                                }
                             }
                         }
                     }
@@ -89,46 +95,52 @@ struct RoomInventoryView: View {
         .toolbar {
 #if os(iOS)
             ToolbarItem(placement: .topBarLeading) {
-                Menu {
-                    Button {
-                        editingRoom = true
-                    } label: {
-                        Label("common.edit", systemImage: "pencil")
-                    }
+                if viewModel.canManageInventory {
+                    Menu {
+                        Button {
+                            editingRoom = true
+                        } label: {
+                            Label("common.edit", systemImage: "pencil")
+                        }
 
-                    Button(role: .destructive) {
-                        confirmDeleteRoom()
+                        Button(role: .destructive) {
+                            confirmDeleteRoom()
+                        } label: {
+                            Label("common.delete", systemImage: "trash")
+                        }
                     } label: {
-                        Label("common.delete", systemImage: "trash")
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
 #else
             ToolbarItem(placement: .automatic) {
-                Menu {
-                    Button {
-                        editingRoom = true
-                    } label: {
-                        Label("common.edit", systemImage: "pencil")
-                    }
+                if viewModel.canManageInventory {
+                    Menu {
+                        Button {
+                            editingRoom = true
+                        } label: {
+                            Label("common.edit", systemImage: "pencil")
+                        }
 
-                    Button(role: .destructive) {
-                        confirmDeleteRoom()
+                        Button(role: .destructive) {
+                            confirmDeleteRoom()
+                        } label: {
+                            Label("common.delete", systemImage: "trash")
+                        }
                     } label: {
-                        Label("common.delete", systemImage: "trash")
+                        Image(systemName: "ellipsis.circle")
                     }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
                 }
             }
 #endif
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { viewModel.showingAddItem = true }) {
-                    HStack(spacing: 4) {
-                        Image(systemName: "plus")
-                        Text("room_inventory.add_item")
+                if viewModel.canManageInventory {
+                    Button(action: { viewModel.showingAddItem = true }) {
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("room_inventory.add_item")
+                        }
                     }
                 }
             }
@@ -192,7 +204,9 @@ struct RoomInventoryView: View {
             }
         }
         .task {
-            await viewModel.fetchItems()
+            async let itemsTask: () = viewModel.fetchItems()
+            async let accessTask: () = viewModel.refreshAccess()
+            _ = await (itemsTask, accessTask)
         }
     }
 

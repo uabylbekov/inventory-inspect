@@ -89,6 +89,18 @@ struct PropertyModel: Codable, Identifiable, Hashable {
         return "Owner"
     }
 
+    var membershipRole: String? {
+        property_members?.first?.role
+    }
+
+    var canEditProperty: Bool {
+        membershipRole == "owner" || membershipRole == "manager"
+    }
+
+    var canDeleteProperty: Bool {
+        membershipRole == "owner"
+    }
+
     init(
         id: UUID,
         owner_id: UUID,

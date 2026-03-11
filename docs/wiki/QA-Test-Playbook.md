@@ -14,6 +14,35 @@ Relevant files:
 - [`SnapshotsUITests/SnapshotsUITests.swift`](/Users/uabylbekov/Projects/snapshots/SnapshotsUITests/SnapshotsUITests.swift)
 - [`Docs/payment_testing_guide.md`](/Users/uabylbekov/Projects/snapshots/Docs/payment_testing_guide.md)
 
+## Which backend are you testing?
+
+Before you test anything, check which app config you launched:
+
+- `Prod.xcconfig` -> Supabase `main`
+- `Test.xcconfig` -> Supabase `test`
+
+Simple rule for juniors:
+
+- if you cannot explain which backend branch you are using, your test result is not reliable yet
+- if `test` behaves differently from `main`, verify whether the difference is app code or branch drift before filing the bug
+
+## If the `test` branch is unhealthy
+
+Sometimes Supabase will show the `test` branch as `MIGRATIONS_FAILED`.
+
+Plain-English meaning:
+
+- the preview branch build history drifted or failed
+- app requests may still work for some flows
+- but you should not trust that branch for final QA results
+
+What to do:
+
+1. Compare behavior against `main`.
+2. Check whether the branch has migration drift instead of blaming the iOS app first.
+3. If the branch history is clearly off, rebuild or reset `test` from `main`.
+4. Re-run the smoke test only after the branch status is healthy again.
+
 ## Recommended smoke path
 
 Run this path after most feature changes:
@@ -71,7 +100,9 @@ Run this path after most feature changes:
 - Realtime inspection update on a second device
 - Foreground notification behavior
 - Background notification deep link behavior
+- Tap an inspection-complete notification and confirm it opens the inspection
 - Mark read, mark all read, delete notification
+- Confirm only the signed-in user’s notifications appear in the inbox
 
 ### Entitlements and branding
 
@@ -90,6 +121,7 @@ Run this path after most feature changes:
 - Any change to report rendering or PDF generation
 - Any change to notification token handling or badge counts
 - Any change to Edge Function auth or secrets
+- Any difference between Supabase `main` and `test` branch schema or migration status
 
 ## Recommended test accounts
 

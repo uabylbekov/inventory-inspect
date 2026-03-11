@@ -67,6 +67,29 @@ Environment values are currently sourced through:
 - [`Snapshots/Staging.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Staging.xcconfig)
 - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
 
+### Supabase branches in plain English
+
+If you are new to the project, this is the simplest way to think about the database setup:
+
+- `main` branch: production-style branch for the Snapshots project ref `ulsckwhhnaxxebrthzpn`
+- `test` branch: preview/test branch for project ref `nmtifjchsgdnfknkpowu`
+- [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig) points at `main`
+- [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig) points at `test`
+- [`Snapshots/Staging.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Staging.xcconfig) currently points at the same backend as `test`
+
+Why this matters:
+
+- When app behavior looks wrong, always check which config you launched with first.
+- A bug in `test` may be caused by branch drift rather than app code.
+- A fix is not really done until you know whether it was checked against both branches.
+
+If `test` shows `MIGRATIONS_FAILED`, use simple junior-level thinking:
+
+- the app may still partly work
+- but the branch is not trustworthy for QA signoff
+- the safest fix is usually to rebuild or reset the `test` branch from `main` instead of hand-editing random SQL in the branch
+- branch-only migration history is a warning sign that `test` drifted away from the repo
+
 ### Backend expectations
 
 The iOS app expects these Supabase capabilities to exist:
@@ -95,6 +118,7 @@ The iOS app expects these Supabase capabilities to exist:
 - Feature gating is contextual. A user can have premium capabilities on one property and restricted capabilities on another.
 - The inspection workflow is inventory-driven. Reports depend on the room and item templates that existed when the inspection was performed.
 - Push notifications and realtime updates are separate but complementary. Realtime keeps in-app lists fresh, while APNs drives device alerts and badge counts.
+- Owners and managers can change property structure. Maintainers can still use the property, but they should not see edit or delete controls for the template data.
 
 ## Testing status in this repo
 
