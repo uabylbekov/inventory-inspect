@@ -36,11 +36,30 @@ struct SettingsView: View {
                 } header: {
                     Text("settings.plan")
                 } footer: {
-                    if accessManager.isDirectSubscriber {
+                    if accessManager.hasDirectPaidAccess {
                         Text("settings.plan.footer.paid")
                     } else {
                         Text("settings.plan.footer.free")
                     }
+                }
+
+                Section {
+                    LabeledContent("settings.usage.photos") {
+                        Text("\(accessManager.photoUsageCount) / \(accessManager.directTierLimits.photoLimit)")
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("settings.usage.properties") {
+                        Text(String(accessManager.directTierLimits.propertyLimit))
+                            .foregroundStyle(.secondary)
+                    }
+                    LabeledContent("settings.usage.team") {
+                        Text(accessManager.directTierLimits.teamLimit == 0 ? String(localized: "settings.usage.team_none") : String(accessManager.directTierLimits.teamLimit))
+                            .foregroundStyle(.secondary)
+                    }
+                } header: {
+                    Text("settings.usage")
+                } footer: {
+                    Text("settings.usage.footer")
                 }
                 
                 Section {
@@ -99,7 +118,7 @@ struct SettingsView: View {
             .sheet(isPresented: $showingFeedbackSheet) {
                 FeedbackSheet(
                     userName: userName,
-                    personalTier: accessManager.profile?.subscription_tier ?? accessManager.activeProductTier
+                    personalTier: effectivePersonalTier
                 )
             }
             .navigationDestination(isPresented: $showingEditProfile) {
@@ -116,9 +135,15 @@ struct SettingsView: View {
     }
 
     private var currentPlanName: String {
-        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
-        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
+        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
+    }
+
+    private var effectivePersonalTier: String {
+        if accessManager.hasBusinessAccess { return "business" }
+        if accessManager.hasDirectPaidAccess { return "pro" }
+        return accessManager.profile?.subscription_tier ?? "free"
     }
 
     private var appVersion: String {

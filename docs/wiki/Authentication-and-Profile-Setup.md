@@ -45,11 +45,11 @@ All users can edit:
 - full name
 - email address
 
-Pro and Enterprise users can additionally manage:
+Pro and Business users can additionally manage:
 
 - company logo
 
-Enterprise users can additionally manage:
+Business users can additionally manage:
 
 - business name
 - business address
@@ -77,7 +77,7 @@ The edit profile flow exposes account deletion while in edit mode. This is a hig
 - Complete the profile and confirm the app routes into the main tabs.
 - Sign out and confirm the app returns to login cleanly.
 - Edit name and email and confirm the updated values appear in settings.
-- On a Pro or Enterprise account, upload a logo and confirm it persists.
+- On a Pro or Business account, upload a logo and confirm it persists.
 - On a free account, confirm business-branding upsell content is shown instead of logo/business settings.
 
 ## Edge cases to watch

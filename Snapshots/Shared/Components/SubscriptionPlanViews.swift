@@ -9,7 +9,7 @@ struct SubscriptionPlanRow: View {
             SubscriptionPlanDetailView()
         } label: {
             LabeledContent {
-                if accessManager.isDirectSubscriber {
+                if accessManager.hasDirectPaidAccess {
                     PlanBadge()
                 } else {
                     Text(currentPlanTitle)
@@ -22,13 +22,13 @@ struct SubscriptionPlanRow: View {
     }
 
     private var currentPlanTitle: String {
-        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
-        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
+        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
     }
     private var iconName: String {
-        if accessManager.isDirectSubscriberEnterprise { return "crown.fill" }
-        if accessManager.isDirectSubscriber { return "star.fill" }
+        if accessManager.hasBusinessAccess { return "briefcase.fill" }
+        if accessManager.hasDirectPaidAccess { return "star.fill" }
         return "person.fill"
     }
 }
@@ -39,14 +39,14 @@ struct SubscriptionPlanDetailView: View {
     @State private var showingPaywall = false
     @State private var expandedStandard = false
     @State private var expandedPro = false
-    @State private var expandedEnterprise = false
+    @State private var expandedBusiness = false
     @State private var alertMessage: String?
 
     var body: some View {
         List {
             Section {
                 LabeledContent("plan.your", value: currentPlanTitle)
-                if accessManager.isDirectSubscriber {
+                if accessManager.hasDirectPaidAccess {
                     LabeledContent("paywall.current_plan") {
                         PlanBadge()
                     }
@@ -86,21 +86,21 @@ struct SubscriptionPlanDetailView: View {
                 )
 
                 planDisclosure(
-                    title: String(localized: "plan.enterprise"),
-                    icon: "crown.fill",
+                    title: String(localized: "plan.business"),
+                    icon: "briefcase.fill",
                     tint: .orange,
-                    isExpanded: $expandedEnterprise,
+                    isExpanded: $expandedBusiness,
                     highlights: [
-                        String(localized: "plan.enterprise.feature_1"),
-                        String(localized: "plan.enterprise.feature_2"),
-                        String(localized: "plan.enterprise.feature_3"),
-                        String(localized: "plan.enterprise.feature_4")
+                        String(localized: "plan.business.feature_1"),
+                        String(localized: "plan.business.feature_2"),
+                        String(localized: "plan.business.feature_3"),
+                        String(localized: "plan.business.feature_4")
                     ],
-                    note: String(localized: "plan.enterprise.note")
+                    note: String(localized: "plan.business.note")
                 )
             }
 
-            if !accessManager.isDirectSubscriber {
+            if !accessManager.hasDirectPaidAccess {
                 Section {
                     Button("plan.choose_paid") {
                         showingPaywall = true
@@ -141,34 +141,34 @@ struct SubscriptionPlanDetailView: View {
             Text(alertMessage ?? "")
         }
         .onAppear(perform: syncExpandedPlan)
-        .onChange(of: accessManager.isDirectSubscriber) { _, _ in
+        .onChange(of: accessManager.hasDirectPaidAccess) { _, _ in
             syncExpandedPlan()
         }
-        .onChange(of: accessManager.isDirectSubscriberEnterprise) { _, _ in
+        .onChange(of: accessManager.hasBusinessAccess) { _, _ in
             syncExpandedPlan()
         }
     }
 
     private var currentPlanTitle: String {
-        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
-        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
+        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
     }
 
     private var summaryText: String {
-        if accessManager.isDirectSubscriberEnterprise {
-            return String(localized: "plan.summary.enterprise")
+        if accessManager.hasBusinessAccess {
+            return String(localized: "plan.summary.business")
         }
-        if accessManager.isDirectSubscriber {
+        if accessManager.hasDirectPaidAccess {
             return String(localized: "plan.summary.professional")
         }
         return String(localized: "plan.summary.standard")
     }
 
     private func syncExpandedPlan() {
-        expandedStandard = !accessManager.isDirectSubscriber
-        expandedPro = accessManager.isDirectSubscriber && !accessManager.isDirectSubscriberEnterprise
-        expandedEnterprise = accessManager.isDirectSubscriberEnterprise
+        expandedStandard = !accessManager.hasDirectPaidAccess
+        expandedPro = accessManager.hasDirectPaidAccess && !accessManager.hasBusinessAccess
+        expandedBusiness = accessManager.hasBusinessAccess
     }
 
     @ViewBuilder

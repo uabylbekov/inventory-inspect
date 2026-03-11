@@ -10,8 +10,8 @@ struct PremiumPaywallView: View {
     @State private var alertMessage: String?
     @State private var productLoadError: String?
 
-    private let proProductId = "com.ulukskywalker.snapshots.pro.monthly"
-    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise.monthly"
+    private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
+    private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
 
     var body: some View {
         NavigationStack {
@@ -35,13 +35,20 @@ struct PremiumPaywallView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                     }
                 } else if !products.isEmpty {
-                    if let proProduct = products.first(where: { $0.id == proProductId }) {
+                    if let proMonthlyProduct = products.first(where: { $0.id == proMonthlyProductId }) {
                         Section {
                             LabeledContent("plan.professional") {
-                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), proProduct.displayPrice))
+                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), proMonthlyProduct.displayPrice))
                                     .foregroundStyle(.secondary)
                             }
-                            paywallAction(for: proProduct, isActive: accessManager.activeProductTier == "pro")
+                            paywallAction(for: proMonthlyProduct, isActive: accessManager.activeSubscription?.id == proMonthlyProduct.id)
+                            if let proYearlyProduct = products.first(where: { $0.id == proYearlyProductId }) {
+                                LabeledContent("paywall.yearly_plan") {
+                                    Text(String(format: NSLocalizedString("paywall.price_per_year", comment: ""), proYearlyProduct.displayPrice))
+                                        .foregroundStyle(.secondary)
+                                }
+                                paywallAction(for: proYearlyProduct, isActive: accessManager.activeSubscription?.id == proYearlyProduct.id)
+                            }
                             Text("paywall.professional.feature_1")
                             Text("paywall.professional.feature_2")
                             Text("paywall.professional.feature_3")
@@ -51,19 +58,14 @@ struct PremiumPaywallView: View {
                         }
                     }
 
-                    if let entProduct = products.first(where: { $0.id == enterpriseProductId }) {
-                        Section {
-                            LabeledContent("plan.enterprise") {
-                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), entProduct.displayPrice))
-                                    .foregroundStyle(.secondary)
-                            }
-                            paywallAction(for: entProduct, isActive: accessManager.activeProductTier == "enterprise")
-                            Text("paywall.enterprise.feature_1")
-                            Text("paywall.enterprise.feature_2")
-                            Text("paywall.enterprise.feature_3")
-                        } header: {
-                            Text("plan.enterprise")
-                        }
+                    Section {
+                        Text("plan.business.feature_1")
+                        Text("plan.business.feature_2")
+                        Text("plan.business.feature_3")
+                    } header: {
+                        Text("plan.business")
+                    } footer: {
+                        Text("plan.business.note")
                     }
                 } else {
                     Section {
@@ -114,14 +116,14 @@ struct PremiumPaywallView: View {
     }
 
     private var currentPlanName: String {
-        if accessManager.isDirectSubscriberEnterprise { return String(localized: "plan.enterprise") }
-        if accessManager.isDirectSubscriber { return String(localized: "plan.professional") }
+        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
+        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
     }
 
     @ViewBuilder
     private func paywallAction(for product: Product, isActive: Bool) -> some View {
-        if isActive {
+        if accessManager.hasBusinessAccess || isActive {
             Text("paywall.current_plan")
                 .foregroundColor(.secondary)
         } else {
@@ -132,42 +134,11 @@ struct PremiumPaywallView: View {
         }
     }
 
-    private var currentPlanFeatures: [String] {
-        if accessManager.isDirectSubscriberEnterprise {
-            return [
-                String(localized: "paywall.enterprise.feature_2"),
-                String(localized: "plan.enterprise.feature_2"),
-                String(localized: "paywall.professional.feature_1"),
-                String(localized: "paywall.professional.feature_4"),
-                String(localized: "paywall.enterprise.feature_3"),
-                String(localized: "paywall.all_plans.feature_1"),
-                String(localized: "paywall.all_plans.feature_4")
-            ]
-        }
-        if accessManager.isDirectSubscriber {
-            return [
-                String(localized: "paywall.professional.feature_2"),
-                String(localized: "paywall.professional.feature_3"),
-                String(localized: "paywall.professional.feature_1"),
-                String(localized: "paywall.professional.feature_4"),
-                String(localized: "paywall.all_plans.feature_1"),
-                String(localized: "paywall.all_plans.feature_4")
-            ]
-        }
-        return [
-            String(localized: "plan.standard.feature_1"),
-            String(localized: "paywall.all_plans.feature_1"),
-            String(localized: "paywall.all_plans.feature_2"),
-            String(localized: "paywall.all_plans.feature_3"),
-            String(localized: "paywall.all_plans.feature_4")
-        ]
-    }
-
     private var currentPlanSummary: String {
-        if accessManager.isDirectSubscriberEnterprise {
-            return String(localized: "plan.summary.enterprise")
+        if accessManager.hasBusinessAccess {
+            return String(localized: "plan.summary.business")
         }
-        if accessManager.isDirectSubscriber {
+        if accessManager.hasDirectPaidAccess {
             return String(localized: "plan.summary.professional")
         }
         return String(localized: "plan.summary.standard")
@@ -176,13 +147,14 @@ struct PremiumPaywallView: View {
     private func loadProducts() async {
         isLoadingProducts = true
         productLoadError = nil
+
         do {
-            self.products = try await Product.products(for: [proProductId, enterpriseProductId])
+            self.products = try await Product.products(for: [proMonthlyProductId, proYearlyProductId])
             if products.isEmpty {
-                productLoadError = "No products were returned for product IDs `\(proProductId)` and `\(enterpriseProductId)`."
+                productLoadError = "No products were returned for the configured Pro product IDs."
             } else {
                 let loadedIds = Set(products.map(\.id))
-                let expectedIds: Set<String> = [proProductId, enterpriseProductId]
+                let expectedIds: Set<String> = [proMonthlyProductId, proYearlyProductId]
                 let missingIds = expectedIds.subtracting(loadedIds)
                 if !missingIds.isEmpty {
                     let missingPlanList = missingIds.sorted().joined(separator: ", ")

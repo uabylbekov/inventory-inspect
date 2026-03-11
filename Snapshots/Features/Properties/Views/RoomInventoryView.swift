@@ -87,6 +87,25 @@ struct RoomInventoryView: View {
         .navigationTitle(room.name)
         .applyInlineNavigationTitleIfSupported()
         .toolbar {
+#if os(iOS)
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Button {
+                        editingRoom = true
+                    } label: {
+                        Label("common.edit", systemImage: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        confirmDeleteRoom()
+                    } label: {
+                        Label("common.delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+#else
             ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
@@ -104,6 +123,7 @@ struct RoomInventoryView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+#endif
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { viewModel.showingAddItem = true }) {
                     HStack(spacing: 4) {

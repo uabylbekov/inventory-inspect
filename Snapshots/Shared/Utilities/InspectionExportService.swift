@@ -95,7 +95,7 @@ enum InspectionExportService {
     private static func loadBranding(for property: PropertyModel?) async -> (logoImage: PlatformImage?, isWhiteLabel: Bool) {
         let accessManager = SnapshotsAccessManager.shared
         let hasPro = accessManager.isPro(for: property)
-        let isWhiteLabel = accessManager.isEnterprise(for: property)
+        let isWhiteLabel = accessManager.isBusiness(for: property)
 
         guard hasPro,
               let logoUrlString = property?.owner?.company_logo_url,

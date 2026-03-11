@@ -64,6 +64,7 @@ Required keys:
 Environment values are currently sourced through:
 
 - [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
+- [`Snapshots/Staging.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Staging.xcconfig)
 - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
 
 ### Backend expectations

@@ -8,6 +8,7 @@ struct LoginView: View {
     @State private var isNavigatingToInbox = false
     @State private var showValidationError = false
     @State private var showCreateAccountPrompt = false
+    @State private var shouldCreateUserOnNextAttempt = false
     @FocusState private var isEmailFocused: Bool
 
     private var canAttemptSignIn: Bool {
@@ -22,7 +23,10 @@ struct LoginView: View {
         NavigationStack {
             loginContent
                 .navigationDestination(isPresented: $isNavigatingToInbox) {
-                    CheckInboxView(email: email)
+                    CheckInboxView(
+                        email: email,
+                        shouldCreateUser: shouldCreateUserOnNextAttempt
+                    )
                 }
                 .alert("auth.login.account_not_found_title", isPresented: $showCreateAccountPrompt) {
                     Button("common.cancel", role: .cancel) { }
@@ -150,6 +154,7 @@ struct LoginView: View {
         
         Task {
             do {
+                shouldCreateUserOnNextAttempt = false
                 try await supabase.auth.signInWithOTP(
                     email: email,
                     redirectTo: URL(string: "snapshots://login-callback"),
@@ -180,6 +185,7 @@ struct LoginView: View {
         
         Task {
             do {
+                shouldCreateUserOnNextAttempt = true
                 try await supabase.auth.signInWithOTP(
                     email: email,
                     redirectTo: URL(string: "snapshots://login-callback"),

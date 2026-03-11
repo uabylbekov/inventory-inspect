@@ -53,7 +53,7 @@ struct EditProfileView: View {
                 }
             }
             
-            // MARK: - Company Logo (Pro + Enterprise)
+            // MARK: - Company Logo (Pro + Business)
             if accessManager.isPro {
                 Section {
                     LogoPreview(
@@ -88,8 +88,8 @@ struct EditProfileView: View {
                 }
             }
 
-            // MARK: - Business Details (Enterprise only)
-            if accessManager.isEnterprise {
+            // MARK: - Business Details (Business only)
+            if accessManager.isBusiness {
                 Section {
                     TextField("profile.business_name", text: $businessName)
                         .focused($focusedField, equals: .businessName)
@@ -267,7 +267,7 @@ struct EditProfileView: View {
                 if let url = logoUrl {
                     profileUpdate["company_logo_url"] = .string(url)
                 }
-                if accessManager.isEnterprise {
+                if accessManager.isBusiness {
                     let details: [String: Any] = [
                         "business_name": businessName,
                         "business_address": businessAddress,

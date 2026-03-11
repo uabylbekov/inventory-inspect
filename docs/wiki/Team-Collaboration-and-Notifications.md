@@ -28,7 +28,7 @@ This distinction shows up in team management, branding, and paywall behavior.
 
 Team management is launched from the property detail screen.
 
-- If the current property context is Pro or Enterprise, the sheet opens.
+- If the current property context is Pro or Business, the sheet opens.
 - If not, the user is redirected to the paywall.
 
 The gating is property-aware, not purely user-aware. A manager inside a premium property can receive premium collaboration capability without personally subscribing.

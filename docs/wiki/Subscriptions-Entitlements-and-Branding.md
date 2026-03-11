@@ -17,41 +17,35 @@ Snapshots is monetized as a tiered product, but the entitlement rules are more c
 
 - Free
 - Pro
-- Enterprise
+- Business
 - Lifetime override through Supabase profile data
 
-Free supports the base workflow. Pro unlocks expanded property counts, team usage, photos, and branding upgrades. Enterprise unlocks full white-label and unlimited-scale workflows.
+Free supports the base workflow. Pro unlocks expanded property counts, team usage, photos, and branding upgrades. Business unlocks white-label reporting and larger manually managed account limits.
 
 ## Sources of entitlement truth
 
-`SnapshotsAccessManager` combines three sources:
+`SnapshotsAccessManager` combines two sources:
 
-- environment detection
 - Supabase profile fields
 - StoreKit 2 transactions
 
 The rule is effectively highest-tier-wins.
-
-### Environment detection
-
-In debug and sandbox-like environments, the app intentionally relaxes access checks to simplify testing.
 
 ### Supabase profile fields
 
 The profile can grant:
 
 - `pro`
-- `enterprise`
+- `business`
 - `lifetime`
 
-These values are useful for internal testers, VIPs, and business exceptions.
+These values are useful for internal testers, VIPs, and manually managed business accounts.
 
 ### StoreKit 2
 
 The app checks verified current entitlements for:
 
-- `com.ulukskywalker.snapshots.pro`
-- `com.ulukskywalker.snapshots.enterprise`
+- `com.ulukskywalker.snapshots.pro.monthly`
 
 ## Direct access versus inherited access
 
@@ -80,7 +74,7 @@ Examples of access checks:
 - `canAddProperty(ownedCount:)`
 - `canAddTeamMember(for:currentMemberCount:)`
 - `isPro(for: property)`
-- `isEnterprise(for: property)`
+- `isBusiness(for: property)`
 
 This means developers should not replace property-aware gating with global user-tier checks without carefully reviewing the business model first.
 
@@ -90,7 +84,7 @@ Branding depends on tier:
 
 - Free: limited or Snapshots-branded output
 - Pro: company logo support
-- Enterprise: fuller business details and white-label style output
+- Business: fuller business details and white-label style output
 
 Branding data originates in the profile editing flow and is later consumed by the report and PDF generation layer.
 
@@ -102,16 +96,16 @@ In addition, QA should explicitly validate:
 
 - free user on own property
 - direct Pro user on own property
-- direct Enterprise user on own property
+- direct Business user on own property
 - free manager inside a Pro property
-- free manager inside an Enterprise property
+- free manager inside a Business property
 - lifetime override behavior from Supabase
 
 ## Tester checklist
 
 - Confirm free users are limited to one owned property.
 - Confirm Pro users can create additional properties up to the documented limit.
-- Confirm Enterprise users can exceed Pro limits.
+- Confirm Business users can exceed Pro limits.
 - Confirm a manager inside a premium property gets the premium behavior relevant to that property.
 - Confirm settings plan badges reflect direct billing state rather than inherited property access.
 - Confirm profile branding fields appear only on the correct tiers.
@@ -120,7 +114,7 @@ In addition, QA should explicitly validate:
 
 ## Edge cases to watch
 
-- StoreKit says free but Supabase profile says enterprise.
+- StoreKit says free but Supabase profile says business.
 - User loses direct subscription but still manages a premium property owned by another user.
 - Sandbox environment accidentally masks a production gating bug.
 - Branding fields exist in the profile but the account no longer has the tier that unlocked them.

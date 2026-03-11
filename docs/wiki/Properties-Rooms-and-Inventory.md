@@ -41,7 +41,7 @@ Adding properties is limited by `SnapshotsAccessManager.canAddProperty(ownedCoun
 
 - Free: 1 owned property
 - Pro: up to 10 owned properties
-- Enterprise: unlimited
+- Business: custom higher limits
 
 Only owned properties count toward the limit. Managed properties do not. This is intentional and should not be treated as a bug by QA.
 

@@ -75,7 +75,7 @@ Run this path after most feature changes:
 
 ### Entitlements and branding
 
-- Free versus Pro versus Enterprise behavior
+- Free versus Pro versus Business behavior
 - Sandbox and StoreKit testing path
 - Supabase subscription override path
 - Inherited premium access on a managed property
@@ -97,9 +97,9 @@ Maintain at least these personas in a shared QA environment:
 
 - Free owner
 - Pro owner
-- Enterprise owner
+- Business owner
 - Free manager on a Pro-owned property
-- Free manager on an Enterprise-owned property
+- Free manager on a Business-owned property
 - New user with incomplete profile
 
 ## Release signoff questions

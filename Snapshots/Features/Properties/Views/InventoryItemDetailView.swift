@@ -53,6 +53,25 @@ struct InventoryItemDetailView: View {
         .navigationTitle("inventory_item.title")
         .applyInlineNavigationTitleIfSupported()
         .toolbar {
+#if os(iOS)
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Button {
+                        editingItem = true
+                    } label: {
+                        Label("common.edit", systemImage: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        showingDeleteAlert = true
+                    } label: {
+                        Label("common.delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+#else
             ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
@@ -70,6 +89,7 @@ struct InventoryItemDetailView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+#endif
         }
         .alert("room_inventory.delete_title", isPresented: $showingDeleteAlert) {
             Button("common.cancel", role: .cancel) { }

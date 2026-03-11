@@ -129,6 +129,21 @@ struct InspectionReportView: View {
         .navigationTitle("report.title")
         .applyInlineNavigationTitleIfSupported()
         .toolbar {
+#if os(iOS)
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { showingInspectionSelection = true }) {
+                    Image(systemName: "shoeprints.fill")
+                        .imageScale(.large)
+                }
+            }
+#else
+            ToolbarItem(placement: .automatic) {
+                Button(action: { showingInspectionSelection = true }) {
+                    Image(systemName: "shoeprints.fill")
+                        .imageScale(.large)
+                }
+            }
+#endif
             ToolbarItem(placement: .primaryAction) {
                 if viewModel.isGeneratingPDF {
                     ProgressView()
@@ -145,13 +160,6 @@ struct InspectionReportView: View {
                         Image(systemName: "square.and.arrow.up")
                             .imageScale(.large)
                     }
-                }
-            }
-            
-            ToolbarItem(placement: .automatic) {
-                Button(action: { showingInspectionSelection = true }) {
-                    Image(systemName: "shoeprints.fill")
-                        .imageScale(.large)
                 }
             }
         }

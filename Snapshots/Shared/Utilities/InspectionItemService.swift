@@ -6,6 +6,7 @@ enum InspectionItemService {
         inspectionId: UUID,
         roomId: UUID,
         inventoryItemId: UUID,
+        property: PropertyModel?,
         status: String,
         notes: String,
         existingImageURL: String?,
@@ -14,6 +15,14 @@ enum InspectionItemService {
     ) async throws -> String? {
         let filePath = imagePath(inspectionId: inspectionId, inventoryItemId: inventoryItemId)
         var currentImageURL = existingImageURL
+
+        if imageData != nil {
+            let accessManager = SnapshotsAccessManager.shared
+            let photoCheck = await accessManager.canAttachPhoto(to: property, existingImageURL: existingImageURL)
+            if case .failure(let error) = photoCheck {
+                throw error
+            }
+        }
 
         if let imageData {
             _ = try await supabase.storage
@@ -44,6 +53,8 @@ enum InspectionItemService {
             .from("inspection_items")
             .upsert(params, onConflict: "inspection_id,inventory_item_id")
             .execute()
+
+        await SnapshotsAccessManager.shared.refreshPhotoUsageForCurrentUser()
 
         return currentImageURL
     }

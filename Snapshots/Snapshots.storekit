@@ -20,7 +20,7 @@
       "id" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
       "localizations" : [
         {
-          "description" : "Professional and Enterprise plans for Snapshots.",
+          "description" : "Professional plans for Snapshots.",
           "displayName" : "Snapshots Premium",
           "locale" : "en_US"
         }
@@ -59,21 +59,21 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "24.99",
+          "displayPrice" : "149.99",
           "familyShareable" : false,
           "groupNumber" : 2,
-          "internalID" : "232D0AC6-C8C7-41F8-9D5A-8C1B8D3F58AF",
+          "internalID" : "0B758A31-4E6A-4E57-8DA7-00A9B8364FB2",
           "introductoryOffer" : null,
           "localizations" : [
             {
-              "description" : "Unlimited properties, unlimited team members, and white-label reports.",
-              "displayName" : "Enterprise",
+              "description" : "Up to 10 properties, photo evidence, team access, and company logo PDFs billed yearly.",
+              "displayName" : "Professional Yearly",
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ulukskywalker.snapshots.enterprise.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Enterprise",
+          "productID" : "com.ulukskywalker.snapshots.pro.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Professional Yearly",
           "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
           "type" : "RecurringSubscription"
         }

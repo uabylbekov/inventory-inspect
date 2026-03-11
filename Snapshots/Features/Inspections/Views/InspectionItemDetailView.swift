@@ -19,7 +19,6 @@ struct InspectionItemDetailView: View {
     @State private var showingLibrary = false
     @State private var showingFileImporter = false
     @State private var capturedImage: PlatformImage?
-    @State private var showingPaywall = false
     @Environment(\.dismiss) private var dismiss
     private let accessManager = SnapshotsAccessManager.shared
     
@@ -28,7 +27,7 @@ struct InspectionItemDetailView: View {
         self.inspection = inspection
         self.room = room
         self.property = property
-        _viewModel = State(initialValue: InspectionItemDetailViewModel(item: item, inspection: inspection, room: room, initialRecord: initialRecord))
+        _viewModel = State(initialValue: InspectionItemDetailViewModel(item: item, inspection: inspection, room: room, property: property, initialRecord: initialRecord))
     }
     
     var body: some View {
@@ -66,31 +65,23 @@ struct InspectionItemDetailView: View {
             }
 
             Section {
-                if accessManager.isPro(for: property) {
-                    evidenceRow
-                } else {
-                    Button(action: { showingPaywall = true }) {
-                        HStack {
-                            Text("inspection_item.add_photo")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text("plan.badge.pro")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
+                evidenceRow
             } header: {
                 Text("inspection_item.evidence")
             } footer: {
-                if !accessManager.isPro(for: property) {
-                    Text("inspection_item.upgrade_footer")
-                } else if !accessManager.isDirectSubscriber,
-                          let property,
-                          property.ownerTier != "free" {
+                if !accessManager.hasDirectPaidAccess,
+                   let property,
+                   property.ownerTier != "free" {
                     Text(String.localizedStringWithFormat(
                         NSLocalizedString("inspection_item.inherited_plan", comment: ""),
                         property.ownerDisplayName,
                         property.ownerTier.capitalized
+                    ))
+                } else {
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("inspection_item.photo_limit_footer", comment: ""),
+                        accessManager.photoUsageCount,
+                        accessManager.directTierLimits.photoLimit
                     ))
                 }
             }
@@ -162,9 +153,6 @@ struct InspectionItemDetailView: View {
             } else if let urlStr = viewModel.imageURL, let publicURL = URL(string: urlStr) {
                 FullScreenImageView(image: .remote(publicURL))
             }
-        }
-        .sheet(isPresented: $showingPaywall) {
-            PremiumPaywallView()
         }
         .photosPicker(isPresented: $showingLibrary, selection: $selectedPhoto, matching: .images)
         .onChange(of: selectedPhoto) { _, newValue in

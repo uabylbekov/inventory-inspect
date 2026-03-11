@@ -126,6 +126,25 @@ struct PropertyDetailView: View {
         .navigationTitle(viewModel.property.name)
         .applyInlineNavigationTitleIfSupported()
         .toolbar {
+#if os(iOS)
+            ToolbarItem(placement: .topBarLeading) {
+                Menu {
+                    Button {
+                        editingProperty = true
+                    } label: {
+                        Label("common.edit", systemImage: "pencil")
+                    }
+
+                    Button(role: .destructive) {
+                        confirmDeleteProperty()
+                    } label: {
+                        Label("common.delete", systemImage: "trash")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+            }
+#else
             ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
@@ -143,6 +162,7 @@ struct PropertyDetailView: View {
                     Image(systemName: "ellipsis.circle")
                 }
             }
+#endif
             ToolbarItem(placement: .primaryAction) {
                 Button(action: { viewModel.showingAddRoom = true }) {
                     HStack(spacing: 4) {

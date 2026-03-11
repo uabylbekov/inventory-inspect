@@ -19,8 +19,8 @@ The app uses a three-tier model that scales with the size of the user's property
 
 ### Price Points
 *   **Standard (Free)**: $0 (For evaluation and single-unit landlords).
-*   **PRO (Professional)**: **$49.99 / month** (Perfect for small teams).
-*   **ENTERPRISE**: **$199.99 / month** (Designed for large agencies).
+*   **PRO (Professional)**: **$19.99 / month** or **$149 / year** (Perfect for small teams).
+*   **BUSINESS**: **Custom pricing** (Designed for agencies and larger teams).
 
 ---
 
@@ -28,9 +28,9 @@ The app uses a three-tier model that scales with the size of the user's property
 
 | Feature | **Standard (Free)** | **PRO (Professional)** | **ENTERPRISE** |
 | :--- | :--- | :--- | :--- |
-| **Properties** | Max 1 Unit | Up to 10 Units | **Unlimited** |
-| **Managers** | 1 User Only | Up to 5 Managers | **Unlimited** |
-| **Photo Attachments** | ❌ Text-only | ✅ Included | ✅ Included |
+| **Properties** | Max 1 Unit | Up to 10 Units | **Custom** |
+| **Managers** | 1 User Only | Up to 3 Team Members | **Custom** |
+| **Photo Attachments** | ✅ Included, up to 150 saved photos | ✅ Included, up to 10,000 saved photos | **Custom** |
 | **PDF Branding** | Snapshots Logo | Custom Company Logo | **Full White-label** |
 
 ---

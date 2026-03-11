@@ -24,7 +24,7 @@ The app supports:
 
 - solo operators on the free tier
 - growing teams on Pro
-- white-labeled business workflows on Enterprise
+- white-labeled business workflows on Business
 - cross-user access inheritance based on property ownership
 
 ## How to use this wiki

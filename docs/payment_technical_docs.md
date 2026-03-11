@@ -1,32 +1,28 @@
 # Snapshots Payment & Entitlement Technical Documentation
 
 ## 1. Overview
-The Snapshots monetization system is a hybrid entitlement engine that combines **StoreKit 2** (for App Store purchases) with **Supabase** (for VIP/Lifetime overrides and cross-device sync).
+The Snapshots monetization system is a hybrid entitlement engine that combines **StoreKit 2** (for App Store Pro purchases) with **Supabase** (for business access, VIP/Lifetime overrides, and cross-device sync).
 
 ## 2. Subscription Tiers (B2B SaaS Model)
 
 | Tier | Property Limit | Team Limit | Features |
 | :--- | :--- | :--- | :--- |
-| **Standard (Free)** | 1 Property | Single User | Text-only Inspections, Snapshots-branded PDF |
-| **Professional** | 10 Properties | 5 Managers | Photo Attachments, Custom Company Logo on PDF |
-| **Enterprise** | Unlimited | Unlimited | Full White-label PDF (no Snapshots branding) |
+| **Standard (Free)** | 1 Property | Single User | Up to 150 saved photos, Snapshots-branded PDF |
+| **Professional** | 10 Properties | 3 Team Members | Up to 10,000 saved photos, Custom Company Logo on PDF |
+| **Business** | Custom | Custom | White-label PDF output with backend-managed limits |
 
 ## 3. Entitlement Logic (`SnapshotsAccessManager`)
-The system follows a "Highest Tier Wins" logic. Access is granted if ANY of the following sources verify the status:
+The system follows a "highest applicable access wins" logic. Access is granted from StoreKit for Pro purchases and from Supabase for manually managed business access.
 
-### A. Environment Check (TestFlight/Sandbox)
-*   **Simulator**: Returns `isPro = true` and `isEnterprise = true` automatically.
-*   **Sandbox/TestFlight**: Uses `AppTransaction.shared` (StoreKit 2) to check if the environment is `.xcode` or `.sandbox`. The result is cached at startup. All sandbox users are granted full access for testing purposes.
-
-### B. Database Check (Supabase `profiles`)
+### A. Database Check (Supabase `profiles`)
 The profiles table stores a `subscription_tier` string:
 *   `'pro'`: Grants Professional features.
-*   `'enterprise'`: Grants all features.
-*   `'lifetime'`: Permanent Enterprise access (used for VIPs/Testers).
+*   `'business'`: Grants business features.
+*   `'lifetime'`: Permanent Business access (used for VIPs/Testers).
 
-### C. StoreKit 2 Check (Verified Transactions)
+### B. StoreKit 2 Check (Verified Transactions)
 The app listens to `Transaction.currentEntitlements`. 
-*   Uses `com.ulukskywalker.snapshots.pro` and `com.ulukskywalker.snapshots.enterprise`.
+*   Uses `com.ulukskywalker.snapshots.pro.monthly` and `com.ulukskywalker.snapshots.pro.yearly`.
 *   Entitlements are verified using `.verified(transaction)` to ensure against receipt tampering.
 
 ## 4. Implementation Details
@@ -37,23 +33,26 @@ The app listens to `Transaction.currentEntitlements`.
 ALTER TABLE public.profiles 
 ADD COLUMN IF NOT EXISTS subscription_tier TEXT DEFAULT 'free', 
 ADD COLUMN IF NOT EXISTS company_logo_url TEXT,
-ADD COLUMN IF NOT EXISTS business_details TEXT; -- Stored as a plain string in ProfileModel
+ADD COLUMN IF NOT EXISTS business_details TEXT,
+ADD COLUMN IF NOT EXISTS property_limit_override INTEGER,
+ADD COLUMN IF NOT EXISTS team_limit_override INTEGER,
+ADD COLUMN IF NOT EXISTS photo_limit_override INTEGER; -- Stored as a plain string in ProfileModel
 ```
 
 ### Visual Gating (SwiftUI)
 *   **Property Gating**: `accessManager.canAddProperty(ownedCount:)` — Limits based on properties **owned** by the user. Managed properties (inherited) do not count towards this limit.
 *   **Contextual Team Gating**: `accessManager.canAddTeamMember(for:currentMemberCount:)` — Limits are determined by the owner of the specific property being managed.
 *   **UI Branding Logic**: 
-    *   **Direct Subscribers**: Show "PRO" / "ENTERPRISE" badges in the profile and plan settings.
-    *   **Inherited Access**: Hide plan badges from the profile to prevent billing confusion. Show "Standard" plan but acknowledge inherited benefits with text: *"You are part of a Professional/Enterprise team."*
+    *   **Direct Paid Accounts**: Show "PRO" / "BUSINESS" badges in the profile and plan settings.
+    *   **Inherited Access**: Hide plan badges from the profile to prevent billing confusion. Show "Standard" plan but acknowledge inherited benefits with property-specific text.
 
 ## 5. Subscription Inheritance (B2B Team Access)
 Managers and maintainers gain premium features **only** when working on properties owned by a paying user.
 
-1.  **Scope**: Inheritance is property-specific. A manager can manage a "Pro" property (with photos enabled) and a "Free" property (text-only) simultaneously.
+1.  **Scope**: Inheritance is property-specific. A manager can manage a "Pro" property with higher limits and a "Free" property with lower saved-photo limits simultaneously.
 2.  **Data Flow**: The `PropertyModel` includes a nested join on the owner's profile (`profiles!properties_owner_id_fkey!inner(subscription_tier)`).
 3.  **Inherited Benefits**:
-    *   **Photo Evidence**: Unlocked during inspections if the property owner is Pro/Enterprise.
+    *   **Photo Evidence**: Available on all tiers, but the number of saved photos depends on the owner tier and configured limits.
     *   **Custom Branding**: Reports generated by a team member use the property owner's logo.
     *   **Team Access**: Managers can invite others to a property if the owner's tier allows it.
 

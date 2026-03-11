@@ -35,9 +35,15 @@ struct InspectionsView: View {
             .navigationTitle("inspections.title")
             .applyLargeNavigationTitleIfSupported()
             .toolbar {
+#if os(iOS)
+                ToolbarItem(placement: .topBarLeading) {
+                    NotificationBellView()
+                }
+#else
                 ToolbarItem(placement: .automatic) {
                     NotificationBellView()
                 }
+#endif
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
                         HapticManager.shared.impact(style: .light)

@@ -58,6 +58,9 @@ struct PropertyModel: Codable, Identifiable, Hashable {
         let full_name: String?
         let email: String?
         let company_logo_url: String?
+        let property_limit_override: Int?
+        let team_limit_override: Int?
+        let photo_limit_override: Int?
     }
     let owner: OwnerProfile?
     

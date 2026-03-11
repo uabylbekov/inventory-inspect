@@ -1,7 +1,13 @@
 import SwiftUI
+import Supabase
 
 struct CheckInboxView: View {
     let email: String
+    let shouldCreateUser: Bool
+    @Environment(\.dismiss) private var dismiss
+    @State private var isRetrying = false
+    @State private var retryErrorMessage: String?
+    @State private var retrySuccessMessage: String?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -19,6 +25,46 @@ struct CheckInboxView: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 40)
+
+            VStack(alignment: .leading, spacing: 10) {
+                if let retrySuccessMessage {
+                    Text(retrySuccessMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                if let retryErrorMessage {
+                    Text(retryErrorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                HStack(spacing: 16) {
+                    Button(action: resendMagicLink) {
+                        HStack(spacing: 6) {
+                            if isRetrying {
+                                ProgressView()
+                                    .controlSize(.small)
+                            }
+                            Text("Try again")
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .disabled(isRetrying)
+
+                    Button("Try another email") {
+                        dismiss()
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.tint)
+                    .disabled(isRetrying)
+                }
+                .font(.footnote)
+            }
+            .padding(.top, 8)
             
             Spacer()
         }
@@ -27,8 +73,34 @@ struct CheckInboxView: View {
         // Hide the back button to make it feel like a completed step
         .navigationBarBackButtonHidden(true)
     }
+
+    private func resendMagicLink() {
+        isRetrying = true
+        retryErrorMessage = nil
+        retrySuccessMessage = nil
+
+        Task {
+            do {
+                try await supabase.auth.signInWithOTP(
+                    email: email,
+                    redirectTo: URL(string: "snapshots://login-callback"),
+                    shouldCreateUser: shouldCreateUser
+                )
+
+                await MainActor.run {
+                    retrySuccessMessage = "We sent a new magic link."
+                    isRetrying = false
+                }
+            } catch {
+                await MainActor.run {
+                    retryErrorMessage = error.localizedDescription
+                    isRetrying = false
+                }
+            }
+        }
+    }
 }
 
 #Preview {
-    CheckInboxView(email: "test@example.com")
+    CheckInboxView(email: "test@example.com", shouldCreateUser: false)
 }

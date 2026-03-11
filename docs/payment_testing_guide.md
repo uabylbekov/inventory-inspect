@@ -8,8 +8,8 @@ Snapshots uses **StoreKit 2**. For local testing in the Simulator or on a physic
 2.  Save it as `Snapshots.storekit` in the `Snapshots/` folder.
 3.  Add the following **Auto-Renewable Subscriptions**:
     *   **Group**: `Snapshots Plans`
-    *   **Product ID**: `com.ulukskywalker.snapshots.pro` ($49.99/mo)
-    *   **Product ID**: `com.ulukskywalker.snapshots.enterprise` ($199.99/mo)
+    *   **Product ID**: `com.ulukskywalker.snapshots.pro.monthly`
+    *   **Product ID**: `com.ulukskywalker.snapshots.pro.yearly`
 
 ### B. Enable the Configuration
 1.  In Xcode, click on the **Snapshots** scheme (near the Play button).
@@ -18,32 +18,16 @@ Snapshots uses **StoreKit 2**. For local testing in the Simulator or on a physic
 4.  Change **StoreKit Configuration** from "None" to `Snapshots.storekit`.
 
 ### C. Local Testing Logic
-*   **Simulator Bypass**: Our `SnapshotsAccessManager` detects the iOS Simulator and grants **Pro** and **Enterprise** access automatically to avoid blocking functional testing of premium features.
 *   **Manual Trigger**: To test the actual selection UI and purchase flow in the Simulator, ensure you are using the `Snapshots.storekit` file, which will simulate a real App Store transaction without charging you.
 
 ## 2. TestFlight & Sandbox Testing
 TestFlight uses the **App Store Sandbox** environment.
 
-### A. Environment Detection
-The app detects the Sandbox environment using StoreKit 2's `AppTransaction.shared` in `SnapshotsAccessManager`:
-```swift
-private func checkIsSandbox() async -> Bool {
-    if let result = try? await AppTransaction.shared,
-       case .verified(let appTransaction) = result {
-        return appTransaction.environment == .xcode || appTransaction.environment == .sandbox
-    }
-    return false
-}
-```
-The result is cached at app startup in `_isSandbox` so it can be read synchronously.
-
-*   **Automatic Pro**: In TestFlight/Sandbox, all users are treated as **Enterprise** so they can test every feature (Team Management, Branded Reports, Unlimited Properties) for free.
-
-### B. Verification Flow
+### A. Verification Flow
 1.  Upload a build to **App Store Connect**.
 2.  Invite your internal/external testers via **TestFlight**.
-3.  When a tester opens the app, they will see the "PRO Partner" status in **Settings**.
-4.  If they encounter a paywall (e.g., during a fresh database install), the "Purchase" button will show a Sandbox confirmation dialog. **No actual charges will be made.**
+3.  If they encounter a paywall (e.g., during a fresh database install), the "Purchase" button will show a Sandbox confirmation dialog. **No actual charges will be made.**
+
 
 ## 3. Database Overrides (VIP Access)
 To manually grant a user permanent access regardless of their App Store status:
@@ -51,8 +35,8 @@ To manually grant a user permanent access regardless of their App Store status:
 2.  Open the `profiles` table.
 3.  Locate the user's row and set their `subscription_tier` to:
     *   `'pro'`: For Professional features.
-    *   `'enterprise'`: For full White-labeling and unlimited everything.
-    *   `'lifetime'`: Permanent full access.
+    *   `'business'`: For white-label and manually managed business access.
+    *   `'lifetime'`: Permanent business access.
 
 ---
 

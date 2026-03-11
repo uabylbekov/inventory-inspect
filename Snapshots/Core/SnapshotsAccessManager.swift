@@ -6,16 +6,38 @@ import Supabase
 @Observable @MainActor
 final class SnapshotsAccessManager {
     static let shared = SnapshotsAccessManager()
-    
+
+    struct TierLimits {
+        let propertyLimit: Int
+        let teamLimit: Int
+        let photoLimit: Int
+    }
+
+    enum PhotoAttachmentError: LocalizedError {
+        case photoLimitReached(used: Int, limit: Int)
+
+        var errorDescription: String? {
+            switch self {
+            case .photoLimitReached(let used, let limit):
+                return "Photo limit reached (\(used)/\(limit)). Upgrade your plan to save more evidence."
+            }
+        }
+    }
+
     var profile: ProfileModel?
     var isCheckingAccess = true
     var activeSubscription: Product?
     var activeProductTier: String = "free"
+    var photoUsageCount = 0
     private var transactionUpdatesTask: Task<Void, Never>?
     private var productCache: [String: Product] = [:]
-    
-    private let proProductId = "com.ulukskywalker.snapshots.pro.monthly"
-    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise.monthly"
+    private var activeProductID: String?
+
+    private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
+    private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
+    private let defaultFreeLimits = TierLimits(propertyLimit: 1, teamLimit: 0, photoLimit: 150)
+    private let defaultProLimits = TierLimits(propertyLimit: 10, teamLimit: 3, photoLimit: 10_000)
+    private let defaultBusinessLimits = TierLimits(propertyLimit: 50, teamLimit: 20, photoLimit: 50_000)
     
     private init() {
         Task {
@@ -28,30 +50,46 @@ final class SnapshotsAccessManager {
         await fetchProfile()
         await cacheSubscriptionProductsIfNeeded()
         await updateSubscriptionStatus()
+        await refreshPhotoUsageForCurrentUser()
         startListeningForTransactionUpdates()
         isCheckingAccess = false
     }
     
     var isPro: Bool {
         if isCheckingAccess { return false }
-        return isDirectSubscriber
+        return hasDirectPaidAccess
     }
 
-    var isEnterprise: Bool {
+    var isBusiness: Bool {
         if isCheckingAccess { return false }
-        return isDirectSubscriberEnterprise
+        return hasBusinessAccess
     }
 
-    var isDirectSubscriber: Bool {
-        (profile?.isPro ?? false) || activeProductTier != "free"
+    var hasStoreKitProSubscription: Bool {
+        activeProductTier == "pro"
     }
 
-    var isDirectSubscriberEnterprise: Bool {
-        (profile?.isEnterprise ?? false) || activeProductTier == "enterprise"
+    var hasDirectPaidAccess: Bool {
+        (profile?.hasProFeatures ?? false) || hasStoreKitProSubscription
+    }
+
+    var hasBusinessAccess: Bool {
+        profile?.hasBusinessFeatures ?? false
+    }
+
+    var directTierLimits: TierLimits {
+        resolvedLimits(
+            subscriptionTier: profile?.subscription_tier,
+            propertyLimitOverride: profile?.property_limit_override,
+            teamLimitOverride: profile?.team_limit_override,
+            photoLimitOverride: profile?.photo_limit_override,
+            hasStoreKitPro: hasStoreKitProSubscription
+        )
     }
     
     func refreshProfile() async {
         await fetchProfile()
+        await refreshPhotoUsageForCurrentUser()
     }
 
     private func fetchProfile() async {
@@ -79,15 +117,18 @@ final class SnapshotsAccessManager {
         profile = nil
         activeSubscription = nil
         activeProductTier = "free"
+        activeProductID = nil
+        photoUsageCount = 0
         isCheckingAccess = false
     }
     
     // MARK: - StoreKit 2 Logic
     
     func updateSubscriptionStatus() async {
-        let highestTierFound = await currentEntitledTier()
-        self.activeProductTier = highestTierFound
-        if let productID = productID(forTier: highestTierFound) {
+        let entitlement = await currentEntitledTier()
+        self.activeProductTier = entitlement.tier
+        self.activeProductID = entitlement.productID
+        if let productID = entitlement.productID ?? productID(forTier: entitlement.tier) {
             self.activeSubscription = productCache[productID]
         } else {
             self.activeSubscription = nil
@@ -111,45 +152,42 @@ final class SnapshotsAccessManager {
         await fetchProfile()
         await cacheSubscriptionProductsIfNeeded()
         await updateSubscriptionStatus()
+        await refreshPhotoUsageForCurrentUser()
         isCheckingAccess = false
     }
 
     private func cacheSubscriptionProductsIfNeeded() async {
         guard productCache.isEmpty else { return }
         do {
-            let products = try await Product.products(for: [proProductId, enterpriseProductId])
+            let products = try await Product.products(for: [proMonthlyProductId, proYearlyProductId])
             productCache = Dictionary(uniqueKeysWithValues: products.map { ($0.id, $0) })
         } catch {
             print("Access Manager: Product cache error: \(error)")
         }
     }
 
-    private func currentEntitledTier() async -> String {
+    private func currentEntitledTier() async -> (tier: String, productID: String?) {
         var highestTierFound = "free"
+        var matchedProductID: String?
 
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard transaction.revocationDate == nil else { continue }
             guard transaction.expirationDate == nil || transaction.expirationDate! > Date() else { continue }
 
-            if transaction.productID == enterpriseProductId {
-                return "enterprise"
-            }
-
-            if transaction.productID == proProductId {
+            if [proMonthlyProductId, proYearlyProductId].contains(transaction.productID) {
                 highestTierFound = "pro"
+                matchedProductID = transaction.productID
             }
         }
 
-        return highestTierFound
+        return (highestTierFound, matchedProductID)
     }
 
     private func productID(forTier tier: String) -> String? {
         switch tier {
-        case "enterprise":
-            enterpriseProductId
         case "pro":
-            proProductId
+            activeProductID ?? proMonthlyProductId
         default:
             nil
         }
@@ -159,32 +197,47 @@ final class SnapshotsAccessManager {
     
     func isPro(for property: PropertyModel?) -> Bool {
         hasAccess(
-            directAccess: isDirectSubscriber,
+            directAccess: hasDirectPaidAccess,
             ownerTier: property?.ownerTier,
-            matchingTiers: ["pro", "enterprise", "lifetime"]
+            matchingTiers: ["pro", "business", "lifetime"]
         )
     }
 
-    func isEnterprise(for property: PropertyModel?) -> Bool {
+    func isBusiness(for property: PropertyModel?) -> Bool {
         hasAccess(
-            directAccess: isDirectSubscriberEnterprise,
+            directAccess: hasBusinessAccess,
             ownerTier: property?.ownerTier,
-            matchingTiers: ["enterprise", "lifetime"]
+            matchingTiers: ["business", "lifetime"]
         )
     }
 
     // MARK: - Helper Methods
 
     func canAddProperty(ownedCount: Int) -> Bool {
-        if isDirectSubscriberEnterprise { return true }
-        if isDirectSubscriber { return ownedCount < 10 }
-        return ownedCount < 1
+        ownedCount < directTierLimits.propertyLimit
     }
 
     func canAddTeamMember(for property: PropertyModel?, currentMemberCount: Int) -> Bool {
-        if isEnterprise(for: property) { return true }
-        if isPro(for: property) { return currentMemberCount < 5 }
-        return false
+        currentMemberCount < tierLimits(for: property).teamLimit
+    }
+
+    func canAttachPhoto(to property: PropertyModel?, existingImageURL: String?) async -> Result<Void, PhotoAttachmentError> {
+        guard let ownerId = property?.owner_id ?? profile?.id else {
+            return .success(())
+        }
+
+        let limits = tierLimits(for: property)
+        let usage = await loadOwnerPhotoUsage(ownerId: ownerId)
+
+        if ownerId == profile?.id {
+            photoUsageCount = usage
+        }
+
+        if existingImageURL != nil || usage < limits.photoLimit {
+            return .success(())
+        }
+
+        return .failure(.photoLimitReached(used: usage, limit: limits.photoLimit))
     }
 
     private func hasAccess(directAccess: Bool, ownerTier: String?, matchingTiers: Set<String>) -> Bool {
@@ -192,5 +245,64 @@ final class SnapshotsAccessManager {
         if directAccess { return true }
         guard let ownerTier else { return false }
         return matchingTiers.contains(ownerTier)
+    }
+
+    func refreshPhotoUsageForCurrentUser() async {
+        guard let ownerId = profile?.id else {
+            photoUsageCount = 0
+            return
+        }
+
+        photoUsageCount = await loadOwnerPhotoUsage(ownerId: ownerId)
+    }
+
+    private func tierLimits(for property: PropertyModel?) -> TierLimits {
+        if let property {
+            if property.owner_id == profile?.id {
+                return directTierLimits
+            }
+
+            return resolvedLimits(
+                subscriptionTier: property.ownerTier,
+                propertyLimitOverride: property.owner?.property_limit_override,
+                teamLimitOverride: property.owner?.team_limit_override,
+                photoLimitOverride: property.owner?.photo_limit_override,
+                hasStoreKitPro: false
+            )
+        }
+
+        return directTierLimits
+    }
+
+    private func resolvedLimits(
+        subscriptionTier: String?,
+        propertyLimitOverride: Int?,
+        teamLimitOverride: Int?,
+        photoLimitOverride: Int?,
+        hasStoreKitPro: Bool
+    ) -> TierLimits {
+        let baseLimits: TierLimits
+        if subscriptionTier == "business" || subscriptionTier == "lifetime" {
+            baseLimits = defaultBusinessLimits
+        } else if subscriptionTier == "pro" || hasStoreKitPro {
+            baseLimits = defaultProLimits
+        } else {
+            baseLimits = defaultFreeLimits
+        }
+
+        return TierLimits(
+            propertyLimit: propertyLimitOverride ?? baseLimits.propertyLimit,
+            teamLimit: teamLimitOverride ?? baseLimits.teamLimit,
+            photoLimit: photoLimitOverride ?? baseLimits.photoLimit
+        )
+    }
+
+    private func loadOwnerPhotoUsage(ownerId: UUID) async -> Int {
+        do {
+            return try await PlanUsageService.loadOwnerPhotoUsage(ownerId: ownerId)
+        } catch {
+            print("Access Manager: Photo usage error: \(error)")
+            return 0
+        }
     }
 }

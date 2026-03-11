@@ -8,18 +8,16 @@ struct PropertyOwnerProfileLoader {
         let full_name: String?
         let email: String?
         let company_logo_url: String?
+        let property_limit_override: Int?
+        let team_limit_override: Int?
+        let photo_limit_override: Int?
     }
 
     static func enrich(_ properties: [PropertyModel]) async throws -> [PropertyModel] {
         guard !properties.isEmpty else { return properties }
 
         let ownerIds = Array(Set(properties.map { $0.owner_id.uuidString.lowercased() }))
-        let ownerProfiles: [OwnerProfileRecord] = try await supabase
-            .from("profiles")
-            .select("id, subscription_tier, full_name, email, company_logo_url")
-            .in("id", values: ownerIds)
-            .execute()
-            .value
+        let ownerProfiles = try await loadOwnerProfiles(ownerIds: ownerIds)
 
         let ownerById = Dictionary(
             uniqueKeysWithValues: ownerProfiles.map {
@@ -29,7 +27,10 @@ struct PropertyOwnerProfileLoader {
                         subscription_tier: $0.subscription_tier,
                         full_name: $0.full_name,
                         email: $0.email,
-                        company_logo_url: $0.company_logo_url
+                        company_logo_url: $0.company_logo_url,
+                        property_limit_override: $0.property_limit_override,
+                        team_limit_override: $0.team_limit_override,
+                        photo_limit_override: $0.photo_limit_override
                     )
                 )
             }
@@ -52,6 +53,55 @@ struct PropertyOwnerProfileLoader {
             )
         }
     }
+
+    private static func loadOwnerProfiles(ownerIds: [String]) async throws -> [OwnerProfileRecord] {
+        do {
+            return try await supabase
+                .from("profiles")
+                .select("id, subscription_tier, full_name, email, company_logo_url, property_limit_override, team_limit_override, photo_limit_override")
+                .in("id", values: ownerIds)
+                .execute()
+                .value
+        } catch {
+            let message = error.localizedDescription.lowercased()
+            if message.contains("property_limit_override")
+                || message.contains("team_limit_override")
+                || message.contains("photo_limit_override") {
+                return try await loadOwnerProfilesWithoutOverrides(ownerIds: ownerIds)
+            }
+            throw error
+        }
+    }
+
+    private static func loadOwnerProfilesWithoutOverrides(ownerIds: [String]) async throws -> [OwnerProfileRecord] {
+        struct LegacyOwnerProfileRecord: Codable {
+            let id: UUID
+            let subscription_tier: String
+            let full_name: String?
+            let email: String?
+            let company_logo_url: String?
+        }
+
+        let legacyProfiles: [LegacyOwnerProfileRecord] = try await supabase
+            .from("profiles")
+            .select("id, subscription_tier, full_name, email, company_logo_url")
+            .in("id", values: ownerIds)
+            .execute()
+            .value
+
+        return legacyProfiles.map {
+            OwnerProfileRecord(
+                id: $0.id,
+                subscription_tier: $0.subscription_tier,
+                full_name: $0.full_name,
+                email: $0.email,
+                company_logo_url: $0.company_logo_url,
+                property_limit_override: nil,
+                team_limit_override: nil,
+                photo_limit_override: nil
+            )
+        }
+    }
 }
 
 struct PropertyAccessService {
@@ -62,6 +112,9 @@ struct PropertyAccessService {
         let owner_full_name: String?
         let owner_email: String?
         let owner_company_logo_url: String?
+        let owner_property_limit_override: Int?
+        let owner_team_limit_override: Int?
+        let owner_photo_limit_override: Int?
         let membership_role: String
     }
 
@@ -133,7 +186,10 @@ struct PropertyAccessService {
                     subscription_tier: access.owner_tier,
                     full_name: access.owner_full_name,
                     email: access.owner_email,
-                    company_logo_url: access.owner_company_logo_url
+                    company_logo_url: access.owner_company_logo_url,
+                    property_limit_override: access.owner_property_limit_override,
+                    team_limit_override: access.owner_team_limit_override,
+                    photo_limit_override: access.owner_photo_limit_override
                 )
             )
         }

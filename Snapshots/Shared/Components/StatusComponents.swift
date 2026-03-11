@@ -38,17 +38,17 @@ struct PlanBadge: View {
     @Environment(SnapshotsAccessManager.self) private var accessManager
 
     private var label: String {
-        if accessManager.isDirectSubscriberEnterprise { return "ENTERPRISE" }
-        if accessManager.isDirectSubscriber { return "PRO" }
+        if accessManager.hasBusinessAccess { return "BUSINESS" }
+        if accessManager.hasDirectPaidAccess { return "PRO" }
         return ""
     }
 
     private var color: Color {
-        accessManager.isDirectSubscriberEnterprise ? .purple : .accentColor
+        accessManager.hasBusinessAccess ? .purple : .accentColor
     }
 
     var body: some View {
-        if accessManager.isDirectSubscriber {
+        if accessManager.hasDirectPaidAccess {
             Text(label)
                 .font(.system(size: 9, weight: .black))
                 .tracking(0.5)

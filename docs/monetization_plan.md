@@ -6,7 +6,7 @@ This document outlines the architecture and implementation steps for transitioni
 We will implement an `AccessManager` that grants "Pro" status if **ANY** of these conditions are met:
 1.  **VIP Status**: The user's Supabase profile has `subscription_tier = 'lifetime'`.
 2.  **TestFlight**: The app detects it is running in the Apple Sandbox environment.
-3.  **Paid Subscription**: A valid StoreKit 2 transaction is found (Product ID: `com.snapshots.pro.monthly`).
+3.  **Paid Subscription**: A valid StoreKit 2 transaction is found (Product IDs: `com.ulukskywalker.snapshots.pro.monthly`, `com.ulukskywalker.snapshots.pro.yearly`).
 
 ## 2. Database Schema Updates (Supabase)
 We need to modify the `profiles` table to store entitlement data that persists across devices.
@@ -23,7 +23,7 @@ ADD COLUMN IF NOT EXISTS business_details TEXT;
 
 | Feature | Gate Mechanism | UI Implementation |
 | :--- | :--- | :--- |
-| **Properties** | count > limit | Free: 1, Pro: 10, Enterprise: ∞. |
+| **Properties** | count > limit | Free: 1, Pro: 10, Business: custom. |
 | **Team Management** | `!isPro` | Show Lock icon on "Manage Team"; Redirect to `PaywallSheet`. |
 | **Custom Branding** | `!isPro` | Show "Add Logo" placeholder with "Pro" label. |
 

@@ -24,11 +24,11 @@ struct ManageTeamSheet: View {
             Form {
                 Section {
                     HStack(alignment: .top, spacing: 10) {
-                        Image(systemName: accessManager.isDirectSubscriber ? "star.circle.fill" : "person.crop.circle.badge.checkmark")
+                        Image(systemName: accessManager.hasDirectPaidAccess ? "star.circle.fill" : "person.crop.circle.badge.checkmark")
                             .foregroundColor(.accentColor)
                             .padding(.top, 1)
                         VStack(alignment: .leading, spacing: 3) {
-                            Text(accessManager.isDirectSubscriber ? "team.unlocked_by_your_plan" : "inspection_item.included_here")
+                            Text(accessManager.hasDirectPaidAccess ? "team.unlocked_by_your_plan" : "inspection_item.included_here")
                                 .font(.subheadline.weight(.semibold))
                             Text(teamAccessDescription)
                                 .font(.caption)
@@ -195,10 +195,10 @@ struct ManageTeamSheet: View {
     }
 
     private var teamAccessDescription: String {
-        if accessManager.isDirectSubscriber {
+        if accessManager.hasDirectPaidAccess {
             return String.localizedStringWithFormat(
                 NSLocalizedString("team.access.direct", comment: ""),
-                accessManager.isDirectSubscriberEnterprise ? String(localized: "plan.enterprise") : String(localized: "plan.professional")
+                accessManager.hasBusinessAccess ? String(localized: "plan.business") : String(localized: "plan.professional")
             )
         }
         if property.ownerTier == "free" {

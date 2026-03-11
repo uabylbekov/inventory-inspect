@@ -6,6 +6,7 @@ final class InspectionItemDetailViewModel {
     let item: RoomInventoryItemModel
     let inspection: InspectionModel
     let room: PropertyRoomModel
+    let property: PropertyModel?
 
     var status: String
     var notes: String
@@ -21,10 +22,11 @@ final class InspectionItemDetailViewModel {
     private let originalImageURL: String?
     private var shouldRemoveExistingImage = false
 
-    init(item: RoomInventoryItemModel, inspection: InspectionModel, room: PropertyRoomModel, initialRecord: InspectionItemModel?) {
+    init(item: RoomInventoryItemModel, inspection: InspectionModel, room: PropertyRoomModel, property: PropertyModel?, initialRecord: InspectionItemModel?) {
         self.item = item
         self.inspection = inspection
         self.room = room
+        self.property = property
         self.status = initialRecord?.status ?? "present"
         self.notes = initialRecord?.notes ?? ""
         self.imageURL = initialRecord?.image_url
@@ -82,6 +84,7 @@ final class InspectionItemDetailViewModel {
                 inspectionId: inspection.id,
                 roomId: room.id,
                 inventoryItemId: item.id,
+                property: property,
                 status: status,
                 notes: notes,
                 existingImageURL: imageURL,
