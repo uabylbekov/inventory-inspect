@@ -87,8 +87,9 @@ struct SettingsView: View {
                     Text("settings.account")
                 }
             }
+            .applySettingsListStyle()
             .navigationTitle("settings.title")
-            .navigationBarTitleDisplayMode(.large)
+            .platformLargeNavigationTitleDisplayMode()
             .alert("settings.sign_out_title", isPresented: $showingSignOutAlert) {
                 Button("common.cancel", role: .cancel) { }
                 Button("settings.sign_out", role: .destructive, action: signOut)
@@ -175,6 +176,17 @@ private struct SettingsAboutView: View {
             }
         }
         .navigationTitle("settings.about")
-        .navigationBarTitleDisplayMode(.inline)
+        .platformInlineNavigationTitleDisplayMode()
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applySettingsListStyle() -> some View {
+#if os(macOS)
+        self.listStyle(.inset(alternatesRowBackgrounds: false))
+#else
+        self
+#endif
     }
 }

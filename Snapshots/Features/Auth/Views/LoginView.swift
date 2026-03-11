@@ -9,93 +9,142 @@ struct LoginView: View {
     @State private var showValidationError = false
     @State private var showCreateAccountPrompt = false
     @FocusState private var isEmailFocused: Bool
+
+    private var canAttemptSignIn: Bool {
+        !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
     
     private var isEmailValid: Bool {
-        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
-        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
-        return emailPredicate.evaluate(with: email)
+        isValidEmail(email)
     }
     
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    VStack(alignment: .center, spacing: 16) {
-                        Text("📸")
-                            .font(.system(size: 80))
-                        
-                        VStack(spacing: 8) {
-                            Text("auth.login.app_name")
-                                .font(.largeTitle.bold())
-                            Text("auth.login.subtitle")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
+            loginContent
+                .navigationDestination(isPresented: $isNavigatingToInbox) {
+                    CheckInboxView(email: email)
+                }
+                .alert("auth.login.account_not_found_title", isPresented: $showCreateAccountPrompt) {
+                    Button("common.cancel", role: .cancel) { }
+                    Button("auth.login.create_account") {
+                        createAccountAndSignIn()
                     }
+                } message: {
+                    Text("auth.login.account_not_found_message")
+                }
+        }
+    }
+
+    @ViewBuilder
+    private var loginContent: some View {
+        compactLoginLayout
+    }
+
+    private var compactLoginLayout: some View {
+        List {
+            Section {
+                loginHeader
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 32)
                     .listRowBackground(Color.clear)
-                }
-                
-                Section("auth.login.email_section") {
-                    TextField("auth.common.email", text: $email)
-                        .keyboardType(.emailAddress)
-                        .textContentType(.emailAddress)
-                        .autocapitalization(.none)
-                        .autocorrectionDisabled()
-                        .focused($isEmailFocused)
-                        .disabled(isLoading)
-                    
-                    if showValidationError {
-                        Label("auth.login.invalid_email", systemImage: "exclamationmark.circle.fill")
-                            .font(.caption)
-                            .foregroundColor(.red)
-                    }
-                }
-                
-                Section {
-                    Button(action: signIn) {
-                        HStack(spacing: 8) {
-                            if isLoading {
-                                ProgressView()
-                                    .tint(.white)
-                            }
-                            Text("auth.common.continue")
-                                .fontWeight(.bold)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .disabled(!isEmailValid || isLoading)
-                    .listRowBackground(isEmailValid && !isLoading ? Color.accentColor : Color.secondary.opacity(0.1))
-                    .foregroundColor(isEmailValid && !isLoading ? .white : .secondary)
-                } footer: {
-                    if let errorMessage = errorMessage {
-                        Text(errorMessage)
-                            .foregroundColor(.red)
-                    }
+            }
+
+            Section("auth.login.email_section") {
+                emailField
+
+                if showValidationError {
+                    validationMessage
                 }
             }
-            .listStyle(.insetGrouped)
-            .navigationDestination(isPresented: $isNavigatingToInbox) {
-                CheckInboxView(email: email)
+
+            Section {
+                continueButton(useProminentStyle: false)
+            } footer: {
+                errorFooter
             }
-            .alert("auth.login.account_not_found_title", isPresented: $showCreateAccountPrompt) {
-                Button("common.cancel", role: .cancel) { }
-                Button("auth.login.create_account") {
-                    createAccountAndSignIn()
-                }
-            } message: {
-                Text("auth.login.account_not_found_message")
+        }
+        .applyLoginListStyle()
+    }
+
+    private var loginHeader: some View {
+        VStack(alignment: .center, spacing: 16) {
+            Image(systemName: "camera.viewfinder")
+                .font(.system(size: 32, weight: .medium))
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 48, height: 48)
+
+            VStack(spacing: 8) {
+                Text("auth.login.app_name")
+                    .font(.title.bold())
+                Text("auth.login.subtitle")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
+
+    private var emailField: some View {
+        TextField("auth.common.email", text: $email)
+            .platformEmailTextInput()
+            .autocorrectionDisabled()
+            .focused($isEmailFocused)
+            .disabled(isLoading)
+            .onChange(of: email) { _, newValue in
+                if showValidationError {
+                    showValidationError = !isValidEmail(newValue)
+                }
+                if errorMessage != nil {
+                    errorMessage = nil
+                }
+            }
+    }
+
+    private var validationMessage: some View {
+        Label("auth.login.invalid_email", systemImage: "exclamationmark.circle.fill")
+            .font(.caption)
+            .foregroundColor(.red)
+    }
+
+    @ViewBuilder
+    private var errorFooter: some View {
+        if let errorMessage {
+            Text(errorMessage)
+                .font(.footnote)
+                .foregroundColor(.red)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func continueButton(useProminentStyle: Bool) -> some View {
+        Button(action: signIn) {
+            HStack(spacing: 8) {
+                if isLoading {
+                    ProgressView()
+                        .controlSize(.small)
+                }
+                Text("auth.common.continue")
+                    .fontWeight(.semibold)
+            }
+            .frame(maxWidth: useProminentStyle ? nil : .infinity)
+        }
+        .disabled(!canAttemptSignIn || isLoading)
+        .applyContinueButtonStyle(useProminentStyle: useProminentStyle)
+        .keyboardShortcut(.defaultAction)
+        .applyCompactButtonRowStyle(isEnabled: canAttemptSignIn && !isLoading, useProminentStyle: useProminentStyle)
+    }
     
     private func signIn() {
-        guard isEmailValid else { return }
+        guard isEmailValid else {
+            showValidationError = true
+            errorMessage = nil
+            return
+        }
         // Hide keyboard when submitting
-        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        dismissKeyboard()
         
+        showValidationError = false
         isLoading = true
         errorMessage = nil
         
@@ -143,6 +192,61 @@ struct LoginView: View {
                 }
             }
             isLoading = false
+        }
+    }
+
+    private func dismissKeyboard() {
+        dismissPlatformKeyboard()
+    }
+
+    private func isValidEmail(_ value: String) -> Bool {
+        let emailRegex = "[A-Z0-9a-z._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,64}"
+        let emailPredicate = NSPredicate(format: "SELF MATCHES %@", emailRegex)
+        return emailPredicate.evaluate(with: value)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyLoginListStyle() -> some View {
+#if os(iOS)
+        self.listStyle(.insetGrouped)
+#elseif os(macOS)
+        self.listStyle(.inset(alternatesRowBackgrounds: false))
+#else
+        self.listStyle(.inset)
+#endif
+    }
+
+    @ViewBuilder
+    func applyCompactButtonRowStyle(isEnabled: Bool, useProminentStyle: Bool) -> some View {
+#if os(macOS)
+        self
+#else
+        if useProminentStyle {
+            self
+        } else {
+            self
+                .listRowBackground(isEnabled ? Color.accentColor : Color.secondary.opacity(0.1))
+                .foregroundColor(isEnabled ? .white : .secondary)
+        }
+#endif
+    }
+
+    @ViewBuilder
+    func applyContinueButtonStyle(useProminentStyle: Bool) -> some View {
+        if useProminentStyle {
+#if os(macOS)
+            self
+                .buttonStyle(.borderedProminent)
+                .controlSize(.regular)
+#else
+            self
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+#endif
+        } else {
+            self.controlSize(.regular)
         }
     }
 }

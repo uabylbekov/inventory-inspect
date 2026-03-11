@@ -52,7 +52,7 @@ struct CompareSelectSheet: View {
                 }
             }
             .navigationTitle("compare_select.title")
-            .navigationBarTitleDisplayMode(.inline)
+            .applyInlineNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }
@@ -78,5 +78,16 @@ struct CompareSelectSheet: View {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

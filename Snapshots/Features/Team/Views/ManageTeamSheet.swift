@@ -46,9 +46,7 @@ struct ManageTeamSheet: View {
                     Section(header: Text("team.invite_member")) {
                         if canAddMore {
                             TextField("auth.login.email_section", text: $viewModel.newMemberEmail)
-                                .keyboardType(.emailAddress)
-                                .textContentType(.emailAddress)
-                                .autocapitalization(.none)
+                                .platformEmailTextInput()
                                 .autocorrectionDisabled()
                             
                             Picker("Role", selection: $viewModel.newMemberRole) {
@@ -184,7 +182,7 @@ struct ManageTeamSheet: View {
                 }
             }
             .navigationTitle("team.title")
-            .navigationBarTitleDisplayMode(.inline)
+            .platformInlineNavigationTitleDisplayMode()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.done") { dismiss() }

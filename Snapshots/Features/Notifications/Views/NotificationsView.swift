@@ -31,7 +31,7 @@ struct NotificationsView: View {
                 await notificationManager.fetchNotifications()
             }
             .navigationTitle("notifications.title")
-            .navigationBarTitleDisplayMode(.inline)
+            .platformInlineNavigationTitleDisplayMode()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.done") { dismiss() }

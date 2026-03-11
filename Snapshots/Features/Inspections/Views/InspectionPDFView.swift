@@ -1,5 +1,4 @@
 import SwiftUI
-import UIKit
 
 struct InspectionPDFView: View {
     let property: PropertyModel
@@ -8,7 +7,7 @@ struct InspectionPDFView: View {
     let anomalies: [ReportItem]
     let resolvedItems: [ReportItem]
     let presentItems: [ReportItem]
-    var logoImage: UIImage? = nil
+    var logoImage: PlatformImage? = nil
     var isWhiteLabel: Bool = false
 
     private let canvas = Color.white
@@ -84,7 +83,7 @@ struct InspectionPDFView: View {
                 Spacer()
 
                 if let logo = logoImage {
-                    Image(uiImage: logo)
+                    Image(platformImage: logo)
                         .resizable()
                         .scaledToFit()
                         .frame(width: 72, height: 72)

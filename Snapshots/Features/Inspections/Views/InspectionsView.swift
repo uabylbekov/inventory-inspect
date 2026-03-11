@@ -7,6 +7,19 @@ struct InspectionsView: View {
     
     @State private var showDeleteAlert = false
     @State private var inspectionToDelete: InspectionModel? = nil
+    @State private var showingCalendar = false
+
+    private var activeInspections: [InspectionModel] {
+        viewModel.filteredInspections.filter { $0.status == "in_progress" }
+    }
+
+    private var completedInspections: [InspectionModel] {
+        viewModel.filteredInspections.filter { $0.status == "completed" }
+    }
+
+    private var cancelledInspections: [InspectionModel] {
+        viewModel.filteredInspections.filter { $0.status == "cancelled" }
+    }
     
     var body: some View {
         @Bindable var viewModel = viewModel
@@ -16,37 +29,13 @@ struct InspectionsView: View {
                     filterHeader
                 }
 
-                if !viewModel.hasLoadedInitialState {
-                    Section {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                } else if viewModel.isLoading && viewModel.inspections.isEmpty {
-                    Section {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                } else if viewModel.filteredInspections.isEmpty {
-                    Section {
-                        ContentUnavailableView(
-                            "inspections.empty.title",
-                            systemImage: "checklist",
-                            description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
-                        )
-                    }
-                } else {
-                    inspectionsSection
-                }
+                inspectionBody
             }
-            .refreshable {
-                async let fetchI: () = self.viewModel.fetchInspections(showLoadingState: false)
-                async let fetchP: () = self.viewModel.fetchProperties()
-                _ = await (fetchI, fetchP)
-            }
+            .applyInspectionsListStyle()
             .navigationTitle("inspections.title")
-            .navigationBarTitleDisplayMode(.large)
+            .applyLargeNavigationTitleIfSupported()
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .automatic) {
                     NotificationBellView()
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -60,6 +49,11 @@ struct InspectionsView: View {
                         }
                     }
                 }
+            }
+            .refreshable {
+                async let fetchI: () = self.viewModel.fetchInspections(showLoadingState: false)
+                async let fetchP: () = self.viewModel.fetchProperties()
+                _ = await (fetchI, fetchP)
             }
             .task {
                 async let fetchI: () = self.viewModel.fetchInspections()
@@ -100,36 +94,105 @@ struct InspectionsView: View {
     // MARK: - Subviews
     
     @ViewBuilder
-    private var inspectionsSection: some View {
-        let active = viewModel.filteredInspections.filter { $0.status == "in_progress" }
-        let completed = viewModel.filteredInspections.filter { $0.status == "completed" }
-        let cancelled = viewModel.filteredInspections.filter { $0.status == "cancelled" }
+    private var inspectionBody: some View {
+        if !viewModel.hasLoadedInitialState {
+            Section {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        } else if viewModel.isLoading && viewModel.inspections.isEmpty {
+            Section {
+                ProgressView()
+                    .frame(maxWidth: .infinity, alignment: .center)
+            }
+        } else if viewModel.filteredInspections.isEmpty {
+            Section {
+                ContentUnavailableView(
+                    "inspections.empty.title",
+                    systemImage: "checklist",
+                    description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
+                )
+            }
+        } else {
+            if !activeInspections.isEmpty {
+                inspectionGroup(title: String(localized: "inspections.group.active"), inspections: activeInspections)
+            }
 
-        if !active.isEmpty {
-            inspectionGroup(title: String(localized: "inspections.group.active"), inspections: active)
-        }
+            if !completedInspections.isEmpty {
+                inspectionGroup(title: String(localized: "inspections.group.completed"), inspections: completedInspections)
+            }
 
-        if !completed.isEmpty {
-            inspectionGroup(title: String(localized: "inspections.group.completed"), inspections: completed)
-        }
-
-        if !cancelled.isEmpty {
-            inspectionGroup(title: String(localized: "inspections.group.cancelled"), inspections: cancelled)
+            if !cancelledInspections.isEmpty {
+                inspectionGroup(title: String(localized: "inspections.group.cancelled"), inspections: cancelledInspections)
+            }
         }
     }
 
     private var filterHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
-            DatePicker("inspections.filter.show_records_for", selection: $viewModel.selectedDate, displayedComponents: .date)
+            filterDateControl
 
             if viewModel.isFilteringByDate {
-                Button(action: {
+                Button("inspections.filter.clear") {
                     viewModel.isFilteringByDate = false
-                }) {
-                    Text("inspections.filter.clear")
+                    viewModel.selectedDate = Date()
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var filterDateControl: some View {
+#if os(macOS)
+                Button {
+                    showingCalendar = true
+                } label: {
+                    LabeledContent("inspections.filter.show_records_for") {
+                        Text(dateLabel(for: viewModel.selectedDate))
+                            .foregroundStyle(.primary)
+                    }
+                }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showingCalendar, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("inspections.filter.show_records_for")
+                    .font(.headline)
+
+                DatePicker(
+                    "",
+                    selection: $viewModel.selectedDate,
+                    displayedComponents: .date
+                )
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+
+                HStack {
+                    Button("Today") {
+                        viewModel.selectedDate = Date()
+                        viewModel.isFilteringByDate = false
+                    }
+
+                    Spacer()
+
+                    Button("Done") {
+                        showingCalendar = false
+                    }
+                    .keyboardShortcut(.defaultAction)
+                }
+            }
+            .padding(16)
+            .frame(width: 320)
+        }
+#else
+        DatePicker("inspections.filter.show_records_for", selection: $viewModel.selectedDate, displayedComponents: .date)
+#endif
+    }
+
+    private func dateLabel(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .none
+        return formatter.string(from: date)
     }
     
     @ViewBuilder
@@ -214,8 +277,27 @@ struct InspectionsView: View {
             }
         }
     }
-    
 
+}
+
+private extension View {
+    @ViewBuilder
+    func applyLargeNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.large)
+#else
+        self
+#endif
+    }
+
+    @ViewBuilder
+    func applyInspectionsListStyle() -> some View {
+#if os(macOS)
+        self.listStyle(.inset(alternatesRowBackgrounds: true))
+#else
+        self
+#endif
+    }
 }
 
 // MARK: - Inspection Row

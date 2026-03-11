@@ -85,9 +85,9 @@ struct RoomInventoryView: View {
             await viewModel.fetchItems(showLoadingState: false)
         }
         .navigationTitle(room.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
                         editingRoom = true
@@ -193,6 +193,17 @@ struct RoomInventoryView: View {
             LabeledContent("room_sheet.type", value: room.room_type?.capitalized ?? String(localized: "property_detail.room"))
             LabeledContent("Items", value: "\(viewModel.items.count)")
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }
 

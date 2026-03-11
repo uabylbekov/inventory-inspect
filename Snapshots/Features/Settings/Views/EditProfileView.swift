@@ -25,7 +25,7 @@ struct EditProfileView: View {
     @State private var businessPhone: String = ""
     @State private var businessWebsite: String = ""
     @State private var selectedLogoItem: PhotosPickerItem? = nil
-    @State private var selectedLogoImage: UIImage? = nil
+    @State private var selectedLogoImage: PlatformImage? = nil
     @State private var isUploadingLogo = false
     @FocusState private var focusedField: Field?
     @Environment(SnapshotsAccessManager.self) private var accessManager
@@ -34,19 +34,16 @@ struct EditProfileView: View {
         Form {
             Section {
                 TextField("profile.name", text: $name)
-                    .textContentType(.name)
-                    .autocapitalization(.words)
+                    .platformNameTextInput()
                     .focused($focusedField, equals: .name)
-                    .submitLabel(.next)
+                    .platformSubmitLabelNext()
                     .onSubmit { focusedField = .email }
                     .disabled(!isEditing)
                 
                 TextField("auth.common.email", text: $email)
-                    .textContentType(.emailAddress)
-                    .autocapitalization(.none)
-                    .keyboardType(.emailAddress)
+                    .platformEmailTextInput()
                     .focused($focusedField, equals: .email)
-                    .submitLabel(.done)
+                    .platformSubmitLabelDone()
                     .disabled(!isEditing)
             } header: {
                 Text("profile.account_details")
@@ -78,7 +75,7 @@ struct EditProfileView: View {
                         .onChange(of: selectedLogoItem) { _, newItem in
                             Task {
                                 if let data = try? await newItem?.loadTransferable(type: Data.self),
-                                   let image = UIImage(data: data) {
+                                   let image = makePlatformImage(from: data) {
                                     selectedLogoImage = image
                                 }
                             }
@@ -101,12 +98,11 @@ struct EditProfileView: View {
                         .focused($focusedField, equals: .businessAddress)
                         .disabled(!isEditing)
                     TextField("profile.phone", text: $businessPhone)
-                        .keyboardType(.phonePad)
+                        .platformPhonePadKeyboard()
                         .focused($focusedField, equals: .businessPhone)
                         .disabled(!isEditing)
                     TextField("profile.website", text: $businessWebsite)
-                        .keyboardType(.URL)
-                        .autocapitalization(.none)
+                        .platformURLTextInput()
                         .focused($focusedField, equals: .businessWebsite)
                         .disabled(!isEditing)
                 } header: {
@@ -155,7 +151,7 @@ struct EditProfileView: View {
             }
         }
         .navigationTitle("profile.title")
-        .navigationBarTitleDisplayMode(.inline)
+        .platformInlineNavigationTitleDisplayMode()
         .toolbar {
             if isEditing {
                 ToolbarItem(placement: .cancellationAction) {
@@ -313,21 +309,20 @@ struct EditProfileView: View {
     }
     
     /// Resize to max 512 pt and compress to stay under 1 MB.
-    private func preparedLogoData(from image: UIImage) -> Data? {
+    private func preparedLogoData(from image: PlatformImage) -> Data? {
         let maxDimension: CGFloat = 512
         let scale = min(maxDimension / image.size.width, maxDimension / image.size.height, 1)
         let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
 
-        let renderer = UIGraphicsImageRenderer(size: newSize)
-        let resized = renderer.image { _ in image.draw(in: CGRect(origin: .zero, size: newSize)) }
+        let resized = resizedPlatformImage(image, to: newSize)
 
         // Try progressively lower quality until under 1 MB
         for quality in stride(from: 0.8, through: 0.3, by: -0.1) {
-            if let data = resized.jpegData(compressionQuality: quality), data.count < 1_000_000 {
+            if let data = platformJPEGData(from: resized, compressionQuality: quality), data.count < 1_000_000 {
                 return data
             }
         }
-        return resized.jpegData(compressionQuality: 0.3)
+        return platformJPEGData(from: resized, compressionQuality: 0.3)
     }
 
     private func deleteAccount() {
@@ -358,22 +353,22 @@ struct EditProfileView: View {
 }
 
 private struct LogoPreview: View {
-    let selectedLogoImage: UIImage?
+    let selectedLogoImage: PlatformImage?
     let logoURLString: String?
     let isUploading: Bool
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 10)
-                .fill(Color(UIColor.secondarySystemGroupedBackground))
+                .fill(Color.platformSecondaryGroupedBackground)
                 .frame(width: 56, height: 56)
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(UIColor.separator), lineWidth: 0.5)
+                        .stroke(Color.platformSeparator, lineWidth: 0.5)
                 )
 
             if let image = selectedLogoImage {
-                Image(uiImage: image)
+                Image(platformImage: image)
                     .resizable()
                     .scaledToFill()
                     .frame(width: 56, height: 56)

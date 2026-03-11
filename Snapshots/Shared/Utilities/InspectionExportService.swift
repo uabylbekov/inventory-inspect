@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import UIKit
 
 struct GeneratedPDF {
     let data: Data
@@ -93,7 +92,7 @@ enum InspectionExportService {
         return GeneratedPDF(data: data, filename: filename)
     }
 
-    private static func loadBranding(for property: PropertyModel?) async -> (logoImage: UIImage?, isWhiteLabel: Bool) {
+    private static func loadBranding(for property: PropertyModel?) async -> (logoImage: PlatformImage?, isWhiteLabel: Bool) {
         let accessManager = SnapshotsAccessManager.shared
         let hasPro = accessManager.isPro(for: property)
         let isWhiteLabel = accessManager.isEnterprise(for: property)
@@ -105,6 +104,6 @@ enum InspectionExportService {
             return (nil, isWhiteLabel)
         }
 
-        return (UIImage(data: data), isWhiteLabel)
+        return (makePlatformImage(from: data), isWhiteLabel)
     }
 }

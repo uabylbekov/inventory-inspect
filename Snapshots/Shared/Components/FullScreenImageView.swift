@@ -1,15 +1,18 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 enum ImageSource {
-    case local(UIImage)
+    case local(PlatformImage)
     case remote(URL)
 }
 
 struct FullScreenImageView: View {
     let image: ImageSource
     @Environment(\.dismiss) private var dismiss
-    @State private var loadedImage: UIImage?
-    @State private var showShareSheet = false
+    @State private var loadedImage: PlatformImage?
+    @State private var exportDocument: ExportedImageDocument?
+    @State private var exportFilename = ""
+    @State private var showingExporter = false
     @State private var savedToPhotos = false
     @State private var scale: CGFloat = 1.0
     @State private var lastScale: CGFloat = 1.0
@@ -20,9 +23,9 @@ struct FullScreenImageView: View {
             
             Group {
                 switch image {
-                case .local(let uiImage):
-                    zoomableImage(Image(uiImage: uiImage))
-                        .onAppear { loadedImage = uiImage }
+                case .local(let image):
+                    zoomableImage(Image(platformImage: image))
+                        .onAppear { loadedImage = image }
                 case .remote(let url):
                     CachedAsyncImage(url: url) { image in
                         zoomableImage(image)
@@ -34,9 +37,9 @@ struct FullScreenImageView: View {
                         if let cached = ImageCache.shared.get(for: url) {
                             loadedImage = cached
                         } else if let (data, _) = try? await URLSession.shared.data(from: url),
-                                  let uiImg = UIImage(data: data) {
-                            ImageCache.shared.set(uiImg, for: url)
-                            loadedImage = uiImg
+                                  let image = makePlatformImage(from: data) {
+                            ImageCache.shared.set(image, for: url)
+                            loadedImage = image
                         }
                     }
                 }
@@ -59,7 +62,7 @@ struct FullScreenImageView: View {
                 Spacer()
                 
                 if let img = loadedImage {
-                    // Save to Photos
+                    #if canImport(UIKit)
                     Button {
                         UIImageWriteToSavedPhotosAlbum(img, nil, nil, nil)
                         withAnimation { savedToPhotos = true }
@@ -74,10 +77,15 @@ struct FullScreenImageView: View {
                             .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
                     }
+                    #endif
                     
                     // Share
                     Button {
-                        showShareSheet = true
+                        if let data = platformJPEGData(from: img, compressionQuality: 0.9) {
+                            exportDocument = ExportedImageDocument(data: data)
+                            exportFilename = String(localized: "image.filename")
+                            showingExporter = true
+                        }
                     } label: {
                         Image(systemName: "square.and.arrow.up")
                             .font(.system(size: 18, weight: .semibold))
@@ -85,11 +93,6 @@ struct FullScreenImageView: View {
                             .frame(width: 44, height: 44)
                             .background(Color.black.opacity(0.5))
                             .clipShape(Circle())
-                    }
-                    .sheet(isPresented: $showShareSheet) {
-                        if let data = img.jpegData(compressionQuality: 0.9) {
-                            ShareSheet(data: data, filename: String(localized: "image.filename"))
-                        }
                     }
                 }
             }
@@ -111,6 +114,14 @@ struct FullScreenImageView: View {
                         .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+        }
+        .fileExporter(
+            isPresented: $showingExporter,
+            document: exportDocument,
+            contentType: .jpeg,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
         }
     }
     

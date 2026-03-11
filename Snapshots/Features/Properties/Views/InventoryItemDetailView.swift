@@ -51,9 +51,9 @@ struct InventoryItemDetailView: View {
             }
         }
         .navigationTitle("inventory_item.title")
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
                         editingItem = true
@@ -96,5 +96,16 @@ struct InventoryItemDetailView: View {
         .task {
             await viewModel.fetchHistory()
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

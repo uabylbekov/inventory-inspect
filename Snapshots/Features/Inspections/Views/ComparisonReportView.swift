@@ -1,9 +1,12 @@
 import SwiftUI
 import Supabase
+import UniformTypeIdentifiers
 
 struct ComparisonReportView: View {
     @State private var viewModel: ComparisonReportViewModel
-    @State private var pdfShareItem: ShareablePDF?
+    @State private var exportDocument: ExportedPDFDocument?
+    @State private var exportFilename = ""
+    @State private var showingExporter = false
     @State private var showingPaywall = false
     
     init(base: InspectionModel, current: InspectionModel) {
@@ -71,7 +74,7 @@ struct ComparisonReportView: View {
         .overlay {
             if viewModel.isLoading {
                 ZStack {
-                    Color(UIColor.systemGroupedBackground)
+                    Color.platformGroupedBackground
                         .ignoresSafeArea()
                     ProgressView("comparison.loading")
                         .font(.subheadline)
@@ -81,13 +84,15 @@ struct ComparisonReportView: View {
         }
         .animation(.none, value: viewModel.isLoading)
         .navigationTitle("comparison.title")
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     Task {
                         let pdf = await viewModel.generatePDF()
-                        pdfShareItem = ShareablePDF(data: pdf.data, filename: pdf.filename)
+                        exportDocument = ExportedPDFDocument(data: pdf.data)
+                        exportFilename = pdf.filename
+                        showingExporter = true
                     }
                 } label: {
                     if viewModel.isGeneratingPDF {
@@ -99,8 +104,13 @@ struct ComparisonReportView: View {
                 .disabled(viewModel.isLoading || viewModel.isGeneratingPDF)
             }
         }
-        .sheet(item: $pdfShareItem) { pdf in
-            ShareSheet(data: pdf.data, filename: pdf.filename)
+        .fileExporter(
+            isPresented: $showingExporter,
+            document: exportDocument,
+            contentType: .pdf,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
         }
         .sheet(isPresented: $showingPaywall) {
             PremiumPaywallView()
@@ -148,11 +158,11 @@ struct ComparisonReportView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .fullScreenCover(isPresented: $showOldImage) {
+                        .adaptiveImagePresentation(isPresented: $showOldImage) {
                             FullScreenImageView(image: .remote(url))
                         }
                     } placeholder: {
-                        Color(UIColor.systemGray5).frame(height: 90)
+                        Color.platformGray5.frame(height: 90)
                     }
                 }
 
@@ -163,11 +173,11 @@ struct ComparisonReportView: View {
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .fullScreenCover(isPresented: $showNewImage) {
+                        .adaptiveImagePresentation(isPresented: $showNewImage) {
                             FullScreenImageView(image: .remote(url))
                         }
                     } placeholder: {
-                        Color(UIColor.systemGray5).frame(height: 90)
+                        Color.platformGray5.frame(height: 90)
                     }
                 }
 
@@ -228,5 +238,25 @@ struct ComparisonReportView: View {
         private func isResolvableIssue(_ status: String) -> Bool {
             status == "missing" || status == "damaged"
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
+    }
+
+    @ViewBuilder
+    func adaptiveImagePresentation<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+#if os(iOS)
+        self.fullScreenCover(isPresented: isPresented, content: content)
+#else
+        self.sheet(isPresented: isPresented, content: content)
+#endif
     }
 }

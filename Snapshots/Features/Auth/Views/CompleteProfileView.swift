@@ -12,8 +12,7 @@ struct CompleteProfileView: View {
             Form {
                 Section {
                     TextField("profile.full_name", text: $name)
-                        .textContentType(.name)
-                        .autocapitalization(.words)
+                        .platformNameTextInput()
                 } header: {
                     Text("profile.complete.welcome")
                 } footer: {

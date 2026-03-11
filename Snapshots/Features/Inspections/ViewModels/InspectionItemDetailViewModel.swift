@@ -16,7 +16,7 @@ final class InspectionItemDetailViewModel {
     var isUploading = false
     var isProcessingImage = false
     var saveError: String?
-    var annotatingImage: UIImage?
+    var annotatingImage: PlatformImage?
 
     private let originalImageURL: String?
     private var shouldRemoveExistingImage = false
@@ -46,27 +46,22 @@ final class InspectionItemDetailViewModel {
         shouldRemoveExistingImage = false
     }
 
-    func prepareAnnotation(_ image: UIImage) {
+    func prepareAnnotation(_ image: PlatformImage) {
         isProcessingImage = true
-        Task.detached(priority: .userInitiated) {
+        Task(priority: .userInitiated) {
             let maxDimension: CGFloat = 2048
-            let resultImage: UIImage
+            let resultImage: PlatformImage
 
             if image.size.width > maxDimension || image.size.height > maxDimension {
                 let scale = maxDimension / max(image.size.width, image.size.height)
                 let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
-                let renderer = UIGraphicsImageRenderer(size: newSize)
-                resultImage = renderer.image { _ in
-                    image.draw(in: CGRect(origin: .zero, size: newSize))
-                }
+                resultImage = resizedPlatformImage(image, to: newSize)
             } else {
                 resultImage = image
             }
 
-            await MainActor.run {
-                self.isProcessingImage = false
-                self.annotatingImage = resultImage
-            }
+            self.isProcessingImage = false
+            self.annotatingImage = resultImage
         }
     }
 

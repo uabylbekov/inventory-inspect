@@ -94,10 +94,10 @@ struct InspectionHubView: View {
             }
         }
         .navigationTitle(viewModel.property?.name ?? String(localized: "inspection_hub.title"))
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
             if viewModel.inspection.status == "in_progress" {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
                             showCancelAlert = true
@@ -183,6 +183,17 @@ struct InspectionHubView: View {
             }
             return !lhsComplete && rhsComplete
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }
 

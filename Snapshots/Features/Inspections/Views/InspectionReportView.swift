@@ -1,9 +1,12 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct InspectionReportView: View {
     @State private var viewModel: InspectionReportViewModel
     @State private var showingInspectionSelection = false
-    @State private var shareablePDF: ShareablePDF?
+    @State private var exportDocument: ExportedPDFDocument?
+    @State private var exportFilename = ""
+    @State private var showingExporter = false
     @State private var showingPaywall = false
 
     init(inspection: InspectionModel) {
@@ -113,7 +116,7 @@ struct InspectionReportView: View {
         .overlay {
             if viewModel.isLoading {
                 ZStack {
-                    Color(UIColor.systemGroupedBackground)
+                    Color.platformGroupedBackground
                         .ignoresSafeArea()
                     ProgressView("report.loading")
                         .font(.subheadline)
@@ -124,16 +127,18 @@ struct InspectionReportView: View {
 
         .animation(.none, value: viewModel.isLoading)
         .navigationTitle("report.title")
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .primaryAction) {
                 if viewModel.isGeneratingPDF {
                     ProgressView()
                 } else {
                     Button(action: {
                         Task {
                             if let pdf = await viewModel.generatePDF() {
-                                self.shareablePDF = ShareablePDF(data: pdf.data, filename: pdf.filename)
+                                exportDocument = ExportedPDFDocument(data: pdf.data)
+                                exportFilename = pdf.filename
+                                showingExporter = true
                             }
                         }
                     }) {
@@ -143,15 +148,20 @@ struct InspectionReportView: View {
                 }
             }
             
-            ToolbarItem(placement: .topBarTrailing) {
+            ToolbarItem(placement: .automatic) {
                 Button(action: { showingInspectionSelection = true }) {
                     Image(systemName: "shoeprints.fill")
                         .imageScale(.large)
                 }
             }
         }
-        .sheet(item: $shareablePDF) { pdf in
-            ShareSheet(data: pdf.data, filename: pdf.filename)
+        .fileExporter(
+            isPresented: $showingExporter,
+            document: exportDocument,
+            contentType: .pdf,
+            defaultFilename: exportFilename
+        ) { _ in
+            exportDocument = nil
         }
         .sheet(isPresented: $showingInspectionSelection) {
             CompareSelectSheet(currentInspection: viewModel.inspection)
@@ -166,28 +176,6 @@ struct InspectionReportView: View {
             await viewModel.fetchReportData(showLoadingState: false)
         }
     }
-}
-
-// MARK: - PDF Share Helpers
-
-struct ShareablePDF: Identifiable {
-    let id = UUID()
-    let data: Data
-    let filename: String
-}
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let data: Data
-    let filename: String
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        let tempURL = FileManager.default.temporaryDirectory.appendingPathComponent(filename)
-        try? data.write(to: tempURL)
-        let vc = UIActivityViewController(activityItems: [tempURL], applicationActivities: nil)
-        return vc
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 // MARK: - Report Item Row
@@ -244,12 +232,12 @@ struct ReportItemRow: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
-                    .fullScreenCover(isPresented: $showFullScreenImage) {
+                    .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
                         FullScreenImageView(image: .remote(url))
                     }
                 } placeholder: {
                     Rectangle()
-                        .fill(Color(UIColor.secondarySystemBackground))
+                        .fill(Color.platformSecondarySystemBackground)
                         .frame(height: 200)
                         .overlay(ProgressView())
                 }
@@ -296,5 +284,25 @@ struct ReportItemRow: View {
 
     private func isResolvableIssue(_ status: String) -> Bool {
         status == "missing" || status == "damaged"
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
+    }
+
+    @ViewBuilder
+    func adaptiveImagePresentation<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+#if os(iOS)
+        self.fullScreenCover(isPresented: isPresented, content: content)
+#else
+        self.sheet(isPresented: isPresented, content: content)
+#endif
     }
 }

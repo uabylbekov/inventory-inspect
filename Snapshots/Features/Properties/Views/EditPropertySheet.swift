@@ -54,16 +54,16 @@ struct EditPropertySheet: View {
                     // MARK: - Location
                     Section(header: Text("property_sheet.location")) {
                         TextField("property_sheet.address1", text: $viewModel.addressLine1)
-                            .textContentType(.streetAddressLine1)
+                            .platformStreetAddressLine1TextContentType()
                         TextField("property_sheet.address2", text: $viewModel.addressLine2)
-                            .textContentType(.streetAddressLine2)
+                            .platformStreetAddressLine2TextContentType()
                         TextField("property_sheet.city", text: $viewModel.city)
-                            .textContentType(.addressCity)
+                            .platformAddressCityTextContentType()
                         TextField("property_sheet.state_region", text: $viewModel.stateRegion)
-                            .textContentType(.addressState)
+                            .platformAddressStateTextContentType()
 
                         TextField("property_sheet.postal_code", text: $viewModel.postalCode)
-                            .textContentType(.postalCode)
+                            .platformPostalCodeTextContentType()
                             .autocorrectionDisabled()
                         if showValidation, let error = viewModel.postalCodeError {
                             validationText(error)
@@ -82,7 +82,7 @@ struct EditPropertySheet: View {
                         Stepper(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount), value: $viewModel.bathroomsCount, in: 0...50, step: 0.5)
 
                         TextField("property_sheet.max_guests", text: $viewModel.maxGuests)
-                            .keyboardType(.numberPad)
+                            .platformNumberPadKeyboard()
                         if showValidation, let error = viewModel.maxGuestsError {
                             validationText(error)
                         }
@@ -91,10 +91,10 @@ struct EditPropertySheet: View {
                     // MARK: - Listings
                     Section(header: Text("property_sheet.listings")) {
                         TextField("property_sheet.airbnb_id", text: $viewModel.airbnbListingId)
-                            .autocapitalization(.none)
+                            .platformNoAutocapitalization()
                             .autocorrectionDisabled()
                         TextField("property_sheet.vrbo_id", text: $viewModel.vrboListingId)
-                            .autocapitalization(.none)
+                            .platformNoAutocapitalization()
                             .autocorrectionDisabled()
                     }
 
@@ -109,7 +109,7 @@ struct EditPropertySheet: View {
                 }
             }
             .navigationTitle("property_sheet.edit_title")
-            .navigationBarTitleDisplayMode(.inline)
+            .platformInlineNavigationTitleDisplayMode()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }

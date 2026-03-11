@@ -124,9 +124,9 @@ struct PropertyDetailView: View {
             }
         }
         .navigationTitle(viewModel.property.name)
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .automatic) {
                 Menu {
                     Button {
                         editingProperty = true
@@ -266,5 +266,16 @@ struct PropertyDetailView: View {
                 showingPropertyDeleteAlert = true
             }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

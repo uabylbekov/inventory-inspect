@@ -57,7 +57,7 @@ struct FeedbackSheet: View {
                 }
             }
             .navigationTitle("feedback.title")
-            .navigationBarTitleDisplayMode(.inline)
+            .platformInlineNavigationTitleDisplayMode()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }
@@ -83,6 +83,6 @@ struct FeedbackSheet: View {
                 Text("feedback.success.message")
             }
         }
-        .presentationDetents([.large])
+        .platformLargePresentationDetent()
     }
 }

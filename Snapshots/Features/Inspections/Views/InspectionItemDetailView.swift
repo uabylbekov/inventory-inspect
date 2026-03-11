@@ -1,6 +1,7 @@
 import SwiftUI
 import Supabase
 import PhotosUI
+import UniformTypeIdentifiers
 
 struct InspectionItemDetailView: View {
     let item: RoomInventoryItemModel
@@ -16,7 +17,8 @@ struct InspectionItemDetailView: View {
     @State private var showingImageSource = false
     @State private var showingCamera = false
     @State private var showingLibrary = false
-    @State private var capturedImage: UIImage?
+    @State private var showingFileImporter = false
+    @State private var capturedImage: PlatformImage?
     @State private var showingPaywall = false
     @Environment(\.dismiss) private var dismiss
     private let accessManager = SnapshotsAccessManager.shared
@@ -116,7 +118,7 @@ struct InspectionItemDetailView: View {
             }
         }
         .navigationTitle("inspection_item.title")
-        .navigationBarTitleDisplayMode(.inline)
+        .applyInlineNavigationTitleIfSupported()
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(action: {
@@ -154,9 +156,9 @@ struct InspectionItemDetailView: View {
                 })
             }
         }
-        .fullScreenCover(isPresented: $showFullScreenImage) {
-            if let data = viewModel.pendingImageData, let uiImage = UIImage(data: data) {
-                FullScreenImageView(image: .local(uiImage))
+        .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
+            if let data = viewModel.pendingImageData, let image = makePlatformImage(from: data) {
+                FullScreenImageView(image: .local(image))
             } else if let urlStr = viewModel.imageURL, let publicURL = URL(string: urlStr) {
                 FullScreenImageView(image: .remote(publicURL))
             }
@@ -169,7 +171,7 @@ struct InspectionItemDetailView: View {
             guard let item = newValue else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self),
-                   let image = UIImage(data: data) {
+                   let image = makePlatformImage(from: data) {
                     viewModel.prepareAnnotation(image)
                 }
             }
@@ -201,9 +203,9 @@ struct InspectionItemDetailView: View {
     
     @ViewBuilder
     private var evidenceRow: some View {
-        if let data = viewModel.pendingImageData, let uiImage = UIImage(data: data) {
+        if let data = viewModel.pendingImageData, let image = makePlatformImage(from: data) {
             Button { showFullScreenImage = true } label: {
-                Image(uiImage: uiImage)
+                Image(platformImage: image)
                     .resizable()
                     .scaledToFill()
                     .frame(height: 200)
@@ -222,7 +224,7 @@ struct InspectionItemDetailView: View {
                 .buttonStyle(.plain)
             } placeholder: {
                 Rectangle()
-                    .fill(Color(UIColor.secondarySystemBackground))
+                    .fill(Color.platformSecondarySystemBackground)
                     .frame(height: 200)
                     .overlay(ProgressView())
             }
@@ -241,18 +243,70 @@ struct InspectionItemDetailView: View {
         }
         .disabled(viewModel.isUploading)
         .confirmationDialog("inspection_item.attach_photo", isPresented: $showingImageSource) {
-            Button("inspection_item.camera") { showingCamera = true }
+            if supportsCameraCapture {
+                Button("inspection_item.camera") { showingCamera = true }
+            }
             Button("inspection_item.photo_library") { showingLibrary = true }
+            Button("Files") { showingFileImporter = true }
             Button("common.cancel", role: .cancel) { }
         }
         .sheet(isPresented: $showingCamera) {
             ImagePicker(image: $capturedImage, sourceType: .camera)
                 .ignoresSafeArea()
         }
+        .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: [.image]) { result in
+            handleImportedImage(result)
+        }
         .onChange(of: capturedImage) { _, newValue in
             if let img = newValue {
                 viewModel.prepareAnnotation(img)
             }
         }
+    }
+
+    private var supportsCameraCapture: Bool {
+#if !canImport(UIKit)
+        false
+#else
+        true
+#endif
+    }
+
+    private func handleImportedImage(_ result: Result<URL, Error>) {
+        guard case let .success(url) = result else { return }
+
+        let didAccess = url.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        guard let data = try? Data(contentsOf: url),
+              let image = makePlatformImage(from: data) else {
+            return
+        }
+
+        viewModel.prepareAnnotation(image)
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
+    }
+
+    @ViewBuilder
+    func adaptiveImagePresentation<Content: View>(isPresented: Binding<Bool>, @ViewBuilder content: @escaping () -> Content) -> some View {
+#if os(iOS)
+        self.fullScreenCover(isPresented: isPresented, content: content)
+#else
+        self.sheet(isPresented: isPresented, content: content)
+#endif
     }
 }

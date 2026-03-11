@@ -39,7 +39,7 @@ struct EditRoomSheet: View {
                 }
             }
             .navigationTitle("room_sheet.edit_title")
-            .navigationBarTitleDisplayMode(.inline)
+            .applyInlineNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") {
@@ -72,5 +72,16 @@ struct EditRoomSheet: View {
                 HapticManager.shared.notification(type: .error)
             }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

@@ -43,16 +43,16 @@ struct AddPropertySheet: View {
 
                 Section("property_sheet.location") {
                     TextField("property_sheet.address1", text: $viewModel.addressLine1)
-                        .textContentType(.streetAddressLine1)
+                        .platformStreetAddressLine1TextContentType()
                     TextField("property_sheet.address2", text: $viewModel.addressLine2)
-                        .textContentType(.streetAddressLine2)
+                        .platformStreetAddressLine2TextContentType()
                     TextField("property_sheet.city", text: $viewModel.city)
-                        .textContentType(.addressCity)
+                        .platformAddressCityTextContentType()
                     TextField("property_sheet.state_region", text: $viewModel.stateRegion)
-                        .textContentType(.addressState)
+                        .platformAddressStateTextContentType()
 
                     TextField("property_sheet.postal_code", text: $viewModel.postalCode)
-                        .textContentType(.postalCode)
+                        .platformPostalCodeTextContentType()
                         .autocorrectionDisabled()
                     
                     if showValidation, let error = viewModel.postalCodeError {
@@ -77,8 +77,8 @@ struct AddPropertySheet: View {
                         Text("property_sheet.max_guests")
                         Spacer()
                         TextField("property_sheet.count", text: $viewModel.maxGuests)
-                            .keyboardType(.numberPad)
-                            .multilineTextAlignment(.trailing)
+                            .platformNumberPadKeyboard()
+                            .multilineTextAlignment(TextAlignment.trailing)
                             .frame(width: 80)
                     }
                     
@@ -92,10 +92,10 @@ struct AddPropertySheet: View {
 
                 Section("property_sheet.external_listings") {
                     TextField("property_sheet.airbnb_id", text: $viewModel.airbnbListingId)
-                        .autocapitalization(.none)
+                        .platformNoAutocapitalization()
                         .autocorrectionDisabled()
                     TextField("property_sheet.vrbo_id", text: $viewModel.vrboListingId)
-                        .autocapitalization(.none)
+                        .platformNoAutocapitalization()
                         .autocorrectionDisabled()
                 }
 

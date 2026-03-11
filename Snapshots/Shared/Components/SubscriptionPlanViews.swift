@@ -126,9 +126,9 @@ struct SubscriptionPlanDetailView: View {
                 Text("paywall.legal")
             }
         }
-        .listStyle(.insetGrouped)
+        .applySubscriptionListStyle()
         .navigationTitle("plan.your")
-        .navigationBarTitleDisplayMode(.inline)
+        .platformInlineNavigationTitleDisplayMode()
         .sheet(isPresented: $showingPaywall) {
             PremiumPaywallView()
         }
@@ -209,4 +209,16 @@ struct SubscriptionPlanDetailView: View {
         }
         openURL(url)
     }
+}
+
+private extension View {
+    @ViewBuilder
+    func applySubscriptionListStyle() -> some View {
+#if os(iOS)
+        self.listStyle(.insetGrouped)
+#else
+        self.listStyle(.inset)
+#endif
+    }
+
 }

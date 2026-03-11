@@ -2,6 +2,11 @@ import SwiftUI
 import UserNotifications
 import Supabase
 import Realtime
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
 @Observable @MainActor
 final class NotificationManager: @unchecked Sendable {
@@ -32,11 +37,19 @@ final class NotificationManager: @unchecked Sendable {
         guard !hasRequestedNotificationPermission else { return }
         hasRequestedNotificationPermission = true
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+#if canImport(UIKit)
             if granted {
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
             }
+#elseif canImport(AppKit)
+            if granted {
+                DispatchQueue.main.async {
+                    NSApplication.shared.registerForRemoteNotifications()
+                }
+            }
+#endif
         }
     }
 
@@ -88,7 +101,7 @@ final class NotificationManager: @unchecked Sendable {
         let pushToken = [
             "user_id": userId.uuidString.lowercased(),
             "device_token": token,
-            "platform": "ios"
+            "platform": platformName
         ]
 
         do {
@@ -98,6 +111,14 @@ final class NotificationManager: @unchecked Sendable {
         } catch {
             print("Error registering push token: \(error)")
         }
+    }
+
+    private var platformName: String {
+#if os(macOS)
+        "macos"
+#else
+        "ios"
+#endif
     }
     
     func unregisterDeviceToken() async {

@@ -61,11 +61,12 @@ struct PropertyView: View {
                     }
                 }
             }
+            .applyPropertyListStyle()
             .refreshable {
                 await viewModel.fetchProperties(showLoadingState: false)
             }
             .navigationTitle("property.title")
-            .navigationBarTitleDisplayMode(.large)
+            .applyLargeNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Button(action: {
@@ -153,6 +154,26 @@ struct PropertyView: View {
                 showingPropertyDeleteAlert = true
             }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyLargeNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.large)
+#else
+        self
+#endif
+    }
+
+    @ViewBuilder
+    func applyPropertyListStyle() -> some View {
+#if os(macOS)
+        self.listStyle(.inset(alternatesRowBackgrounds: false))
+#else
+        self
+#endif
     }
 }
 

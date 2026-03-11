@@ -1,9 +1,13 @@
 import SwiftUI
+
+#if canImport(UIKit)
 import UIKit
 
+typealias PlatformImagePickerSourceType = UIImagePickerController.SourceType
+
 struct ImagePicker: UIViewControllerRepresentable {
-    @Binding var image: UIImage?
-    var sourceType: UIImagePickerController.SourceType = .camera
+    @Binding var image: PlatformImage?
+    var sourceType: PlatformImagePickerSourceType = .camera
     @Environment(\.dismiss) private var dismiss
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
@@ -19,7 +23,7 @@ struct ImagePicker: UIViewControllerRepresentable {
         Coordinator(self)
     }
 
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
+    final class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
         let parent: ImagePicker
 
         init(_ parent: ImagePicker) {
@@ -27,8 +31,8 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
 
         func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey : Any]) {
-            if let uiImage = info[.originalImage] as? UIImage {
-                parent.image = uiImage
+            if let image = info[.originalImage] as? PlatformImage {
+                parent.image = image
             }
             parent.dismiss()
         }
@@ -38,3 +42,17 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
+#else
+enum PlatformImagePickerSourceType {
+    case camera
+}
+
+struct ImagePicker: View {
+    @Binding var image: PlatformImage?
+    var sourceType: PlatformImagePickerSourceType = .camera
+
+    var body: some View {
+        ContentUnavailableView("Camera is unavailable on Mac", systemImage: "camera", description: Text("Use Photos or Files instead."))
+    }
+}
+#endif

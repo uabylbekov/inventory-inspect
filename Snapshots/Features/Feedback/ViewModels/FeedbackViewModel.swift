@@ -1,6 +1,5 @@
 import Foundation
 import SwiftUI
-import UIKit
 import Supabase
 
 @Observable @MainActor
@@ -90,7 +89,7 @@ final class FeedbackViewModel {
                 personal_tier: personalTier,
                 app_version: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0",
                 build_number: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2026.3",
-                ios_version: UIDevice.current.systemVersion,
+                ios_version: platformSystemVersionString(),
                 locale_identifier: Locale.current.identifier
             )
 

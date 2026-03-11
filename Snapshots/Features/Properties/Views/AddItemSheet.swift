@@ -31,7 +31,7 @@ struct AddItemSheet: View {
                 }
             }
             .navigationTitle("item_sheet.add_title")
-            .navigationBarTitleDisplayMode(.inline)
+            .applyInlineNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("item_sheet.add_title")
@@ -68,5 +68,16 @@ struct AddItemSheet: View {
                 HapticManager.shared.notification(type: .error)
             }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

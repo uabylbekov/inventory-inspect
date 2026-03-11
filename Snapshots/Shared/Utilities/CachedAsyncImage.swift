@@ -2,14 +2,14 @@ import SwiftUI
 
 class ImageCache {
     static let shared = ImageCache()
-    private let cache = NSCache<NSURL, UIImage>()
+    private let cache = NSCache<NSURL, PlatformImage>()
     
     private init() {
         cache.countLimit = 200 // Maximum 200 images in memory
         cache.totalCostLimit = 100 * 1024 * 1024 // 100MB
     }
     
-    func get(for url: URL) -> UIImage? {
+    func get(for url: URL) -> PlatformImage? {
         // 1. Check memory cache
         if let image = cache.object(forKey: url as NSURL) {
             return image
@@ -17,7 +17,7 @@ class ImageCache {
         return nil
     }
     
-    func set(_ image: UIImage, for url: URL) {
+    func set(_ image: PlatformImage, for url: URL) {
         cache.setObject(image, forKey: url as NSURL)
     }
 }
@@ -29,7 +29,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     @ViewBuilder let content: (Image) -> Content
     @ViewBuilder let placeholder: () -> Placeholder
     
-    @State private var image: UIImage? = nil
+    @State private var image: PlatformImage? = nil
     @State private var isLoading = false
     
     init(url: URL?, width: Int? = nil, height: Int? = nil, @ViewBuilder content: @escaping (Image) -> Content, @ViewBuilder placeholder: @escaping () -> Placeholder) {
@@ -69,8 +69,8 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
     
     var body: some View {
         Group {
-            if let uiImage = image {
-                content(Image(uiImage: uiImage))
+            if let image = image {
+                content(Image(platformImage: image))
             } else {
                 placeholder()
                     .onAppear {
@@ -100,7 +100,7 @@ struct CachedAsyncImage<Content: View, Placeholder: View>: View {
         
         do {
             let (data, _) = try await URLSession.shared.data(for: request)
-            if let decodedImage = UIImage(data: data) {
+            if let decodedImage = makePlatformImage(from: data) {
                 ImageCache.shared.set(decodedImage, for: finalUrl)
                 self.image = decodedImage
             }

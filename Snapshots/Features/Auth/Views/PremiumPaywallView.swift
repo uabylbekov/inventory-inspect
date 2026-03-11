@@ -93,7 +93,7 @@ struct PremiumPaywallView: View {
 
             }
             .navigationTitle("paywall.choose_plan")
-            .navigationBarTitleDisplayMode(.inline)
+            .applyInlineNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }
@@ -223,5 +223,16 @@ struct PremiumPaywallView: View {
             print("Paywall: Purchase failed: \(error)")
             alertMessage = String(localized: "paywall.purchase_failed")
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }

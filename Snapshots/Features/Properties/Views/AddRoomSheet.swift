@@ -40,7 +40,7 @@ struct AddRoomSheet: View {
                 }
             }
             .navigationTitle("property_detail.add_room")
-            .navigationBarTitleDisplayMode(.inline)
+            .applyInlineNavigationTitleIfSupported()
             .toolbar {
                 ToolbarItem(placement: .principal) {
                     Text("property_detail.add_room")
@@ -77,5 +77,16 @@ struct AddRoomSheet: View {
                 HapticManager.shared.notification(type: .error)
             }
         }
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func applyInlineNavigationTitleIfSupported() -> some View {
+#if os(iOS)
+        self.navigationBarTitleDisplayMode(.inline)
+#else
+        self
+#endif
     }
 }
