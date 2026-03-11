@@ -35,6 +35,10 @@
 	<string>$(SUPABASE_KEY)</string>
 	<key>SUPABASE_URL</key>
 	<string>$(SUPABASE_URL)</string>
+	<key>TERMS_URL</key>
+	<string>$(TERMS_URL)</string>
+	<key>PRIVACY_URL</key>
+	<string>$(PRIVACY_URL)</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Save snapshots photos to your Photos library.</string>
 	<key>NSCameraUsageDescription</key>

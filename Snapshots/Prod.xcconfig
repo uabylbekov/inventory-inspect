@@ -7,3 +7,5 @@
 
 SUPABASE_URL = https:/$()/ulsckwhhnaxxebrthzpn.supabase.co
 SUPABASE_KEY = sb_publishable_cMtvYMTK7HfwzXt-02eXlg_Y1kqdNs6
+TERMS_URL = https://YOUR_GITHUB_USERNAME.github.io/snapshots/terms.html
+PRIVACY_URL = https://YOUR_GITHUB_USERNAME.github.io/snapshots/privacy.html
