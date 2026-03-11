@@ -14,8 +14,8 @@ final class SnapshotsAccessManager {
     private var transactionUpdatesTask: Task<Void, Never>?
     private var productCache: [String: Product] = [:]
     
-    private let proProductId = "com.ulukskywalker.snapshots.pro"
-    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise"
+    private let proProductId = "com.ulukskywalker.snapshots.pro.monthly"
+    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise.monthly"
     
     private init() {
         Task {

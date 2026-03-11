@@ -6,5 +6,5 @@
 //
 SUPABASE_URL = https:/$()/nmtifjchsgdnfknkpowu.supabase.co
 SUPABASE_KEY = sb_publishable_GhjJi1BqBSUatjNAJbPR_g_dzQaIYDp
-TERMS_URL = https://YOUR_GITHUB_USERNAME.github.io/snapshots/terms.html
-PRIVACY_URL = https://YOUR_GITHUB_USERNAME.github.io/snapshots/privacy.html
+TERMS_URL = https:/$()/uabylbekov.github.io/snapshots/terms.html
+PRIVACY_URL = https:/$()/uabylbekov.github.io/snapshots/privacy.html

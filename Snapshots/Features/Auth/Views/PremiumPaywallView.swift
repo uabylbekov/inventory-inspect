@@ -10,8 +10,8 @@ struct PremiumPaywallView: View {
     @State private var alertMessage: String?
     @State private var productLoadError: String?
 
-    private let proProductId = "com.ulukskywalker.snapshots.pro"
-    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise"
+    private let proProductId = "com.ulukskywalker.snapshots.pro.monthly"
+    private let enterpriseProductId = "com.ulukskywalker.snapshots.enterprise.monthly"
 
     var body: some View {
         NavigationStack {

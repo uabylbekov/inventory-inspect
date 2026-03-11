@@ -46,7 +46,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ulukskywalker.snapshots.pro",
+          "productID" : "com.ulukskywalker.snapshots.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Professional",
           "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
@@ -71,7 +71,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ulukskywalker.snapshots.enterprise",
+          "productID" : "com.ulukskywalker.snapshots.enterprise.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Enterprise",
           "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
