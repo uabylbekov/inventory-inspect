@@ -11,7 +11,6 @@ final class SnapshotsAccessManager {
     var isCheckingAccess = true
     var activeSubscription: Product?
     var activeProductTier: String = "free"
-    private var _isSandbox = false
     private var transactionUpdatesTask: Task<Void, Never>?
     private var productCache: [String: Product] = [:]
     
@@ -26,7 +25,6 @@ final class SnapshotsAccessManager {
     
     private func initialize() async {
         isCheckingAccess = true
-        _isSandbox = await checkIsSandbox()
         await fetchProfile()
         await cacheSubscriptionProductsIfNeeded()
         await updateSubscriptionStatus()
@@ -36,13 +34,11 @@ final class SnapshotsAccessManager {
     
     var isPro: Bool {
         if isCheckingAccess { return false }
-        if self.isSandbox() { return true }
         return isDirectSubscriber
     }
 
     var isEnterprise: Bool {
         if isCheckingAccess { return false }
-        if self.isSandbox() { return true }
         return isDirectSubscriberEnterprise
     }
 
@@ -110,24 +106,6 @@ final class SnapshotsAccessManager {
         }
     }
     
-    // MARK: - Environment Detection
-    
-    private func checkIsSandbox() async -> Bool {
-        #if DEBUG
-        return true
-        #else
-        if let result = try? await AppTransaction.shared,
-           case .verified(let appTransaction) = result {
-            return appTransaction.environment == .xcode || appTransaction.environment == .sandbox
-        }
-        return false
-        #endif
-    }
-
-    private func isSandbox() -> Bool {
-        _isSandbox
-    }
-
     private func reloadEntitlements() async {
         isCheckingAccess = true
         await fetchProfile()
@@ -211,7 +189,6 @@ final class SnapshotsAccessManager {
 
     private func hasAccess(directAccess: Bool, ownerTier: String?, matchingTiers: Set<String>) -> Bool {
         if isCheckingAccess { return false }
-        if isSandbox() { return true }
         if directAccess { return true }
         guard let ownerTier else { return false }
         return matchingTiers.contains(ownerTier)

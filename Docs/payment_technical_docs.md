@@ -48,7 +48,7 @@ ADD COLUMN IF NOT EXISTS business_details TEXT; -- Stored as a plain string in P
     *   **Inherited Access**: Hide plan badges from the profile to prevent billing confusion. Show "Standard" plan but acknowledge inherited benefits with text: *"You are part of a Professional/Enterprise team."*
 
 ## 5. Subscription Inheritance (B2B Team Access)
-Managers and cleaners gain premium features **only** when working on properties owned by a paying user.
+Managers and maintainers gain premium features **only** when working on properties owned by a paying user.
 
 1.  **Scope**: Inheritance is property-specific. A manager can manage a "Pro" property (with photos enabled) and a "Free" property (text-only) simultaneously.
 2.  **Data Flow**: The `PropertyModel` includes a nested join on the owner's profile (`profiles!properties_owner_id_fkey!inner(subscription_tier)`).

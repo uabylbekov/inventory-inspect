@@ -69,7 +69,7 @@
 "inspections.empty.title" = "No Inspections";
 "inspections.empty.filtered" = "No inspections found for this date.";
 "inspections.empty.all" = "Start your first inspection to begin tracking.";
-"inspections.group.active" = "Active Walks";
+"inspections.group.active" = "Active Inspections";
 "inspections.group.completed" = "Completed";
 "inspections.group.cancelled" = "Cancelled";
 "inspections.reopen" = "Reopen";
@@ -117,7 +117,7 @@
 "common.try_again" = "Try Again";
 "common.unknown_error" = "An unknown error occurred.";
 "inspections.issue_count" = "%d Issues";
-"inspections.cleared" = "Cleared";
+"inspections.cleared" = "Present & Intact";
 
 "common.edit" = "Edit";
 "common.save" = "Save";
@@ -157,8 +157,8 @@
 "inspection_item.remove_photo" = "Remove Photo";
 "report.title" = "Report";
 "report.loading" = "Crunching Data...";
-"report.date" = "DATE";
-"report.inspector" = "INSPECTOR";
+"report.date" = "Date";
+"report.inspector" = "Inspector";
 "report.anomalies" = "Anomalies";
 "report.resolved_title" = "Inspection Resolved";
 "report.resolved_subtitle" = "All flagged issues have been fixed.";
@@ -234,8 +234,8 @@
 "comparison.changes_found" = "%d Changes Found";
 "comparison.unchanged_items" = "%d Unchanged Items";
 "comparison.share_pdf" = "Share PDF";
-"comparison.previous" = "PREVIOUS";
-"comparison.current" = "CURRENT";
+"comparison.previous" = "Previous";
+"comparison.current" = "Current";
 "comparison.current_notes" = "Current Notes";
 "common.empty" = "";
 "common.done" = "Done";
@@ -243,7 +243,7 @@
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
 "team.role.manager" = "Manager";
-"team.role.cleaner" = "Cleaner";
+"team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
 "team.limit_message" = "Professional plan allows up to 5 team members. Upgrade to Enterprise for unlimited team members.";
 "team.send_invite" = "Send Invite";

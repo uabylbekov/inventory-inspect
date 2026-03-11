@@ -242,7 +242,7 @@
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
 "team.role.manager" = "Manager";
-"team.role.cleaner" = "Cleaner";
+"team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
 "team.limit_message" = "Professional plan allows up to 5 team members. Upgrade to Enterprise for unlimited team members.";
 "team.send_invite" = "Send Invite";

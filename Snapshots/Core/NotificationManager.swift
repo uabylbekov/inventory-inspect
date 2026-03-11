@@ -180,12 +180,23 @@ final class NotificationManager: @unchecked Sendable {
         }
     }
     
-    func markAllAsRead() async {
+    func clearAllNotifications() async {
+        let idsToDelete = notifications.map { $0.id.uuidString.lowercased() }
+        guard !idsToDelete.isEmpty else { return }
+
+        let previous = notifications
+        applyNotifications([])
+
         do {
-            try await supabase.rpc("mark_all_notifications_read").execute()
-            await fetchNotifications()
+            try await supabase
+                .from("notifications")
+                .delete()
+                .in("id", values: idsToDelete)
+                .execute()
         } catch {
-            print("Error marking all as read: \(error)")
+            notifications = previous
+            syncUnreadCount()
+            print("Error clearing notifications: \(error)")
         }
     }
     
@@ -224,7 +235,7 @@ final class NotificationManager: @unchecked Sendable {
         realtimeTask?.cancel()
         realtimeTask = nil
         if let channel {
-            try? await channel.unsubscribe()
+            await channel.unsubscribe()
             self.channel = nil
         }
     }
