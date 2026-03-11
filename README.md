@@ -90,6 +90,12 @@ If `test` shows `MIGRATIONS_FAILED`, use simple junior-level thinking:
 - the safest fix is usually to rebuild or reset the `test` branch from `main` instead of hand-editing random SQL in the branch
 - branch-only migration history is a warning sign that `test` drifted away from the repo
 
+Important repo rule:
+
+- shared Supabase migrations should be created from Git `main`
+- Git `test` is for app testing, not for inventing a separate database history
+- if Git `test` contains migration files that Git `main` does not have, Supabase `test` will likely drift and fail again
+
 ### Backend expectations
 
 The iOS app expects these Supabase capabilities to exist:

@@ -6,6 +6,7 @@ This wiki is the primary onboarding guide for developers, QA, and product collab
 
 - [`Architecture-and-Data-Flow`](Architecture-and-Data-Flow)
 - [`QA-Test-Playbook`](QA-Test-Playbook)
+- [`Supabase-Branch-Hygiene`](Supabase-Branch-Hygiene)
 
 ## Feature guides
 
