@@ -73,7 +73,8 @@ final class AddPropertyViewModel {
             let session = try await supabase.auth.session
             let ownerId = session.user.id
 
-            if let canCreate = try await remoteCanCreateProperty(userId: ownerId), !canCreate {
+            let canCreate = try await remoteCanCreateProperty(userId: ownerId)
+            if !canCreate {
                 self.errorMessage = "Property limit reached for your current plan."
                 self.isSaving = false
                 return false
@@ -117,7 +118,7 @@ final class AddPropertyViewModel {
         }
     }
 
-    private func remoteCanCreateProperty(userId: UUID) async throws -> Bool? {
+    private func remoteCanCreateProperty(userId: UUID) async throws -> Bool {
         let params: [String: AnyJSON] = ["p_user_id": .string(userId.uuidString.lowercased())]
         do {
             let allowed: Bool = try await supabase
@@ -130,7 +131,11 @@ final class AddPropertyViewModel {
             if message.contains("could not find the function")
                 || message.contains("function public.can_user_create_property")
                 || message.contains("schema cache") {
-                return nil
+                throw NSError(
+                    domain: "AddPropertyViewModel",
+                    code: 1002,
+                    userInfo: [NSLocalizedDescriptionKey: "Property billing rules are unavailable in this environment. Apply the latest database migrations before creating properties."]
+                )
             }
             throw error
         }

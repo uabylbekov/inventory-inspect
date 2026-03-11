@@ -116,8 +116,16 @@ struct SubscriptionPlanDetailView: View {
                             try await AppStore.sync()
                         } catch {
                             alertMessage = String(localized: "paywall.restore_failed")
+                            return
                         }
-                        await accessManager.updateSubscriptionStatus()
+                        await accessManager.refreshEntitlementsForCurrentUser()
+                        if let syncError = accessManager.lastBillingSyncError {
+                            alertMessage = syncError
+                        } else if accessManager.hasDirectPaidAccess {
+                            alertMessage = "Purchases restored successfully."
+                        } else {
+                            alertMessage = "No active App Store subscription was found for this account."
+                        }
                     }
                 }
                 Button("paywall.terms") { openLegalURL(EnvConfig.termsOfServiceURL) }

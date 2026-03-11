@@ -179,8 +179,12 @@ struct PremiumPaywallView: View {
             case .success(let verification):
                 if case .verified(let transaction) = verification {
                     await transaction.finish()
-                    await accessManager.updateSubscriptionStatus()
-                    dismiss()
+                    await accessManager.refreshEntitlementsForCurrentUser()
+                    if let syncError = accessManager.lastBillingSyncError {
+                        alertMessage = syncError
+                    } else {
+                        dismiss()
+                    }
                 } else {
                     alertMessage = String(localized: "paywall.purchase_unverified")
                 }

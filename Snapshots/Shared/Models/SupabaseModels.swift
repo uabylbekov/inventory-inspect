@@ -61,11 +61,26 @@ struct PropertyModel: Codable, Identifiable, Hashable {
         let property_limit_override: Int?
         let team_limit_override: Int?
         let photo_limit_override: Int?
+        let app_store_subscription_active: Bool?
+        let app_store_subscription_expires_at: String?
+
+        var effectiveSubscriptionTier: String {
+            if subscription_tier == "business" || subscription_tier == "lifetime" {
+                return subscription_tier
+            }
+            if subscription_tier == "pro" {
+                return "pro"
+            }
+            guard app_store_subscription_active ?? false else { return "free" }
+            guard let app_store_subscription_expires_at else { return "pro" }
+            guard let expirationDate = BillingDateParser.parse(app_store_subscription_expires_at) else { return "free" }
+            return expirationDate > Date() ? "pro" : "free"
+        }
     }
     let owner: OwnerProfile?
     
     var ownerTier: String {
-        owner?.subscription_tier ?? "free"
+        owner?.effectiveSubscriptionTier ?? "free"
     }
 
     var ownerDisplayName: String {

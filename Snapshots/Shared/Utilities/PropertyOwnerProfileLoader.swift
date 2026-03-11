@@ -11,6 +11,8 @@ struct PropertyOwnerProfileLoader {
         let property_limit_override: Int?
         let team_limit_override: Int?
         let photo_limit_override: Int?
+        let app_store_subscription_active: Bool?
+        let app_store_subscription_expires_at: String?
     }
 
     static func enrich(_ properties: [PropertyModel]) async throws -> [PropertyModel] {
@@ -30,7 +32,9 @@ struct PropertyOwnerProfileLoader {
                         company_logo_url: $0.company_logo_url,
                         property_limit_override: $0.property_limit_override,
                         team_limit_override: $0.team_limit_override,
-                        photo_limit_override: $0.photo_limit_override
+                        photo_limit_override: $0.photo_limit_override,
+                        app_store_subscription_active: $0.app_store_subscription_active,
+                        app_store_subscription_expires_at: $0.app_store_subscription_expires_at
                     )
                 )
             }
@@ -58,7 +62,7 @@ struct PropertyOwnerProfileLoader {
         do {
             return try await supabase
                 .from("profiles")
-                .select("id, subscription_tier, full_name, email, company_logo_url, property_limit_override, team_limit_override, photo_limit_override")
+                .select("id, subscription_tier, full_name, email, company_logo_url, property_limit_override, team_limit_override, photo_limit_override, app_store_subscription_active, app_store_subscription_expires_at")
                 .in("id", values: ownerIds)
                 .execute()
                 .value
@@ -66,7 +70,9 @@ struct PropertyOwnerProfileLoader {
             let message = error.localizedDescription.lowercased()
             if message.contains("property_limit_override")
                 || message.contains("team_limit_override")
-                || message.contains("photo_limit_override") {
+                || message.contains("photo_limit_override")
+                || message.contains("app_store_subscription_active")
+                || message.contains("app_store_subscription_expires_at") {
                 return try await loadOwnerProfilesWithoutOverrides(ownerIds: ownerIds)
             }
             throw error
@@ -98,7 +104,9 @@ struct PropertyOwnerProfileLoader {
                 company_logo_url: $0.company_logo_url,
                 property_limit_override: nil,
                 team_limit_override: nil,
-                photo_limit_override: nil
+                photo_limit_override: nil,
+                app_store_subscription_active: nil,
+                app_store_subscription_expires_at: nil
             )
         }
     }
@@ -189,7 +197,9 @@ struct PropertyAccessService {
                     company_logo_url: access.owner_company_logo_url,
                     property_limit_override: access.owner_property_limit_override,
                     team_limit_override: access.owner_team_limit_override,
-                    photo_limit_override: access.owner_photo_limit_override
+                    photo_limit_override: access.owner_photo_limit_override,
+                    app_store_subscription_active: nil,
+                    app_store_subscription_expires_at: nil
                 )
             )
         }

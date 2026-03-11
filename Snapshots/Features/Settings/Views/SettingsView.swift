@@ -143,7 +143,7 @@ struct SettingsView: View {
     private var effectivePersonalTier: String {
         if accessManager.hasBusinessAccess { return "business" }
         if accessManager.hasDirectPaidAccess { return "pro" }
-        return accessManager.profile?.subscription_tier ?? "free"
+        return accessManager.profile?.effectiveSubscriptionTier ?? "free"
     }
 
     private var appVersion: String {

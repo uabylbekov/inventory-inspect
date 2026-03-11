@@ -13,6 +13,27 @@ final class SnapshotsAccessManager {
         let photoLimit: Int
     }
 
+    private struct EntitledSubscription {
+        let tier: String
+        let productID: String?
+        let transactionID: String?
+        let originalTransactionID: String?
+    }
+
+    private struct StoreKitSyncPayload: Encodable {
+        let transactionId: String
+    }
+
+    private struct StoreKitSyncResponse: Decodable {
+        let active: Bool
+        let tier: String
+        let productId: String?
+        let expiresAt: String?
+        let environment: String?
+        let transactionId: String?
+        let originalTransactionId: String?
+    }
+
     enum PhotoAttachmentError: LocalizedError {
         case photoLimitReached(used: Int, limit: Int)
 
@@ -29,6 +50,7 @@ final class SnapshotsAccessManager {
     var activeSubscription: Product?
     var activeProductTier: String = "free"
     var photoUsageCount = 0
+    var lastBillingSyncError: String?
     private var transactionUpdatesTask: Task<Void, Never>?
     private var productCache: [String: Product] = [:]
     private var activeProductID: String?
@@ -46,13 +68,8 @@ final class SnapshotsAccessManager {
     }
     
     private func initialize() async {
-        isCheckingAccess = true
-        await fetchProfile()
-        await cacheSubscriptionProductsIfNeeded()
-        await updateSubscriptionStatus()
-        await refreshPhotoUsageForCurrentUser()
+        await reloadEntitlements(forceServerSync: true)
         startListeningForTransactionUpdates()
-        isCheckingAccess = false
     }
     
     var isPro: Bool {
@@ -70,7 +87,7 @@ final class SnapshotsAccessManager {
     }
 
     var hasDirectPaidAccess: Bool {
-        (profile?.hasProFeatures ?? false) || hasStoreKitProSubscription
+        profile?.hasProFeatures ?? false
     }
 
     var hasBusinessAccess: Bool {
@@ -79,7 +96,7 @@ final class SnapshotsAccessManager {
 
     var directTierLimits: TierLimits {
         resolvedLimits(
-            subscriptionTier: profile?.subscription_tier,
+            subscriptionTier: profile?.effectiveSubscriptionTier,
             propertyLimitOverride: profile?.property_limit_override,
             teamLimitOverride: profile?.team_limit_override,
             photoLimitOverride: profile?.photo_limit_override,
@@ -110,7 +127,7 @@ final class SnapshotsAccessManager {
     }
 
     func refreshEntitlementsForCurrentUser() async {
-        await reloadEntitlements()
+        await reloadEntitlements(forceServerSync: true)
     }
 
     func clearEntitlementsForSignedOutUser() {
@@ -119,20 +136,15 @@ final class SnapshotsAccessManager {
         activeProductTier = "free"
         activeProductID = nil
         photoUsageCount = 0
+        lastBillingSyncError = nil
         isCheckingAccess = false
     }
     
     // MARK: - StoreKit 2 Logic
     
     func updateSubscriptionStatus() async {
-        let entitlement = await currentEntitledTier()
-        self.activeProductTier = entitlement.tier
-        self.activeProductID = entitlement.productID
-        if let productID = entitlement.productID ?? productID(forTier: entitlement.tier) {
-            self.activeSubscription = productCache[productID]
-        } else {
-            self.activeSubscription = nil
-        }
+        let entitlement = await currentEntitledSubscription()
+        applyEntitlement(entitlement)
     }
 
     private func startListeningForTransactionUpdates() {
@@ -142,16 +154,23 @@ final class SnapshotsAccessManager {
             for await update in Transaction.updates {
                 guard case .verified(let transaction) = update else { continue }
                 await transaction.finish()
-                await self.updateSubscriptionStatus()
+                await self.reloadEntitlements(forceServerSync: true)
             }
         }
     }
     
-    private func reloadEntitlements() async {
+    private func reloadEntitlements(forceServerSync: Bool) async {
         isCheckingAccess = true
         await fetchProfile()
         await cacheSubscriptionProductsIfNeeded()
-        await updateSubscriptionStatus()
+        let entitlement = await currentEntitledSubscription()
+        applyEntitlement(entitlement)
+        if forceServerSync {
+            let didSync = await syncStoreKitStatus(using: entitlement)
+            if didSync {
+                await fetchProfile()
+            }
+        }
         await refreshPhotoUsageForCurrentUser()
         isCheckingAccess = false
     }
@@ -166,9 +185,11 @@ final class SnapshotsAccessManager {
         }
     }
 
-    private func currentEntitledTier() async -> (tier: String, productID: String?) {
+    private func currentEntitledSubscription() async -> EntitledSubscription {
         var highestTierFound = "free"
         var matchedProductID: String?
+        var matchedTransactionID: String?
+        var matchedOriginalTransactionID: String?
 
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
@@ -178,10 +199,60 @@ final class SnapshotsAccessManager {
             if [proMonthlyProductId, proYearlyProductId].contains(transaction.productID) {
                 highestTierFound = "pro"
                 matchedProductID = transaction.productID
+                matchedTransactionID = String(transaction.id)
+                matchedOriginalTransactionID = String(transaction.originalID)
             }
         }
 
-        return (highestTierFound, matchedProductID)
+        return EntitledSubscription(
+            tier: highestTierFound,
+            productID: matchedProductID,
+            transactionID: matchedTransactionID,
+            originalTransactionID: matchedOriginalTransactionID
+        )
+    }
+
+    private func applyEntitlement(_ entitlement: EntitledSubscription) {
+        self.activeProductTier = entitlement.tier
+        self.activeProductID = entitlement.productID
+        if let productID = entitlement.productID ?? productID(forTier: entitlement.tier) {
+            self.activeSubscription = productCache[productID]
+        } else {
+            self.activeSubscription = nil
+        }
+    }
+
+    @discardableResult
+    private func syncStoreKitStatus(using entitlement: EntitledSubscription) async -> Bool {
+        let transactionIdentifier = entitlement.originalTransactionID
+            ?? entitlement.transactionID
+            ?? profile?.app_store_original_transaction_id
+
+        guard let transactionIdentifier else {
+            lastBillingSyncError = nil
+            return false
+        }
+
+        do {
+            let response: StoreKitSyncResponse = try await supabase.functions
+                .invoke(
+                    "sync-storekit-subscription",
+                    options: .init(body: StoreKitSyncPayload(transactionId: transactionIdentifier))
+                )
+            lastBillingSyncError = nil
+            print(
+                "Access Manager: StoreKit sync complete. active=\(response.active) tier=\(response.tier) product=\(response.productId ?? "none") env=\(response.environment ?? "unknown") expiresAt=\(response.expiresAt ?? "none") tx=\(response.transactionId ?? "none") originalTx=\(response.originalTransactionId ?? "none")"
+            )
+            return true
+        } catch {
+            if entitlement.tier == "pro" || profile?.app_store_original_transaction_id != nil {
+                lastBillingSyncError = "Purchases were restored on this device, but billing could not be synced with the server yet."
+            } else {
+                lastBillingSyncError = nil
+            }
+            print("Access Manager: StoreKit sync error: \(error)")
+            return false
+        }
     }
 
     private func productID(forTier tier: String) -> String? {
