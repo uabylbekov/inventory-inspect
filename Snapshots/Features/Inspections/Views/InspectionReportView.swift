@@ -232,21 +232,27 @@ struct ReportItemRow: View {
             if let imgStr = item.inspectionItem.image_url, let url = URL(string: imgStr) {
                 CachedAsyncImage(url: url, width: 600) { image in
                     Button { showFullScreenImage = true } label: {
-                        image
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .clipped()
-                            .contentShape(Rectangle())
+                        ZStack {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.platformSecondarySystemBackground)
+
+                            image
+                                .resizable()
+                                .scaledToFit()
+                                .frame(maxWidth: .infinity, maxHeight: 160)
+                                .padding(8)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
                     }
                     .buttonStyle(.borderless)
                     .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
                         FullScreenImageView(image: .remote(url))
                     }
                 } placeholder: {
-                    Rectangle()
+                    RoundedRectangle(cornerRadius: 12)
                         .fill(Color.platformSecondarySystemBackground)
-                        .frame(height: 200)
+                        .frame(height: 160)
                         .overlay(ProgressView())
                 }
                 .padding(.leading, 32 + 12)

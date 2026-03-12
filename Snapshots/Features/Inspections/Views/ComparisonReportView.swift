@@ -154,7 +154,17 @@ struct ComparisonReportView: View {
                 if let oldImg = diff.oldImage, let url = URL(string: oldImg) {
                     CachedAsyncImage(url: url, width: 300) { image in
                         Button { showOldImage = true } label: {
-                            image.resizable().scaledToFill().frame(height: 90).clipped()
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.platformSecondarySystemBackground)
+
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity, maxHeight: 110)
+                                    .padding(6)
+                            }
+                            .frame(maxWidth: 220)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -162,14 +172,26 @@ struct ComparisonReportView: View {
                             FullScreenImageView(image: .remote(url))
                         }
                     } placeholder: {
-                        Color.platformGray5.frame(height: 90)
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.platformGray5)
+                            .frame(width: 220, height: 110)
                     }
                 }
 
                 if let newImg = diff.newImage, let url = URL(string: newImg) {
                     CachedAsyncImage(url: url, width: 300) { image in
                         Button { showNewImage = true } label: {
-                            image.resizable().scaledToFill().frame(height: 90).clipped()
+                            ZStack {
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.platformSecondarySystemBackground)
+
+                                image
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(maxWidth: .infinity, maxHeight: 110)
+                                    .padding(6)
+                            }
+                            .frame(maxWidth: 220)
                                 .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
@@ -177,7 +199,9 @@ struct ComparisonReportView: View {
                             FullScreenImageView(image: .remote(url))
                         }
                     } placeholder: {
-                        Color.platformGray5.frame(height: 90)
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.platformGray5)
+                            .frame(width: 220, height: 110)
                     }
                 }
 

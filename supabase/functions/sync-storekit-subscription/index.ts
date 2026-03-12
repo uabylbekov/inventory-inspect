@@ -61,6 +61,13 @@ async function buildAppStoreToken() {
   }
 
   const signingKey = await importPKCS8(privateKey.replace(/\\n/g, "\n"), "ES256");
+  console.log("app-store-token-config", JSON.stringify({
+    issuerIdPresent: Boolean(issuerId),
+    issuerIdPrefix: issuerId?.slice(0, 8) ?? null,
+    keyId,
+    bundleId,
+    privateKeyPrefix: privateKey.slice(0, 27),
+  }));
 
   return await new SignJWT({ bid: bundleId })
     .setProtectedHeader({ alg: "ES256", kid: keyId, typ: "JWT" })
@@ -78,17 +85,19 @@ async function fetchTransactionHistory(transactionId: string, appStoreToken: str
   ];
 
   const query = new URLSearchParams({
-    productType: "AUTO_RENEWABLE",
     sort: "DESCENDING",
-    revoked: "false",
   });
-  for (const productId of PRO_PRODUCT_IDS) {
-    query.append("productId", productId);
-  }
 
   for (const candidate of environments) {
+    console.log("app-store-history-request", JSON.stringify({
+      environment: candidate.environment,
+      bundleId: Deno.env.get("APP_STORE_BUNDLE_ID"),
+      transactionId,
+      endpointVersion: "v2",
+      query: query.toString(),
+    }));
     const response = await fetch(
-      `${candidate.baseUrl}/inApps/v1/history/${encodeURIComponent(transactionId)}?${query.toString()}`,
+      `${candidate.baseUrl}/inApps/v2/history/${encodeURIComponent(transactionId)}?${query.toString()}`,
       {
         headers: {
           Authorization: `Bearer ${appStoreToken}`,
@@ -97,12 +106,23 @@ async function fetchTransactionHistory(transactionId: string, appStoreToken: str
       },
     );
 
-    if (response.status === 404) {
+    if (response.status === 404 || (response.status >= 400 && response.status < 500)) {
+      const message = await response.text();
+      console.warn("app-store-history-response", JSON.stringify({
+        environment: candidate.environment,
+        status: response.status,
+        body: message || response.statusText,
+      }));
       continue;
     }
 
     if (!response.ok) {
       const message = await response.text();
+      console.error("app-store-history-response", JSON.stringify({
+        environment: candidate.environment,
+        status: response.status,
+        body: message || response.statusText,
+      }));
       throw new Error(`App Store history lookup failed: ${message || response.statusText}`);
     }
 

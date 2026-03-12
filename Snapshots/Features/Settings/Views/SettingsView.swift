@@ -2,10 +2,12 @@ import SwiftUI
 import Supabase
 
 struct SettingsView: View {
+    @Environment(\.openURL) private var openURL
     @State private var isSigningOut = false
     @State private var showingSignOutAlert = false
     @State private var showingFeedbackSheet = false
     @State private var showingEditProfile = false
+    @State private var legalAlertMessage: String?
     @State private var userName: String = ""
     @Environment(SnapshotsAccessManager.self) private var accessManager
     
@@ -87,6 +89,12 @@ struct SettingsView: View {
                             Label("settings.about", systemImage: "info.circle")
                         }
                     }
+                    Button("paywall.terms") {
+                        openLegalURL(EnvConfig.termsOfServiceURL)
+                    }
+                    Button("paywall.privacy") {
+                        openLegalURL(EnvConfig.privacyPolicyURL)
+                    }
                 } header: {
                     Text("settings.app")
                 }
@@ -114,6 +122,14 @@ struct SettingsView: View {
                 Button("settings.sign_out", role: .destructive, action: signOut)
             } message: {
                 Text("settings.sign_out_message")
+            }
+            .alert("paywall.legal", isPresented: Binding(
+                get: { legalAlertMessage != nil },
+                set: { if !$0 { legalAlertMessage = nil } }
+            )) {
+                Button("common.ok", role: .cancel) { legalAlertMessage = nil }
+            } message: {
+                Text(legalAlertMessage ?? "")
             }
             .sheet(isPresented: $showingFeedbackSheet) {
                 FeedbackSheet(
@@ -152,6 +168,14 @@ struct SettingsView: View {
 
     private var buildNumber: String {
         Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2026.3"
+    }
+
+    private func openLegalURL(_ url: URL?) {
+        guard let url else {
+            legalAlertMessage = String(localized: "paywall.legal_missing")
+            return
+        }
+        openURL(url)
     }
     
     private func fetchEmail() {

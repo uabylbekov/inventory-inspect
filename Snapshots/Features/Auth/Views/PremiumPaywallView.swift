@@ -2,101 +2,88 @@ import SwiftUI
 import StoreKit
 
 struct PremiumPaywallView: View {
+    var showsDismissButton: Bool = true
+
+    var body: some View {
+        NavigationStack {
+            SubscriptionCenterView(showsDismissButton: showsDismissButton)
+        }
+    }
+}
+
+struct SubscriptionCenterView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
     private let accessManager = SnapshotsAccessManager.shared
     @State private var products: [Product] = []
     @State private var isLoadingProducts = true
     @State private var isPurchasing = false
     @State private var alertMessage: String?
     @State private var productLoadError: String?
+    let showsDismissButton: Bool
 
     private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
     private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
 
     var body: some View {
-        NavigationStack {
-            List {
-                Section {
-                    if accessManager.isCheckingAccess {
-                        ProgressView("paywall.current_plan")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    } else {
-                        LabeledContent("plan.your", value: currentPlanName)
-                        Text(currentPlanSummary)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
-
-                if isLoadingProducts || accessManager.isCheckingAccess {
-                    Section {
-                        ProgressView("paywall.loading_plans")
-                            .frame(maxWidth: .infinity, alignment: .center)
-                    }
-                } else if !products.isEmpty {
-                    if let proMonthlyProduct = products.first(where: { $0.id == proMonthlyProductId }) {
-                        Section {
-                            LabeledContent("plan.professional") {
-                                Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), proMonthlyProduct.displayPrice))
-                                    .foregroundStyle(.secondary)
-                            }
-                            paywallAction(for: proMonthlyProduct, isActive: accessManager.activeSubscription?.id == proMonthlyProduct.id)
-                            if let proYearlyProduct = products.first(where: { $0.id == proYearlyProductId }) {
-                                LabeledContent("paywall.yearly_plan") {
-                                    Text(String(format: NSLocalizedString("paywall.price_per_year", comment: ""), proYearlyProduct.displayPrice))
-                                        .foregroundStyle(.secondary)
-                                }
-                                paywallAction(for: proYearlyProduct, isActive: accessManager.activeSubscription?.id == proYearlyProduct.id)
-                            }
-                            Text("paywall.professional.feature_1")
-                            Text("paywall.professional.feature_2")
-                            Text("paywall.professional.feature_3")
-                            Text("paywall.professional.feature_4")
-                        } header: {
-                            Text("plan.professional")
-                        }
-                    }
-
-                    Section {
-                        Text("plan.business.feature_1")
-                        Text("plan.business.feature_2")
-                        Text("plan.business.feature_3")
-                    } header: {
-                        Text("plan.business")
-                    } footer: {
-                        Text("plan.business.note")
-                    }
+        List {
+            Section {
+                if accessManager.isCheckingAccess {
+                    ProgressView("paywall.current_plan")
+                        .frame(maxWidth: .infinity, alignment: .center)
                 } else {
-                    Section {
-                        Text(productLoadError ?? String(localized: "paywall.unavailable_message"))
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-
-                        Button("common.try_again") {
-                            Task { await loadProducts() }
-                        }
-                    } header: {
-                        Text("paywall.paid_plans")
-                    }
+                    LabeledContent("plan.your", value: currentPlanName)
+                    Text(currentPlanSummary)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-
-                Section {
-                    Text("paywall.all_plans.feature_1")
-                    Text("paywall.all_plans.feature_2")
-                    Text("paywall.all_plans.feature_3")
-                    Text("paywall.all_plans.feature_4")
-                } header: {
-                    Text("paywall.all_plans")
-                } footer: {
-                    Text("paywall.all_plans_footer")
-                }
-
             }
-            .navigationTitle("paywall.choose_plan")
-            .applyInlineNavigationTitleIfSupported()
-            .toolbar {
+
+            Section("plan.plans") {
+                planDisclosure(
+                    title: String(localized: "plan.standard"),
+                    icon: "person.fill",
+                    tint: .secondary,
+                    note: String(localized: "plan.summary.standard"),
+                    highlights: [
+                        String(localized: "plan.standard.feature_1"),
+                        String(localized: "plan.standard.feature_2"),
+                        String(localized: "plan.standard.feature_3")
+                    ]
+                )
+
+                Divider()
+
+                professionalPlanSection
+
+                Divider()
+
+                planDisclosure(
+                    title: String(localized: "plan.business"),
+                    icon: "briefcase.fill",
+                    tint: .orange,
+                    note: String(localized: "plan.business.note"),
+                    highlights: [
+                        String(localized: "plan.business.feature_1"),
+                        String(localized: "plan.business.feature_2"),
+                        String(localized: "plan.business.feature_3"),
+                        String(localized: "plan.business.feature_4")
+                    ],
+                    footer: businessContactFooter
+                )
+            }
+
+            Section {
+                Button("paywall.restore_purchases") {
+                    Task { await restorePurchases() }
+                }
+            }
+        }
+        .navigationTitle("plan.your")
+        .applyInlineNavigationTitleIfSupported()
+        .toolbar {
+            if showsDismissButton {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("common.cancel") { dismiss() }
                 }
@@ -144,6 +131,114 @@ struct PremiumPaywallView: View {
         return String(localized: "plan.summary.standard")
     }
 
+    @ViewBuilder
+    private var professionalPlanSection: some View {
+        if isLoadingProducts || accessManager.isCheckingAccess {
+            ProgressView("paywall.loading_plans")
+                .frame(maxWidth: .infinity, alignment: .center)
+        } else if let proMonthlyProduct = products.first(where: { $0.id == proMonthlyProductId }) {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("plan.professional", systemImage: "star.fill")
+                    .foregroundStyle(Color.accentColor)
+
+                LabeledContent {
+                    Text(String(format: NSLocalizedString("paywall.price_per_month", comment: ""), proMonthlyProduct.displayPrice))
+                        .foregroundStyle(.secondary)
+                } label: {
+                    Text("Monthly")
+                }
+                paywallAction(for: proMonthlyProduct, isActive: accessManager.activeSubscription?.id == proMonthlyProduct.id)
+
+                if let proYearlyProduct = products.first(where: { $0.id == proYearlyProductId }) {
+                    Divider()
+                    LabeledContent("paywall.yearly_plan") {
+                        Text(String(format: NSLocalizedString("paywall.price_per_year", comment: ""), proYearlyProduct.displayPrice))
+                            .foregroundStyle(.secondary)
+                    }
+                    paywallAction(for: proYearlyProduct, isActive: accessManager.activeSubscription?.id == proYearlyProduct.id)
+                }
+
+                Divider()
+
+                featureList([
+                    String(localized: "paywall.professional.feature_1"),
+                    String(localized: "paywall.professional.feature_2"),
+                    String(localized: "paywall.professional.feature_3"),
+                    String(localized: "paywall.professional.feature_4")
+                ])
+
+                Text(String(localized: "plan.professional.note"))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        } else {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(productLoadError ?? String(localized: "paywall.unavailable_message"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button("common.try_again") {
+                    Task { await loadProducts() }
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func planDisclosure(
+        title: String,
+        icon: String,
+        tint: Color,
+        note: String,
+        highlights: [String],
+        footer: AnyView? = nil
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: icon)
+                .foregroundStyle(tint)
+
+            featureList(highlights)
+
+            Text(note)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let footer {
+                footer
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    private var businessContactFooter: AnyView {
+        AnyView(
+            Button {
+                if let emailURL = URL(string: "mailto:support@uluksywalker.com") {
+                    openURL(emailURL)
+                }
+            } label: {
+                Text("Contact support@uluksywalker.com for quota changes.")
+                    .font(.caption)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private func featureList(_ items: [String]) -> some View {
+        ForEach(items, id: \.self) { item in
+            Label {
+                Text(item)
+                    .fixedSize(horizontal: false, vertical: true)
+            } icon: {
+                Image(systemName: "checkmark")
+                    .foregroundStyle(Color.accentColor)
+            }
+        }
+    }
+
     private func loadProducts() async {
         isLoadingProducts = true
         productLoadError = nil
@@ -167,6 +262,23 @@ struct PremiumPaywallView: View {
             products = []
         }
         isLoadingProducts = false
+    }
+
+    private func restorePurchases() async {
+        do {
+            try await AppStore.sync()
+        } catch {
+            alertMessage = String(localized: "paywall.restore_failed")
+            return
+        }
+        await accessManager.refreshEntitlementsForCurrentUser()
+        if let syncError = accessManager.lastBillingSyncError {
+            alertMessage = syncError
+        } else if accessManager.hasDirectPaidAccess {
+            alertMessage = "Purchases restored successfully."
+        } else {
+            alertMessage = "No active App Store subscription was found for this account."
+        }
     }
 
     private func purchase(_ product: Product) async {

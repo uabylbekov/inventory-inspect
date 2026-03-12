@@ -45,6 +45,7 @@ struct ImagePicker: UIViewControllerRepresentable {
 #else
 enum PlatformImagePickerSourceType {
     case camera
+    case photoLibrary
 }
 
 struct ImagePicker: View {

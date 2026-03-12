@@ -70,8 +70,28 @@ struct AddPropertySheet: View {
                 }
 
                 Section("property_sheet.interior_details") {
-                    Stepper(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bedrooms", comment: ""), viewModel.bedroomsCount), value: $viewModel.bedroomsCount, in: 0...50)
-                    Stepper(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount), value: $viewModel.bathroomsCount, in: 0...50, step: 0.5)
+                    Stepper {
+                        Text(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bedrooms", comment: ""), viewModel.bedroomsCount))
+                    } onIncrement: {
+                        guard viewModel.bedroomsCount < 50 else { return }
+                        viewModel.bedroomsCount += 1
+                        HapticManager.shared.selection()
+                    } onDecrement: {
+                        guard viewModel.bedroomsCount > 0 else { return }
+                        viewModel.bedroomsCount -= 1
+                        HapticManager.shared.selection()
+                    }
+                    Stepper {
+                        Text(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount))
+                    } onIncrement: {
+                        guard viewModel.bathroomsCount < 50 else { return }
+                        viewModel.bathroomsCount += 0.5
+                        HapticManager.shared.selection()
+                    } onDecrement: {
+                        guard viewModel.bathroomsCount > 0 else { return }
+                        viewModel.bathroomsCount -= 0.5
+                        HapticManager.shared.selection()
+                    }
 
                     HStack {
                         Text("property_sheet.max_guests")

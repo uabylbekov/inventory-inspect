@@ -154,21 +154,29 @@ struct InspectionItemDetailView: View {
                 FullScreenImageView(image: .remote(publicURL))
             }
         }
+        .onChange(of: viewModel.isProcessingImage) { _, isProcessing in
+            if !isProcessing, viewModel.annotatingImage != nil {
+                showingAnnotation = true
+            }
+        }
+#if canImport(UIKit)
+        .sheet(isPresented: $showingLibrary) {
+            ImagePicker(image: $capturedImage, sourceType: .photoLibrary)
+                .ignoresSafeArea()
+        }
+#else
         .photosPicker(isPresented: $showingLibrary, selection: $selectedPhoto, matching: .images)
         .onChange(of: selectedPhoto) { _, newValue in
             guard let item = newValue else { return }
             Task {
+                defer { selectedPhoto = nil }
                 if let data = try? await item.loadTransferable(type: Data.self),
                    let image = makePlatformImage(from: data) {
                     viewModel.prepareAnnotation(image)
                 }
             }
         }
-        .onChange(of: viewModel.isProcessingImage) { _, isProcessing in
-            if !isProcessing, viewModel.annotatingImage != nil {
-                showingAnnotation = true
-            }
-        }
+#endif
     }
     
     @ViewBuilder
@@ -247,6 +255,7 @@ struct InspectionItemDetailView: View {
         }
         .onChange(of: capturedImage) { _, newValue in
             if let img = newValue {
+                capturedImage = nil
                 viewModel.prepareAnnotation(img)
             }
         }

@@ -32,6 +32,7 @@ final class SnapshotsAccessManager {
         let environment: String?
         let transactionId: String?
         let originalTransactionId: String?
+        let error: String?
     }
 
     enum PhotoAttachmentError: LocalizedError {
@@ -54,6 +55,7 @@ final class SnapshotsAccessManager {
     private var transactionUpdatesTask: Task<Void, Never>?
     private var productCache: [String: Product] = [:]
     private var activeProductID: String?
+    private var billingSyncTask: Task<Bool, Never>?
 
     private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
     private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
@@ -100,7 +102,7 @@ final class SnapshotsAccessManager {
             propertyLimitOverride: profile?.property_limit_override,
             teamLimitOverride: profile?.team_limit_override,
             photoLimitOverride: profile?.photo_limit_override,
-            hasStoreKitPro: hasStoreKitProSubscription
+            hasStoreKitPro: false
         )
     }
     
@@ -224,8 +226,12 @@ final class SnapshotsAccessManager {
 
     @discardableResult
     private func syncStoreKitStatus(using entitlement: EntitledSubscription) async -> Bool {
-        let transactionIdentifier = entitlement.originalTransactionID
-            ?? entitlement.transactionID
+        if let billingSyncTask {
+            return await billingSyncTask.value
+        }
+
+        let transactionIdentifier = entitlement.transactionID
+            ?? entitlement.originalTransactionID
             ?? profile?.app_store_original_transaction_id
 
         guard let transactionIdentifier else {
@@ -233,26 +239,55 @@ final class SnapshotsAccessManager {
             return false
         }
 
-        do {
-            let response: StoreKitSyncResponse = try await supabase.functions
-                .invoke(
-                    "sync-storekit-subscription",
-                    options: .init(body: StoreKitSyncPayload(transactionId: transactionIdentifier))
+        let task = Task<Bool, Never> { @MainActor [weak self] in
+            guard let self else { return false }
+
+            do {
+                print(
+                    "Access Manager: Syncing StoreKit with tx=\(entitlement.transactionID ?? "none") originalTx=\(entitlement.originalTransactionID ?? "none") selected=\(transactionIdentifier)"
                 )
-            lastBillingSyncError = nil
-            print(
-                "Access Manager: StoreKit sync complete. active=\(response.active) tier=\(response.tier) product=\(response.productId ?? "none") env=\(response.environment ?? "unknown") expiresAt=\(response.expiresAt ?? "none") tx=\(response.transactionId ?? "none") originalTx=\(response.originalTransactionId ?? "none")"
-            )
-            return true
-        } catch {
-            if entitlement.tier == "pro" || profile?.app_store_original_transaction_id != nil {
-                lastBillingSyncError = "Purchases were restored on this device, but billing could not be synced with the server yet."
-            } else {
+                let session = try await supabase.auth.session
+                let response: StoreKitSyncResponse = try await supabase.functions
+                    .invoke(
+                        "sync-storekit-subscription",
+                        options: .init(
+                            headers: [
+                                "Authorization": "Bearer \(session.accessToken)",
+                                "apikey": EnvConfig.supabaseKey
+                            ],
+                            body: StoreKitSyncPayload(transactionId: transactionIdentifier)
+                        )
+                    )
+                if let backendError = response.error, !backendError.isEmpty {
+                    lastBillingSyncError = backendError
+                    print("Access Manager: StoreKit sync backend error: \(backendError)")
+                    return false
+                }
                 lastBillingSyncError = nil
+                print(
+                    "Access Manager: StoreKit sync complete. active=\(response.active) tier=\(response.tier) product=\(response.productId ?? "none") env=\(response.environment ?? "unknown") expiresAt=\(response.expiresAt ?? "none") tx=\(response.transactionId ?? "none") originalTx=\(response.originalTransactionId ?? "none")"
+                )
+                return true
+            } catch {
+                let rawMessage = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+                if rawMessage.isEmpty || rawMessage == "(null)" {
+                    if entitlement.tier == "pro" || profile?.app_store_original_transaction_id != nil {
+                        lastBillingSyncError = "Purchases were restored on this device, but billing could not be synced with the server yet."
+                    } else {
+                        lastBillingSyncError = nil
+                    }
+                } else {
+                    lastBillingSyncError = rawMessage
+                }
+                print("Access Manager: StoreKit sync error: \(error)")
+                return false
             }
-            print("Access Manager: StoreKit sync error: \(error)")
-            return false
         }
+
+        billingSyncTask = task
+        let result = await task.value
+        billingSyncTask = nil
+        return result
     }
 
     private func productID(forTier tier: String) -> String? {

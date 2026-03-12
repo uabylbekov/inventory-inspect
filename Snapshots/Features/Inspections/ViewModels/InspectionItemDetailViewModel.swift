@@ -62,8 +62,8 @@ final class InspectionItemDetailViewModel {
                 resultImage = image
             }
 
-            self.isProcessingImage = false
             self.annotatingImage = resultImage
+            self.isProcessingImage = false
         }
     }
 

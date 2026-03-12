@@ -17,7 +17,17 @@ struct EditItemSheet: View {
                     TextField("item_sheet.name_placeholder", text: $viewModel.name)
                     TextField("item_sheet.description_placeholder", text: $viewModel.description, axis: .vertical)
                         .lineLimit(3...6)
-                    Stepper(String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty), value: $viewModel.expectedQty, in: 1...100)
+                    Stepper {
+                        Text(String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty))
+                    } onIncrement: {
+                        guard viewModel.expectedQty < 100 else { return }
+                        viewModel.expectedQty += 1
+                        HapticManager.shared.selection()
+                    } onDecrement: {
+                        guard viewModel.expectedQty > 1 else { return }
+                        viewModel.expectedQty -= 1
+                        HapticManager.shared.selection()
+                    }
                 }
                 
                 if let error = viewModel.errorMessage {
