@@ -2,8 +2,13 @@ import SwiftUI
 import UserNotifications
 import Supabase
 import Realtime
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
 
-@Observable
+@Observable @MainActor
 final class NotificationManager: @unchecked Sendable {
     static let shared = NotificationManager()
     
@@ -11,47 +16,120 @@ final class NotificationManager: @unchecked Sendable {
     var unreadCount: Int = 0
     private var channel: RealtimeChannelV2?
     private var currentToken: String?
+    private var observedUserId: UUID?
+    private var realtimeTask: Task<Void, Never>?
+    private var hasRequestedNotificationPermission = false
     
     // Deep linking state
     var selectedNotificationID: UUID?
+    var joiningInspection: InspectionModel?
+    var joinError: String?
     
     private let supabase = SupabaseClient(
         supabaseURL: EnvConfig.supabaseURL,
         supabaseKey: EnvConfig.supabaseKey
     )
+    private let notificationQueryLimit = 50
     
     private init() {}
     
     func requestPermission() {
+        guard !hasRequestedNotificationPermission else { return }
+        hasRequestedNotificationPermission = true
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+#if canImport(UIKit)
             if granted {
                 DispatchQueue.main.async {
                     UIApplication.shared.registerForRemoteNotifications()
                 }
             }
+#elseif canImport(AppKit)
+            if granted {
+                DispatchQueue.main.async {
+                    NSApplication.shared.registerForRemoteNotifications()
+                }
+            }
+#endif
+        }
+    }
+
+    func bootstrapForAuthenticatedUser() async {
+        guard let userId = await currentUserID() else {
+            return
+        }
+
+        requestPermission()
+
+        guard observedUserId != userId || channel == nil else { return }
+
+        await teardownRealtime()
+        observedUserId = userId
+        await fetchNotifications()
+        await setupRealtime()
+    }
+
+    func resetForSignedOutUser() async {
+        await teardownRealtime()
+        observedUserId = nil
+        applyNotifications([])
+    }
+    
+    func handleJoinRequest(id: UUID) async {
+        joinError = nil
+        do {
+            let inspection: [InspectionModel] = try await supabase
+                .from("inspections")
+                .select()
+                .eq("id", value: id.uuidString.lowercased())
+                .execute()
+                .value
+            
+            if let first = inspection.first {
+                self.joiningInspection = first
+            }
+        } catch {
+            self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
+        }
+    }
+
+    func handleNotificationTap(userInfo: [AnyHashable: Any]) async {
+        if let inspectionID = parseUUID(from: userInfo["inspection_id"]) {
+            await handleJoinRequest(id: inspectionID)
+            return
+        }
+
+        if let notificationID = parseUUID(from: userInfo["id"]) {
+            await openNotification(id: notificationID)
         }
     }
     
     func registerDeviceToken(_ token: String) async {
         self.currentToken = token
+        guard let userId = await currentUserID() else {
+            return
+        }
+
+        let pushToken = [
+            "user_id": userId.uuidString.lowercased(),
+            "device_token": token,
+            "platform": platformName
+        ]
+
         do {
-            let session = try await supabase.auth.session
-            let userId = session.user.id
-            
-            let pushToken = [
-                "user_id": userId.uuidString.lowercased(),
-                "device_token": token,
-                "platform": "ios"
-            ]
-            
             try await supabase.from("user_push_tokens")
                 .upsert(pushToken, onConflict: "user_id,device_token")
                 .execute()
-                
-            print("Successfully registered push token")
         } catch {
             print("Error registering push token: \(error)")
         }
+    }
+
+    private var platformName: String {
+#if os(macOS)
+        "macos"
+#else
+        "ios"
+#endif
     }
     
     func unregisterDeviceToken() async {
@@ -69,48 +147,47 @@ final class NotificationManager: @unchecked Sendable {
     }
     
     func fetchNotifications() async {
+        let userId = if let observedUserId {
+            observedUserId
+        } else {
+            await currentUserID()
+        }
+
+        guard let userId else {
+            applyNotifications([])
+            return
+        }
+
         do {
             let fetched: [NotificationModel] = try await supabase
                 .from("notifications")
                 .select()
+                .eq("user_id", value: userId.uuidString.lowercased())
                 .order("created_at", ascending: false)
-                .limit(50)
+                .limit(notificationQueryLimit)
                 .execute()
                 .value
             
-            await MainActor.run {
-                self.notifications = fetched
-                self.unreadCount = fetched.filter { !$0.is_read }.count
-                
-                // Clear the app icon badge number if we're up to date
-                UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { error in
-                    if let error = error {
-                        print("Error setting badge count: \(error)")
-                    }
-                }
-            }
+            applyNotifications(fetched)
         } catch {
             print("Error fetching notifications: \(error)")
         }
     }
     
     func markAsRead(_ notification: NotificationModel) async {
-        // Find local index
-        guard let index = notifications.firstIndex(where: { $0.id == notification.id }) else { return }
-        
-        // Optimistic UI update
-        notifications[index].is_read = true
-        self.unreadCount = notifications.filter { !$0.is_read }.count
+        if let index = notifications.firstIndex(where: { $0.id == notification.id }) {
+            notifications[index].is_read = true
+            syncUnreadCount()
+        }
         
         do {
             try await supabase
                 .from("notifications")
                 .update(["is_read": true])
-                .eq("id", value: notification.id)
+                .eq("id", value: notification.id.uuidString.lowercased())
                 .execute()
             
-            // Sync badge count
-            UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
+            updateBadgeCount()
         } catch {
             print("Error marking notification as read: \(error)")
             // Re-fetch on actual failure
@@ -125,7 +202,7 @@ final class NotificationManager: @unchecked Sendable {
         
         // Remove locally first (MainActor ensures thread-safety for @Observable)
         notifications.remove(atOffsets: offsets)
-        self.unreadCount = notifications.filter { !$0.is_read }.count
+        syncUnreadCount()
         
         Task {
             do {
@@ -136,10 +213,7 @@ final class NotificationManager: @unchecked Sendable {
                     .in("id", values: idsToDelete)
                     .execute()
                 
-                // Sync the badge count locally
-                await MainActor.run {
-                    UNUserNotificationCenter.current().setBadgeCount(self.unreadCount) { _ in }
-                }
+                updateBadgeCount()
             } catch {
                 print("Error batch deleting notifications: \(error)")
                 // Background re-fetch in case of failure to keep UI synced
@@ -148,34 +222,54 @@ final class NotificationManager: @unchecked Sendable {
         }
     }
     
-    func markAllAsRead() async {
+    func clearAllNotifications() async {
+        let idsToDelete = notifications.map { $0.id.uuidString.lowercased() }
+        guard !idsToDelete.isEmpty else { return }
+
+        let previous = notifications
+        applyNotifications([])
+
         do {
-            try await supabase.rpc("mark_all_notifications_read").execute()
-            await fetchNotifications()
+            try await supabase
+                .from("notifications")
+                .delete()
+                .in("id", values: idsToDelete)
+                .execute()
         } catch {
-            print("Error marking all as read: \(error)")
+            notifications = previous
+            syncUnreadCount()
+            print("Error clearing notifications: \(error)")
         }
     }
     
     func setupRealtime() async {
+        guard channel == nil else { return }
+        let userId = if let observedUserId {
+            observedUserId
+        } else {
+            await currentUserID()
+        }
+
+        guard let userId else { return }
+
         let channel = supabase.channel("public:notifications")
         
         let observation = channel.postgresChange(
             AnyAction.self,
             schema: "public",
-            table: "notifications"
+            table: "notifications",
+            filter: .eq("user_id", value: userId.uuidString.lowercased())
         )
         
-        Task {
+        realtimeTask = Task { [weak self] in
+            guard let self else { return }
             for await change in observation {
                 switch change {
                 case .insert(let action):
                     if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
-                        await MainActor.run {
-                            self.notifications.insert(newNotification, at: 0)
-                            self.unreadCount += 1
-                            self.triggerLocalNotification(for: newNotification)
-                        }
+                        self.notifications.insert(newNotification, at: 0)
+                        self.syncUnreadCount()
+                        self.triggerLocalNotification(for: newNotification)
                     }
                 default:
                     await fetchNotifications()
@@ -186,15 +280,33 @@ final class NotificationManager: @unchecked Sendable {
         try? await channel.subscribeWithError()
         self.channel = channel
     }
+
+    private func teardownRealtime() async {
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        if let channel {
+            await channel.unsubscribe()
+            self.channel = nil
+        }
+    }
     
     private func triggerLocalNotification(for notification: NotificationModel) {
         let content = UNMutableNotificationContent()
         content.title = notification.title
         content.body = notification.body
         content.sound = .default
-        
-        // Add data for deep linking
-        content.userInfo = ["id": notification.id.uuidString]
+
+        var userInfo: [AnyHashable: Any] = [
+            "id": notification.id.uuidString,
+            "type": notification.type
+        ]
+        if let inspectionID = notificationInspectionID(notification) {
+            userInfo["inspection_id"] = inspectionID.uuidString
+        }
+        if let propertyID = notificationPropertyID(notification) {
+            userInfo["property_id"] = propertyID.uuidString
+        }
+        content.userInfo = userInfo
         
         let request = UNNotificationRequest(
             identifier: notification.id.uuidString,
@@ -204,6 +316,85 @@ final class NotificationManager: @unchecked Sendable {
         
         UNUserNotificationCenter.current().add(request)
         HapticManager.shared.notification(type: .success)
+    }
+
+    private func currentUserID() async -> UUID? {
+        do {
+            let session = try await supabase.auth.session
+            return session.user.id
+        } catch {
+            print("Error resolving current user for notifications: \(error)")
+            return nil
+        }
+    }
+
+    private func applyNotifications(_ fetched: [NotificationModel]) {
+        notifications = fetched
+        syncUnreadCount()
+    }
+
+    private func openNotification(id: UUID) async {
+        do {
+            let notification: NotificationModel = try await supabase
+                .from("notifications")
+                .select()
+                .eq("id", value: id.uuidString.lowercased())
+                .single()
+                .execute()
+                .value
+
+            await open(notification: notification)
+        } catch {
+            joinError = "Unable to open this notification."
+        }
+    }
+
+    func open(notification: NotificationModel) async {
+        await markAsRead(notification)
+
+        if let inspectionID = notificationInspectionID(notification) {
+            await handleJoinRequest(id: inspectionID)
+            return
+        }
+
+        selectedNotificationID = notification.id
+    }
+
+    private func notificationInspectionID(_ notification: NotificationModel) -> UUID? {
+        parseUUID(from: notification.data["inspection_id"])
+    }
+
+    private func notificationPropertyID(_ notification: NotificationModel) -> UUID? {
+        parseUUID(from: notification.data["property_id"])
+    }
+
+    private func parseUUID(from value: Any?) -> UUID? {
+        if let uuid = value as? UUID {
+            return uuid
+        }
+
+        if let stringValue = value as? String {
+            return UUID(uuidString: stringValue)
+        }
+
+        if let anyJSON = value as? AnyJSON, case .string(let stringValue) = anyJSON {
+            return UUID(uuidString: stringValue)
+        }
+
+        return nil
+    }
+
+    private func syncUnreadCount() {
+        unreadCount = notifications.filter { !$0.is_read }.count
+        updateBadgeCount()
+    }
+
+    private func updateBadgeCount() {
+        UNUserNotificationCenter.current().setBadgeCount(unreadCount) { error in
+            if let error {
+                print("Error setting badge count: \(error)")
+            }
+        }
     }
 }
 
