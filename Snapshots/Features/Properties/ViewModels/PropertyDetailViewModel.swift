@@ -52,14 +52,14 @@ final class PropertyDetailViewModel {
         guard canManageTeam else { return String(localized: "plan.badge.pro") }
 
         if isOwner {
-            return "Owner"
+            return String(localized: "team.role.owner")
         }
 
         if isManager {
-            return "Manager"
+            return String(localized: "team.role.manager")
         }
 
-        return "Maintainer"
+        return String(localized: "team.role.maintainer")
     }
 
     func destinationForManageTeam() -> ManageTeamDestination {

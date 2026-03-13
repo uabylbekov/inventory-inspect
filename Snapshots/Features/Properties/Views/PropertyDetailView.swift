@@ -24,12 +24,33 @@ struct PropertyDetailView: View {
         @Bindable var viewModel = viewModel
         List {
             Section {
-                LabeledContent("property_sheet.property_type", value: viewModel.property.property_type.capitalized)
-                if let address = viewModel.property.address_line1, !address.isEmpty {
-                    LabeledContent("property_sheet.address1", value: address)
+                LabeledContent {
+                    Text(viewModel.property.property_type.capitalized)
+                } label: {
+                    Label {
+                        Text("property_sheet.property_type")
+                    } icon: {
+                        Image(systemName: PropertyUI.icon(for: viewModel.property.property_type))
+                            .foregroundStyle(PropertyUI.color(for: viewModel.property.property_type))
+                    }
                 }
-                LabeledContent("Bedrooms", value: "\(viewModel.property.bedrooms_count)")
-                LabeledContent("Bathrooms", value: String(format: "%.1f", viewModel.property.bathrooms_count))
+                if let address = viewModel.property.address_line1, !address.isEmpty {
+                    LabeledContent {
+                        Text(address)
+                    } label: {
+                        Label("property_sheet.address1", systemImage: "mappin.and.ellipse")
+                    }
+                }
+                LabeledContent {
+                    Text("\(viewModel.property.bedrooms_count)")
+                } label: {
+                    Label("property_sheet.bedrooms_title", systemImage: "bed.double.fill")
+                }
+                LabeledContent {
+                    Text(String(format: "%.1f", viewModel.property.bathrooms_count))
+                } label: {
+                    Label("property_sheet.bathrooms_title", systemImage: "bathtub.fill")
+                }
             }
 
             if let desc = viewModel.property.description, !desc.isEmpty {
@@ -77,11 +98,16 @@ struct PropertyDetailView: View {
                         NavigationLink {
                             RoomInventoryView(room: room)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(room.name)
-                                Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                            Label {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(room.name)
+                                    Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: PropertyUI.roomIcon(for: room.room_type))
+                                    .foregroundStyle(PropertyUI.roomColor(for: room.room_type))
                             }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
@@ -117,14 +143,19 @@ struct PropertyDetailView: View {
                                 InspectionReportView(inspection: inspection)
                             }
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                                Text(AppFormatter.formatDate(inspection.started_at))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                Text(inspection.status.replacingOccurrences(of: "_", with: " ").capitalized)
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
+                            Label {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                                    Text(AppFormatter.formatDate(inspection.started_at))
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                    Text(inspection.status.replacingOccurrences(of: "_", with: " ").capitalized)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            } icon: {
+                                Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
+                                    .foregroundStyle(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
                             }
                         }
                     }
@@ -327,7 +358,6 @@ private struct PropertyRoomSkeletonRow: View {
                 .frame(width: 90, height: 13)
         }
         .padding(.vertical, 4)
-        .redacted(reason: .placeholder)
     }
 }
 
@@ -345,7 +375,6 @@ private struct PropertyRecentInspectionSkeletonRow: View {
                 .frame(width: 80, height: 12)
         }
         .padding(.vertical, 4)
-        .redacted(reason: .placeholder)
     }
 }
 

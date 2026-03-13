@@ -7,7 +7,7 @@ struct PropertyUI {
         case "house": return "house.fill"
         case "condo": return "building.fill"
         case "townhouse": return "house.and.flag.fill"
-        default: return "mappin.circle.fill"
+        default: return "building.2.crop.circle"
         }
     }
     

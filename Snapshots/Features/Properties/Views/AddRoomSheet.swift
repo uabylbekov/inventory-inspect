@@ -17,14 +17,14 @@ struct AddRoomSheet: View {
                     TextField("room_sheet.name_placeholder", text: $viewModel.name)
 
                     Picker("room_sheet.type", selection: $viewModel.roomType) {
-                        Text("room_type.bedroom").tag("Bedroom")
-                        Text("room_type.bathroom").tag("Bathroom")
-                        Text("room_type.kitchen").tag("Kitchen")
-                        Text("room_type.living_room").tag("Living Room")
-                        Text("room_type.dining_room").tag("Dining Room")
-                        Text("room_type.office").tag("Office")
-                        Text("room_type.outdoor_space").tag("Outdoor Space")
-                        Text("room_type.other").tag("Other")
+                        roomTypeOption("room_type.bedroom", value: "Bedroom")
+                        roomTypeOption("room_type.bathroom", value: "Bathroom")
+                        roomTypeOption("room_type.kitchen", value: "Kitchen")
+                        roomTypeOption("room_type.living_room", value: "Living Room")
+                        roomTypeOption("room_type.dining_room", value: "Dining Room")
+                        roomTypeOption("room_type.office", value: "Office")
+                        roomTypeOption("room_type.outdoor_space", value: "Outdoor Space")
+                        roomTypeOption("room_type.other", value: "Other")
                     }
 
                     TextField("room_sheet.description_placeholder", text: $viewModel.description, axis: .vertical)
@@ -77,6 +77,17 @@ struct AddRoomSheet: View {
                 HapticManager.shared.notification(type: .error)
             }
         }
+    }
+
+    @ViewBuilder
+    private func roomTypeOption(_ titleKey: LocalizedStringKey, value: String) -> some View {
+        Label {
+            Text(titleKey)
+        } icon: {
+            Image(systemName: PropertyUI.roomIcon(for: value))
+                .foregroundStyle(PropertyUI.roomColor(for: value))
+        }
+        .tag(value)
     }
 }
 

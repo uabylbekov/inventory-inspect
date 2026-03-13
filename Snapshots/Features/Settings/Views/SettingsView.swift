@@ -17,7 +17,7 @@ struct SettingsView: View {
                 Section {
                     Button(action: { showingEditProfile = true }) {
                         HStack {
-                            Text("profile.title")
+                            Label("profile.title", systemImage: "person.crop.circle")
                             Spacer()
                             VStack(alignment: .trailing, spacing: 2) {
                                 Text(displayName)
@@ -68,7 +68,7 @@ struct SettingsView: View {
                     Button {
                         showingFeedbackSheet = true
                     } label: {
-                        Text("settings.feedback")
+                        Label("settings.feedback", systemImage: "bubble.left.and.bubble.right")
                     }
                 } header: {
                     Text("settings.support")
@@ -89,11 +89,15 @@ struct SettingsView: View {
                             Label("settings.about", systemImage: "info.circle")
                         }
                     }
-                    Button("paywall.terms") {
+                    Button {
                         openLegalURL(EnvConfig.termsOfServiceURL)
+                    } label: {
+                        Label("paywall.terms", systemImage: "doc.text")
                     }
-                    Button("paywall.privacy") {
+                    Button {
                         openLegalURL(EnvConfig.privacyPolicyURL)
+                    } label: {
+                        Label("paywall.privacy", systemImage: "hand.raised")
                     }
                 } header: {
                     Text("settings.app")
@@ -220,8 +224,16 @@ private struct SettingsAboutView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("settings.version", value: version)
-                LabeledContent("settings.build", value: build)
+                LabeledContent {
+                    Text(version)
+                } label: {
+                    Label("settings.version", systemImage: "number")
+                }
+                LabeledContent {
+                    Text(build)
+                } label: {
+                    Label("settings.build", systemImage: "hammer")
+                }
             }
         }
         .navigationTitle("settings.about")

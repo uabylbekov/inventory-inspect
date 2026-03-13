@@ -15,7 +15,12 @@ struct SubscriptionPlanRow: View {
                         .foregroundStyle(.secondary)
                 }
             } label: {
-                Label("plan.your", systemImage: iconName)
+                Label {
+                    Text("plan.your")
+                } icon: {
+                    Image(systemName: iconName)
+                        .foregroundStyle(iconColor)
+                }
             }
         }
     }
@@ -29,5 +34,11 @@ struct SubscriptionPlanRow: View {
         if accessManager.hasBusinessAccess { return "briefcase.fill" }
         if accessManager.hasDirectPaidAccess { return "star.fill" }
         return "person.fill"
+    }
+
+    private var iconColor: Color {
+        if accessManager.hasBusinessAccess { return .orange }
+        if accessManager.hasDirectPaidAccess { return .accentColor }
+        return .secondary
     }
 }

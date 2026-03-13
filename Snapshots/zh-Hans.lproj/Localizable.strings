@@ -99,6 +99,7 @@
 "paywall.all_plans_footer" = "照片功能和团队协作需要付费套餐。";
 "paywall.restore_purchases" = "恢复购买";
 "paywall.restore_failed" = "无法恢复购买，请重试。";
+"paywall.monthly" = "每月";
 "paywall.terms" = "服务条款";
 "paywall.privacy" = "隐私政策";
 "paywall.legal" = "法律信息";
@@ -111,7 +112,9 @@
 "paywall.legal_missing" = "未配置法律链接。请在 Info.plist 中添加 TERMS_URL 和 PRIVACY_URL。";
 "paywall.price_per_month" = "%@ / 月";
 "paywall.subscribe" = "订阅";
+"paywall.contact_support" = "如需调整额度，请联系支持团队。";
 "common.cancel" = "取消";
+"common.id" = "ID";
 "common.ok" = "确定";
 "common.delete" = "删除";
 "common.try_again" = "重试";
@@ -139,6 +142,7 @@
 "inspection_item.status.present" = "Present";
 "inspection_item.status.missing" = "Missing";
 "inspection_item.status.damaged" = "Damaged";
+"inspection_item.status.resolved" = "已解决";
 "inspection_item.evidence" = "Evidence";
 "inspection_item.notes" = "Notes";
 "inspection_item.notes_placeholder" = "Add details about the condition...";
@@ -240,6 +244,7 @@
 "team.title" = "Team";
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
+"team.role.owner" = "所有者";
 "team.role.manager" = "Manager";
 "team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
@@ -269,6 +274,8 @@
 "property_sheet.country" = "Country";
 "property_sheet.interior_details" = "Interior Details";
 "property_sheet.details" = "Details";
+"property_sheet.bedrooms_title" = "卧室";
+"property_sheet.bathrooms_title" = "浴室";
 "property_sheet.bedrooms" = "Bedrooms: %d";
 "property_sheet.bathrooms" = "Bathrooms: %.1f";
 "property_sheet.max_guests" = "Max Guests";
@@ -349,6 +356,7 @@
 "notifications.empty.description" = "Alerts about invitations or inspection activities will appear here.";
 "notifications.title" = "Notifications";
 "notifications.mark_all_read" = "Mark All as Read";
+"notifications.clear_all" = "全部清除";
 "annotation.title" = "Annotate Photo";
 "pdf.address_missing" = "No address recorded";
 "pdf.report.title" = "Inspection Report";

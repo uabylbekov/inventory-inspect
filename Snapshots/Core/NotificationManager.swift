@@ -267,9 +267,12 @@ final class NotificationManager: @unchecked Sendable {
                 switch change {
                 case .insert(let action):
                     if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
-                        self.notifications.insert(newNotification, at: 0)
+                        if let existingIndex = self.notifications.firstIndex(where: { $0.id == newNotification.id }) {
+                            self.notifications[existingIndex] = newNotification
+                        } else {
+                            self.notifications.insert(newNotification, at: 0)
+                        }
                         self.syncUnreadCount()
-                        self.triggerLocalNotification(for: newNotification)
                     }
                 default:
                     await fetchNotifications()
@@ -290,34 +293,6 @@ final class NotificationManager: @unchecked Sendable {
         }
     }
     
-    private func triggerLocalNotification(for notification: NotificationModel) {
-        let content = UNMutableNotificationContent()
-        content.title = notification.title
-        content.body = notification.body
-        content.sound = .default
-
-        var userInfo: [AnyHashable: Any] = [
-            "id": notification.id.uuidString,
-            "type": notification.type
-        ]
-        if let inspectionID = notificationInspectionID(notification) {
-            userInfo["inspection_id"] = inspectionID.uuidString
-        }
-        if let propertyID = notificationPropertyID(notification) {
-            userInfo["property_id"] = propertyID.uuidString
-        }
-        content.userInfo = userInfo
-        
-        let request = UNNotificationRequest(
-            identifier: notification.id.uuidString,
-            content: content,
-            trigger: nil // Deliver immediately
-        )
-        
-        UNUserNotificationCenter.current().add(request)
-        HapticManager.shared.notification(type: .success)
-    }
-
     private func currentUserID() async -> UUID? {
         do {
             let session = try await supabase.auth.session

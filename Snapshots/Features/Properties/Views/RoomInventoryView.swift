@@ -224,8 +224,23 @@ struct RoomInventoryView: View {
 
     private var roomHeader: some View {
         Group {
-            LabeledContent("room_sheet.type", value: room.room_type?.capitalized ?? String(localized: "property_detail.room"))
-            LabeledContent("Items", value: "\(viewModel.items.count)")
+            LabeledContent {
+                Text(room.room_type?.capitalized ?? String(localized: "property_detail.room"))
+            } label: {
+                Label {
+                    Text("room_sheet.type")
+                } icon: {
+                    Image(systemName: PropertyUI.roomIcon(for: room.room_type))
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(PropertyUI.roomColor(for: room.room_type))
+                }
+            }
+            LabeledContent {
+                Text("\(viewModel.items.count)")
+            } label: {
+                Label("room_inventory.inventory", systemImage: "shippingbox")
+                    .symbolRenderingMode(.hierarchical)
+            }
         }
     }
 }
@@ -245,22 +260,32 @@ struct InventoryItemRow: View {
     let item: RoomInventoryItemModel
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(item.name)
-                .lineLimit(1)
-
-            if let desc = item.description, !desc.isEmpty {
-                Text(desc)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(item.name)
                     .lineLimit(1)
-            }
 
-            if item.expected_qty > 1 {
-                Text("×\(item.expected_qty)")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                if let desc = item.description, !desc.isEmpty {
+                    Text(desc)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                if item.expected_qty > 1 {
+                    Text("×\(item.expected_qty)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
+        } icon: {
+            Image(systemName: "shippingbox")
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.secondary)
+        }
+        .labelStyle(.titleAndIcon)
+        .alignmentGuide(.listRowSeparatorLeading) { dimensions in
+            dimensions[.leading]
         }
     }
 }

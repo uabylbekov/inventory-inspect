@@ -62,15 +62,17 @@ struct EditProfileView: View {
                         isUploading: isUploadingLogo
                     )
 
-                    LabeledContent("profile.company_logo") {
+                    LabeledContent {
                         Text(isEditing ? String(localized: "profile.logo.tap_to_change") : (accessManager.profile?.company_logo_url != nil ? String(localized: "profile.logo.configured") : String(localized: "profile.logo.empty")))
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundStyle(.secondary)
+                    } label: {
+                        Label("profile.company_logo", systemImage: "photo")
                     }
 
                     if isEditing {
                         PhotosPicker(selection: $selectedLogoItem, matching: .images) {
-                            Text("common.choose")
+                            Label("common.choose", systemImage: "photo.badge.plus")
                         }
                         .onChange(of: selectedLogoItem) { _, newItem in
                             Task {
@@ -119,8 +121,10 @@ struct EditProfileView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    NavigationLink("profile.unlock_branding") {
+                    NavigationLink {
                         PremiumPaywallView()
+                    } label: {
+                        Label("profile.unlock_branding", systemImage: "sparkles")
                     }
                 } header: {
                     Text("profile.business_branding")
@@ -131,7 +135,7 @@ struct EditProfileView: View {
                 Section {
                     Button(role: .destructive, action: { showingDeleteAlert = true }) {
                         HStack {
-                            Text("profile.delete_account")
+                            Label("profile.delete_account", systemImage: "trash")
                             Spacer()
                             if isDeletingAccount {
                                 ProgressView()

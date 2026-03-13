@@ -106,6 +106,7 @@
 "paywall.all_plans_footer" = "Photo attachments and team collaboration require a paid plan.";
 "paywall.restore_purchases" = "Restore Purchases";
 "paywall.restore_failed" = "Could not restore purchases. Please try again.";
+"paywall.monthly" = "Monthly";
 "paywall.terms" = "Terms of Service";
 "paywall.privacy" = "Privacy Policy";
 "paywall.legal" = "Legal";
@@ -119,7 +120,9 @@
 "paywall.price_per_month" = "%@ / month";
 "paywall.price_per_year" = "%@ / year";
 "paywall.subscribe" = "Subscribe";
+"paywall.contact_support" = "Contact support for quota changes.";
 "common.cancel" = "Cancel";
+"common.id" = "ID";
 "common.ok" = "OK";
 "common.delete" = "Delete";
 "common.try_again" = "Try Again";
@@ -149,6 +152,7 @@
 "inspection_item.status.present" = "Present";
 "inspection_item.status.missing" = "Missing";
 "inspection_item.status.damaged" = "Damaged";
+"inspection_item.status.resolved" = "Resolved";
 "inspection_item.evidence" = "Evidence";
 "inspection_item.notes" = "Notes";
 "inspection_item.notes_placeholder" = "Add details about the condition...";
@@ -249,6 +253,7 @@
 "team.title" = "Team";
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
+"team.role.owner" = "Owner";
 "team.role.manager" = "Manager";
 "team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
@@ -278,6 +283,8 @@
 "property_sheet.country" = "Country";
 "property_sheet.interior_details" = "Interior Details";
 "property_sheet.details" = "Details";
+"property_sheet.bedrooms_title" = "Bedrooms";
+"property_sheet.bathrooms_title" = "Bathrooms";
 "property_sheet.bedrooms" = "Bedrooms: %d";
 "property_sheet.bathrooms" = "Bathrooms: %.1f";
 "property_sheet.max_guests" = "Max Guests";
@@ -358,6 +365,7 @@
 "notifications.empty.description" = "Alerts about invitations or inspection activities will appear here.";
 "notifications.title" = "Notifications";
 "notifications.mark_all_read" = "Mark All as Read";
+"notifications.clear_all" = "Clear All";
 "annotation.title" = "Annotate Photo";
 "pdf.address_missing" = "No address recorded";
 "pdf.report.title" = "Inspection Report";

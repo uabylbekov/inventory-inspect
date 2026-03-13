@@ -20,7 +20,10 @@ struct AddItemSheet: View {
                         .lineLimit(3...6)
 
                     Stepper {
-                        Text(String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty))
+                        Label(
+                            String.localizedStringWithFormat(NSLocalizedString("item_sheet.expected_quantity", comment: ""), viewModel.expectedQty),
+                            systemImage: "shippingbox"
+                        )
                     } onIncrement: {
                         guard viewModel.expectedQty < 100 else { return }
                         viewModel.expectedQty += 1

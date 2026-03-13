@@ -192,18 +192,24 @@ struct PropertyRow: View {
     let property: PropertyModel
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(property.name)
-                .lineLimit(1)
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(property.name)
+                    .lineLimit(1)
 
-            Text(property.address_line1 ?? String(localized: "property.no_address"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
+                Text(property.address_line1 ?? String(localized: "property.no_address"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
 
-            Text(property.property_type)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                Text(property.property_type)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } icon: {
+            Image(systemName: PropertyUI.icon(for: property.property_type))
+                .foregroundStyle(PropertyUI.color(for: property.property_type))
         }
     }
 }

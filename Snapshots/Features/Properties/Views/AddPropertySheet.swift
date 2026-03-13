@@ -33,11 +33,11 @@ struct AddPropertySheet: View {
 
                 Section("property_sheet.classification") {
                     Picker("property_sheet.property_type", selection: $viewModel.type) {
-                        Text("property_type.apartment").tag("Apartment")
-                        Text("property_type.house").tag("House")
-                        Text("property_type.condo").tag("Condo")
-                        Text("property_type.townhouse").tag("Townhouse")
-                        Text("property_type.other").tag("Other")
+                        propertyTypeOption("property_type.apartment", value: "Apartment")
+                        propertyTypeOption("property_type.house", value: "House")
+                        propertyTypeOption("property_type.condo", value: "Condo")
+                        propertyTypeOption("property_type.townhouse", value: "Townhouse")
+                        propertyTypeOption("property_type.other", value: "Other")
                     }
                 }
 
@@ -71,7 +71,10 @@ struct AddPropertySheet: View {
 
                 Section("property_sheet.interior_details") {
                     Stepper {
-                        Text(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bedrooms", comment: ""), viewModel.bedroomsCount))
+                        Label(
+                            String.localizedStringWithFormat(NSLocalizedString("property_sheet.bedrooms", comment: ""), viewModel.bedroomsCount),
+                            systemImage: "bed.double.fill"
+                        )
                     } onIncrement: {
                         guard viewModel.bedroomsCount < 50 else { return }
                         viewModel.bedroomsCount += 1
@@ -82,7 +85,10 @@ struct AddPropertySheet: View {
                         HapticManager.shared.selection()
                     }
                     Stepper {
-                        Text(String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount))
+                        Label(
+                            String.localizedStringWithFormat(NSLocalizedString("property_sheet.bathrooms", comment: ""), viewModel.bathroomsCount),
+                            systemImage: "bathtub.fill"
+                        )
                     } onIncrement: {
                         guard viewModel.bathroomsCount < 50 else { return }
                         viewModel.bathroomsCount += 0.5
@@ -94,7 +100,7 @@ struct AddPropertySheet: View {
                     }
 
                     HStack {
-                        Text("property_sheet.max_guests")
+                        Label("property_sheet.max_guests", systemImage: "person.2.fill")
                         Spacer()
                         TextField("property_sheet.count", text: $viewModel.maxGuests)
                             .platformNumberPadKeyboard()
@@ -167,5 +173,16 @@ struct AddPropertySheet: View {
                 HapticManager.shared.notification(type: .error)
             }
         }
+    }
+
+    @ViewBuilder
+    private func propertyTypeOption(_ titleKey: LocalizedStringKey, value: String) -> some View {
+        Label {
+            Text(titleKey)
+        } icon: {
+            Image(systemName: PropertyUI.icon(for: value))
+                .foregroundStyle(PropertyUI.color(for: value))
+        }
+        .tag(value)
     }
 }
