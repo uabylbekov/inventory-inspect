@@ -35,7 +35,15 @@ struct InspectionReportView: View {
             }
             .redacted(reason: viewModel.isLoading ? .placeholder : [])
 
-            if !viewModel.isLoading {
+            if !viewModel.hasLoadedInitialState || (viewModel.isLoading && viewModel.anomalies.isEmpty && viewModel.presentItems.isEmpty && viewModel.resolvedItems.isEmpty) {
+                Section {
+                    ForEach(0..<3, id: \.self) { _ in
+                        ReportItemSkeletonRow()
+                    }
+                } header: {
+                    Text("report.anomalies")
+                }
+            } else {
                 Section {
                     LabeledContent("report.anomalies", value: "\(viewModel.anomalies.count)")
                     LabeledContent("report.resolved_issues", value: "\(viewModel.resolvedItems.count)")
@@ -113,18 +121,6 @@ struct InspectionReportView: View {
                 }
             }
         }
-        .overlay {
-            if viewModel.isLoading {
-                ZStack {
-                    Color.platformGroupedBackground
-                        .ignoresSafeArea()
-                    ProgressView("report.loading")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                }
-            }
-        }
-
         .animation(.none, value: viewModel.isLoading)
         .navigationTitle("report.title")
         .applyInlineNavigationTitleIfSupported()
@@ -178,11 +174,32 @@ struct InspectionReportView: View {
             PremiumPaywallView()
         }
         .task {
-            await viewModel.fetchReportData()
+            await viewModel.loadInitialData()
         }
         .refreshable {
             await viewModel.fetchReportData(showLoadingState: false)
         }
+    }
+}
+
+private struct ReportItemSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 180, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 120, height: 13)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.1))
+                .frame(width: 90, height: 12)
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color.secondary.opacity(0.08))
+                .frame(height: 120)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

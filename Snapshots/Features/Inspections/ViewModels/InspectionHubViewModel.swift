@@ -3,6 +3,18 @@ import Supabase
 
 @Observable @MainActor
 final class InspectionHubViewModel {
+    private struct CachedSnapshot: Codable {
+        let property: PropertyModel?
+        let rooms: [PropertyRoomModel]
+        let inventoryItems: [RoomInventoryItemModel]
+        let inspectionItems: [InspectionItemModel]
+    }
+
+    private enum CacheConfig {
+        static let keyPrefix = "inspection-hub"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
     let inspection: InspectionModel
     
     var rooms: [PropertyRoomModel] = []
@@ -13,6 +25,7 @@ final class InspectionHubViewModel {
     var roomProgressList: [RoomProgress] = []
     
     var isLoading = false
+    var hasLoadedInitialState = false
     var isCompleting = false
     var errorMessage: String?
     
@@ -58,25 +71,44 @@ final class InspectionHubViewModel {
         guard totalItems > 0 else { return false }  // Empty property can't be completed
         return roomProgressList.allSatisfy { $0.totalItems == 0 || $0.isComplete }
     }
+
+    func loadInitialData() async {
+        if let cachedSnapshot = await SnapshotCache.shared.load(
+            CachedSnapshot.self,
+            key: Self.cacheKey(for: inspection.id),
+            maxAge: CacheConfig.maxAge
+        ) {
+            apply(snapshot: cachedSnapshot)
+        }
+
+        hasLoadedInitialState = true
+        await fetchData(showLoadingState: rooms.isEmpty)
+    }
     
-    func fetchData() async {
-        isLoading = true
+    func fetchData(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             let snapshot = try await InspectionDataService.loadInspectionHubSnapshot(for: inspection)
-            self.rooms = snapshot.rooms
-            self.property = snapshot.property
-            self.allInventoryItems = snapshot.inventoryItems
-            self.inspectionItems = snapshot.inspectionItems
-            
-            calculateProgress()
+            let cachedSnapshot = CachedSnapshot(
+                property: snapshot.property,
+                rooms: snapshot.rooms,
+                inventoryItems: snapshot.inventoryItems,
+                inspectionItems: snapshot.inspectionItems
+            )
+            apply(snapshot: cachedSnapshot)
+            await SnapshotCache.shared.save(cachedSnapshot, key: Self.cacheKey(for: inspection.id))
             isLoading = false
+            hasLoadedInitialState = true
         } catch {
             if error is CancellationError {
                 isLoading = false
             } else {
                 errorMessage = error.localizedDescription
                 isLoading = false
+                hasLoadedInitialState = true
             }
         }
     }
@@ -92,8 +124,23 @@ final class InspectionHubViewModel {
         )
         
         Task {
-            for await _ in observation {
-                await fetchData()
+            for await change in observation {
+                switch change {
+                case .insert(let action):
+                    if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
+                        applyRealtimeChange(updatedRecord)
+                    } else {
+                        await fetchData(showLoadingState: false)
+                    }
+                case .update(let action):
+                    if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
+                        applyRealtimeChange(updatedRecord)
+                    } else {
+                        await fetchData(showLoadingState: false)
+                    }
+                default:
+                    await fetchData(showLoadingState: false)
+                }
             }
         }
         
@@ -113,6 +160,39 @@ final class InspectionHubViewModel {
         }
         
         self.roomProgressList = progressList
+    }
+
+    private func apply(snapshot: CachedSnapshot) {
+        rooms = snapshot.rooms
+        property = snapshot.property
+        allInventoryItems = snapshot.inventoryItems
+        inspectionItems = snapshot.inspectionItems
+        calculateProgress()
+    }
+
+    private func applyRealtimeChange(_ record: InspectionItemModel) {
+        if let existingIndex = inspectionItems.firstIndex(where: { $0.id == record.id }) {
+            inspectionItems[existingIndex] = record
+        } else {
+            inspectionItems.append(record)
+        }
+
+        calculateProgress()
+        persistCurrentSnapshot()
+    }
+
+    private func persistCurrentSnapshot() {
+        Task(priority: .utility) {
+            await SnapshotCache.shared.save(
+            CachedSnapshot(
+                property: property,
+                rooms: rooms,
+                inventoryItems: allInventoryItems,
+                inspectionItems: inspectionItems
+            ),
+            key: Self.cacheKey(for: inspection.id)
+            )
+        }
     }
     
     func roomProgress(for roomId: UUID) -> RoomProgress? {
@@ -161,6 +241,16 @@ final class InspectionHubViewModel {
         errorMessage = nil
         do {
             try await InspectionWorkflowService.deleteInspection(id: inspection.id)
+            await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionHub(for: inspection.id))
+            await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionReport(for: inspection.id))
+            if let userId = try? await supabase.auth.session.user.id,
+               var cachedInspections = await SnapshotCache.shared.load(
+                    [InspectionModel].self,
+                    key: SnapshotCacheKey.inspections(for: userId)
+               ) {
+                cachedInspections.removeAll { $0.id == inspection.id }
+                await SnapshotCache.shared.save(cachedInspections, key: SnapshotCacheKey.inspections(for: userId))
+            }
             return true
         } catch is CancellationError {
             return false
@@ -168,5 +258,9 @@ final class InspectionHubViewModel {
             errorMessage = error.localizedDescription
             return false
         }
+    }
+
+    private static func cacheKey(for inspectionId: UUID) -> String {
+        SnapshotCacheKey.inspectionHub(for: inspectionId)
     }
 }

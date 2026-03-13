@@ -3,6 +3,17 @@ import Supabase
 
 @Observable @MainActor
 final class PropertyDetailViewModel {
+    private struct CachedSnapshot: Codable {
+        let property: PropertyModel
+        let rooms: [PropertyRoomModel]
+        let recentInspections: [InspectionModel]
+    }
+
+    private enum CacheConfig {
+        static let keyPrefix = "property-detail"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
     enum ManageTeamDestination {
         case team
         case paywall
@@ -11,6 +22,7 @@ final class PropertyDetailViewModel {
     var property: PropertyModel
     var rooms: [PropertyRoomModel] = []
     var isLoading = false
+    var hasLoadedInitialState = false
     var errorMessage: String?
     var showingAddRoom = false
     var recentInspections: [InspectionModel] = []
@@ -69,8 +81,25 @@ final class PropertyDetailViewModel {
         }
     }
 
-    func fetchData() async {
-        isLoading = true
+    func loadInitialData() async {
+        if let cachedSnapshot = await SnapshotCache.shared.load(
+            CachedSnapshot.self,
+            key: Self.cacheKey(for: property.id),
+            maxAge: CacheConfig.maxAge
+        ) {
+            property = cachedSnapshot.property
+            rooms = cachedSnapshot.rooms
+            recentInspections = cachedSnapshot.recentInspections
+        }
+
+        hasLoadedInitialState = true
+        await fetchData(showLoadingState: rooms.isEmpty)
+    }
+
+    func fetchData(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             async let propertyTask = PropertyDataService.loadProperty(id: property.id)
@@ -80,13 +109,27 @@ final class PropertyDetailViewModel {
             property = refreshedProperty
             rooms = snapshot.rooms
             recentInspections = snapshot.recentInspections
+            await persistCurrentSnapshot()
             isLoading = false
+            hasLoadedInitialState = true
         } catch is CancellationError {
             isLoading = false
         } catch {
             errorMessage = error.localizedDescription
             isLoading = false
+            hasLoadedInitialState = true
         }
+    }
+
+    private func persistCurrentSnapshot() async {
+        await SnapshotCache.shared.save(
+            CachedSnapshot(
+                property: property,
+                rooms: rooms,
+                recentInspections: recentInspections
+            ),
+            key: Self.cacheKey(for: property.id)
+        )
     }
     
     func fetchRecentInspections() async {
@@ -117,6 +160,7 @@ final class PropertyDetailViewModel {
                 if let index = rooms.firstIndex(where: { $0.id == item.id }) {
                     rooms.remove(at: index)
                 }
+                await persistCurrentSnapshot()
             } catch {
                 self.errorMessage = "Could not delete room. Please try again."
             }
@@ -134,6 +178,15 @@ final class PropertyDetailViewModel {
     func deleteProperty() async -> Bool {
         do {
             try await PropertyDataService.deleteProperty(id: property.id)
+            await SnapshotCache.shared.remove(key: Self.cacheKey(for: property.id))
+            if let userId = try? await supabase.auth.session.user.id,
+               var cachedProperties = await SnapshotCache.shared.load(
+                    [PropertyModel].self,
+                    key: SnapshotCacheKey.properties(for: userId)
+               ) {
+                cachedProperties.removeAll { $0.id == property.id }
+                await SnapshotCache.shared.save(cachedProperties, key: SnapshotCacheKey.properties(for: userId))
+            }
             return true
         } catch {
             errorMessage = "Could not delete property. Please try again."
@@ -143,5 +196,9 @@ final class PropertyDetailViewModel {
 
     private func hasRole(_ role: String) -> Bool {
         property.property_members?.contains(where: { $0.role == role }) ?? false
+    }
+
+    private static func cacheKey(for propertyId: UUID) -> String {
+        SnapshotCacheKey.propertyDetail(for: propertyId)
     }
 }

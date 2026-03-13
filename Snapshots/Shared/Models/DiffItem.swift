@@ -1,8 +1,7 @@
 import Foundation
 import Supabase
 
-struct DiffItem: Identifiable {
-    let id = UUID()
+struct DiffItem: Codable, Hashable, Identifiable {
     let inventoryItemId: UUID
     let itemName: String
     let roomName: String
@@ -15,4 +14,16 @@ struct DiffItem: Identifiable {
     let newPreviousStatus: String?
     let newNotes: String?
     let newImage: String?
+
+    var id: String {
+        [
+            inventoryItemId.uuidString.lowercased(),
+            oldStatus,
+            newStatus,
+            newPreviousStatus ?? "",
+            newNotes ?? "",
+            oldImage ?? "",
+            newImage ?? ""
+        ].joined(separator: "|")
+    }
 }

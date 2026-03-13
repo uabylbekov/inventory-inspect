@@ -62,9 +62,7 @@ struct InspectionsView: View {
                 _ = await (fetchI, fetchP)
             }
             .task {
-                async let fetchI: () = self.viewModel.fetchInspections()
-                async let fetchP: () = self.viewModel.fetchProperties()
-                _ = await (fetchI, fetchP)
+                await viewModel.loadInitialData()
             }
             .sheet(isPresented: $viewModel.showingStartInspection) {
                 StartInspectionSheet(preloadedProperties: viewModel.properties) {
@@ -102,15 +100,9 @@ struct InspectionsView: View {
     @ViewBuilder
     private var inspectionBody: some View {
         if !viewModel.hasLoadedInitialState {
-            Section {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+            inspectionSkeletonSection
         } else if viewModel.isLoading && viewModel.inspections.isEmpty {
-            Section {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+            inspectionSkeletonSection
         } else if viewModel.filteredInspections.isEmpty {
             Section {
                 ContentUnavailableView(
@@ -131,6 +123,16 @@ struct InspectionsView: View {
             if !cancelledInspections.isEmpty {
                 inspectionGroup(title: String(localized: "inspections.group.cancelled"), inspections: cancelledInspections)
             }
+        }
+    }
+
+    private var inspectionSkeletonSection: some View {
+        Section {
+            ForEach(0..<4, id: \.self) { _ in
+                InspectionRowSkeleton()
+            }
+        } header: {
+            Text("inspections.group.active")
         }
     }
 
@@ -284,6 +286,27 @@ struct InspectionsView: View {
         }
     }
 
+}
+
+private struct InspectionRowSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 160, height: 16)
+
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.14))
+                .frame(maxWidth: .infinity)
+                .frame(height: 14)
+
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 90, height: 12)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
+    }
 }
 
 private extension View {

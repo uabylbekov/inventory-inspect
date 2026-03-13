@@ -14,8 +14,9 @@ struct CompareSelectSheet: View {
             List {
                 if isLoading {
                     Section {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
+                        ForEach(0..<3, id: \.self) { _ in
+                            CompareSelectionSkeletonRow()
+                        }
                     }
                 } else if let error = errorMessage {
                     Section {
@@ -71,6 +72,9 @@ struct CompareSelectSheet: View {
             )
             
             self.inspections = fetched
+            Task(priority: .utility) {
+                await PrefetchService.prefetchComparisons(current: currentInspection, candidates: fetched)
+            }
         } catch is CancellationError {
             isLoading = false
             return
@@ -78,6 +82,21 @@ struct CompareSelectSheet: View {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+private struct CompareSelectionSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 170, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 110, height: 13)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

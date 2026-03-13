@@ -4,6 +4,20 @@ import SwiftUI
 
 @Observable @MainActor
 final class ComparisonReportViewModel {
+    private struct CachedSnapshot: Codable {
+        let property: PropertyModel?
+        let inspectorName: String?
+        let anomalies: [ReportItem]
+        let presentItems: [ReportItem]
+        let changedItems: [DiffItem]
+        let unchangedItems: [DiffItem]
+    }
+
+    private enum CacheConfig {
+        static let keyPrefix = "comparison-report"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
     let older: InspectionModel
     let newer: InspectionModel
     
@@ -15,6 +29,7 @@ final class ComparisonReportViewModel {
     var unchangedItems: [DiffItem] = []
     
     var isLoading = false
+    var hasLoadedInitialState = false
     var isGeneratingPDF = false
     var errorMessage: String?
     
@@ -31,24 +46,45 @@ final class ComparisonReportViewModel {
             self.newer = base
         }
     }
+
+    func loadInitialData() async {
+        if let cachedSnapshot = await SnapshotCache.shared.load(
+            CachedSnapshot.self,
+            key: Self.cacheKey(older: older.id, newer: newer.id),
+            maxAge: CacheConfig.maxAge
+        ) {
+            apply(snapshot: cachedSnapshot)
+        }
+
+        hasLoadedInitialState = true
+        await fetchComparison(showLoadingState: changedItems.isEmpty && unchangedItems.isEmpty)
+    }
     
-    func fetchComparison() async {
-        isLoading = true
+    func fetchComparison(showLoadingState: Bool = true) async {
+        if showLoadingState {
+            isLoading = true
+        }
         errorMessage = nil
         do {
             let snapshot = try await InspectionDataService.loadComparisonSnapshot(older: older, newer: newer)
-            self.property = snapshot.property
-            self.inspectorName = snapshot.inspectorName
-            self.anomalies = snapshot.anomalies
-            self.presentItems = snapshot.presentItems
-            self.changedItems = snapshot.changedItems
-            self.unchangedItems = snapshot.unchangedItems
+            let cachedSnapshot = CachedSnapshot(
+                property: snapshot.property,
+                inspectorName: snapshot.inspectorName,
+                anomalies: snapshot.anomalies,
+                presentItems: snapshot.presentItems,
+                changedItems: snapshot.changedItems,
+                unchangedItems: snapshot.unchangedItems
+            )
+            apply(snapshot: cachedSnapshot)
+            await SnapshotCache.shared.save(cachedSnapshot, key: Self.cacheKey(older: older.id, newer: newer.id))
             isLoading = false
+            hasLoadedInitialState = true
         } catch is CancellationError {
             isLoading = false
         } catch {
             self.errorMessage = error.localizedDescription
             isLoading = false
+            hasLoadedInitialState = true
         }
     }
 
@@ -66,5 +102,18 @@ final class ComparisonReportViewModel {
             changedItems: changedItems,
             unchangedItems: unchangedItems
         )
+    }
+
+    private func apply(snapshot: CachedSnapshot) {
+        property = snapshot.property
+        inspectorName = snapshot.inspectorName
+        anomalies = snapshot.anomalies
+        presentItems = snapshot.presentItems
+        changedItems = snapshot.changedItems
+        unchangedItems = snapshot.unchangedItems
+    }
+
+    private static func cacheKey(older: UUID, newer: UUID) -> String {
+        SnapshotCacheKey.comparisonReport(older: older, newer: newer)
     }
 }

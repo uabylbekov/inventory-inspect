@@ -34,7 +34,15 @@ struct ComparisonReportView: View {
                         }
                     }
                 }
-            } else if !viewModel.isLoading && viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty {
+            } else if !viewModel.hasLoadedInitialState || (viewModel.isLoading && viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty) {
+                Section {
+                    ForEach(0..<3, id: \.self) { _ in
+                        ComparisonDiffSkeletonRow()
+                    }
+                } header: {
+                    Text("comparison.changes_found")
+                }
+            } else if viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty {
                 Section {
                     ContentUnavailableView(
                         "comparison.empty_title",
@@ -68,17 +76,6 @@ struct ComparisonReportView: View {
                             viewModel.unchangedItems.count
                         ))
                     }
-                }
-            }
-        }
-        .overlay {
-            if viewModel.isLoading {
-                ZStack {
-                    Color.platformGroupedBackground
-                        .ignoresSafeArea()
-                    ProgressView("comparison.loading")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -116,7 +113,7 @@ struct ComparisonReportView: View {
             PremiumPaywallView()
         }
         .task {
-            await viewModel.fetchComparison()
+            await viewModel.loadInitialData()
         }
     }
     
@@ -262,6 +259,27 @@ struct ComparisonReportView: View {
         private func isResolvableIssue(_ status: String) -> Bool {
             status == "missing" || status == "damaged"
         }
+    }
+}
+
+private struct ComparisonDiffSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 170, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 120, height: 13)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 150, height: 13)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.secondary.opacity(0.08))
+                .frame(width: 220, height: 110)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

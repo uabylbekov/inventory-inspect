@@ -22,7 +22,10 @@ struct PropertyView: View {
                 }
 
                 Section("property.your_properties") {
-                    if viewModel.isLoading && viewModel.properties.isEmpty {
+                    if !viewModel.hasLoadedInitialState {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    } else if viewModel.isLoading && viewModel.properties.isEmpty {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else if viewModel.properties.isEmpty {
@@ -97,7 +100,7 @@ struct PropertyView: View {
                 }
             }
                 .task {
-                    await viewModel.fetchProperties()
+                    await viewModel.loadInitialData()
                 }
                 .alert("property.delete.active_title", isPresented: $showingActiveInspectionWarning) {
                     Button("common.cancel", role: .cancel) { propertyToDelete = nil }

@@ -57,9 +57,14 @@ struct PropertyDetailView: View {
             }
 
             Section("property_detail.rooms") {
-                if viewModel.isLoading && viewModel.rooms.isEmpty {
-                    ProgressView()
-                        .frame(maxWidth: .infinity, alignment: .center)
+                if !viewModel.hasLoadedInitialState {
+                    ForEach(0..<3, id: \.self) { _ in
+                        PropertyRoomSkeletonRow()
+                    }
+                } else if viewModel.isLoading && viewModel.rooms.isEmpty {
+                    ForEach(0..<3, id: \.self) { _ in
+                        PropertyRoomSkeletonRow()
+                    }
                 } else if viewModel.rooms.isEmpty {
                     Text("property_detail.no_rooms")
                     if viewModel.canEditRooms {
@@ -96,7 +101,13 @@ struct PropertyDetailView: View {
                 }
             }
 
-            if !viewModel.recentInspections.isEmpty {
+            if !viewModel.hasLoadedInitialState {
+                Section("property_detail.recent_activity") {
+                    ForEach(0..<2, id: \.self) { _ in
+                        PropertyRecentInspectionSkeletonRow()
+                    }
+                }
+            } else if !viewModel.recentInspections.isEmpty {
                 Section("property_detail.recent_activity") {
                     ForEach(viewModel.recentInspections) { inspection in
                         NavigationLink {
@@ -271,10 +282,10 @@ struct PropertyDetailView: View {
             }
         }
         .task {
-            await viewModel.fetchData()
+            await viewModel.loadInitialData()
         }
         .refreshable {
-            await viewModel.fetchData()
+            await viewModel.fetchData(showLoadingState: false)
         }
     }
     
@@ -302,6 +313,39 @@ struct PropertyDetailView: View {
                 showingPropertyDeleteAlert = true
             }
         }
+    }
+}
+
+private struct PropertyRoomSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 150, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 90, height: 13)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
+    }
+}
+
+private struct PropertyRecentInspectionSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 170, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 110, height: 13)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.1))
+                .frame(width: 80, height: 12)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

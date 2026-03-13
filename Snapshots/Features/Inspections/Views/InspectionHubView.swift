@@ -32,7 +32,12 @@ struct InspectionHubView: View {
                 LabeledContent("Progress", value: "\(checkedItems)/\(totalItems)")
             }
 
-            if viewModel.isLoading && viewModel.rooms.isEmpty {
+            if !viewModel.hasLoadedInitialState {
+                Section {
+                    ProgressView("inspection_hub.loading")
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else if viewModel.isLoading && viewModel.rooms.isEmpty {
                 Section {
                     ProgressView("inspection_hub.loading")
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -151,7 +156,7 @@ struct InspectionHubView: View {
             Text("inspection_hub.delete_message")
         }
         .task {
-            await viewModel.fetchData()
+            await viewModel.loadInitialData()
             await viewModel.setupRealtime()
         }
         .onDisappear {
