@@ -13,6 +13,10 @@ enum SnapshotCacheKey {
         "inspections-\(userId.uuidString.lowercased())"
     }
 
+    static func inspectionCounts(for userId: UUID) -> String {
+        "inspection-counts-\(userId.uuidString.lowercased())"
+    }
+
     static func inspectionProperties(for userId: UUID) -> String {
         "inspection-properties-\(userId.uuidString.lowercased())"
     }

@@ -24,10 +24,10 @@ struct InspectionReportView: View {
             
             Section {
                 if let prop = viewModel.property {
-                    LabeledContent("Property", value: prop.name)
-                    LabeledContent("Address", value: prop.address_line1 ?? String(localized: "property.no_address"))
+                    LabeledContent("start_inspection.property_section", value: prop.name)
+                    LabeledContent("profile.address", value: prop.address_line1 ?? String(localized: "property.no_address"))
                 }
-                LabeledContent("Type", value: AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
+                LabeledContent("feedback.type", value: AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
                 LabeledContent("report.date", value: AppFormatter.formatDate(viewModel.inspection.started_at))
                 if let name = viewModel.inspectorName {
                     LabeledContent("report.inspector", value: name)
@@ -53,18 +53,12 @@ struct InspectionReportView: View {
 
             if !viewModel.anomalies.isEmpty {
                 Section {
-                    ForEach(viewModel.anomalies) { item in
-                        ReportItemRow(item: item, onResolve: {
-                            Task { 
-                                HapticManager.shared.impact(style: .medium)
-                                await viewModel.resolveAnomaly(reportItem: item) 
-                                HapticManager.shared.notification(type: .success)
-                            }
-                        })
+                    ForEach(viewModel.anomalies, id: \.id) { item in
+                        anomalyRows(for: item)
                     }
                 } header: {
                     HStack {
-                        Text("report.anomalies")
+                        reportSectionHeader("report.anomalies", systemImage: "exclamationmark.triangle.fill", color: .orange)
                         Spacer()
                         Text("\(viewModel.anomalies.count)")
                     }
@@ -73,12 +67,11 @@ struct InspectionReportView: View {
                 Section {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("report.resolved_title")
+                            .foregroundStyle(.blue)
                         Text("report.resolved_subtitle")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
-                } header: {
-                    Text("report.anomalies")
                 }
             } else if !viewModel.isLoading {
                 Section {
@@ -88,19 +81,17 @@ struct InspectionReportView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                     }
-                } header: {
-                    Text("report.anomalies")
                 }
             }
             
             if !viewModel.resolvedItems.isEmpty {
                 Section {
-                    ForEach(viewModel.resolvedItems) { item in
-                        ReportItemRow(item: item)
+                    ForEach(viewModel.resolvedItems, id: \.id) { item in
+                        ReportItemRow(item: item, sectionKind: .resolved)
                     }
                 } header: {
                     HStack {
-                        Text("report.resolved_issues")
+                        reportSectionHeader("report.resolved_issues", systemImage: "checkmark.circle.fill", color: .blue)
                         Spacer()
                         Text("\(viewModel.resolvedItems.count)")
                     }
@@ -109,12 +100,12 @@ struct InspectionReportView: View {
             
             if !viewModel.presentItems.isEmpty {
                 Section {
-                    ForEach(viewModel.presentItems) { item in
-                        ReportItemRow(item: item)
+                    ForEach(viewModel.presentItems, id: \.id) { item in
+                        ReportItemRow(item: item, sectionKind: .present)
                     }
                 } header: {
                     HStack {
-                        Text("report.present_intact")
+                        reportSectionHeader("report.present_intact", systemImage: "checkmark.seal.fill", color: .green)
                         Spacer()
                         Text("\(viewModel.presentItems.count)")
                     }
@@ -180,6 +171,36 @@ struct InspectionReportView: View {
             await viewModel.fetchReportData(showLoadingState: false)
         }
     }
+
+    @ViewBuilder
+    private func anomalyRows(for item: ReportItem) -> some View {
+        ReportItemRow(item: item, sectionKind: .anomalies)
+        resolveRow(for: item)
+    }
+
+    private func resolveRow(for item: ReportItem) -> some View {
+        Button {
+            Task {
+                HapticManager.shared.impact(style: .medium)
+                await viewModel.resolveAnomaly(reportItem: item)
+                HapticManager.shared.notification(type: .success)
+            }
+        } label: {
+            Text("report.mark_resolved")
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Color.accentColor)
+    }
+
+    private func reportSectionHeader(_ titleKey: LocalizedStringKey, systemImage: String, color: Color) -> some View {
+        Label {
+            Text(titleKey)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(color)
+        }
+    }
 }
 
 private struct ReportItemSkeletonRow: View {
@@ -206,16 +227,21 @@ private struct ReportItemSkeletonRow: View {
 // MARK: - Report Item Row
 
 struct ReportItemRow: View {
+    enum SectionKind {
+        case anomalies
+        case resolved
+        case present
+    }
+
     let item: ReportItem
-    var onResolve: (() -> Void)? = nil
+    let sectionKind: SectionKind
     @State private var showFullScreenImage = false
-    @State private var showingResolveConfirmation = false
     
     private var status: String { item.inspectionItem.status }
     private var previousStatus: String? { item.inspectionItem.previous_status }
     
     private var statusColor: Color {
-        switch status {
+        switch effectiveStatus {
         case "present":
             return .green
         case "missing":
@@ -230,65 +256,48 @@ struct ReportItemRow: View {
     }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(item.inventoryItem.name)
-                .lineLimit(1)
-            Text(item.room.name)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            Text(primaryStatusText)
-                .font(.caption)
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: rowSymbolName)
+                .imageScale(.medium)
+                .symbolRenderingMode(.hierarchical)
                 .foregroundColor(statusColor)
-            
-            if let notes = item.inspectionItem.notes, !notes.isEmpty {
-                Text(notes)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            if let imgStr = item.inspectionItem.image_url, let url = URL(string: imgStr) {
-                CachedAsyncImage(url: url, width: 600) { image in
-                    Button { showFullScreenImage = true } label: {
-                        ZStack {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.platformSecondarySystemBackground)
+                .frame(width: 22, alignment: .center)
+                .padding(.top, 2)
 
-                            image
-                                .resizable()
-                                .scaledToFit()
-                                .frame(maxWidth: .infinity, maxHeight: 160)
-                                .padding(8)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(item.inventoryItem.name)
+                            .font(.body.weight(.medium))
+                            .lineLimit(1)
+
+                        Text(item.room.name)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    .buttonStyle(.borderless)
-                    .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
-                        FullScreenImageView(image: .remote(url))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if let imageURL {
+                        evidenceThumbnail(url: imageURL)
                     }
-                } placeholder: {
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(Color.platformSecondarySystemBackground)
-                        .frame(height: 160)
-                        .overlay(ProgressView())
                 }
-                .padding(.leading, 32 + 12)
-            }
-            
-            if let onResolve = onResolve, (status == "damaged" || status == "missing") {
-                Button(action: { showingResolveConfirmation = true }) {
-                    Label("report.resolve_issue", systemImage: "checkmark.circle")
-                }
-                .buttonStyle(.plain)
-                .foregroundColor(.accentColor)
-                .alert("report.resolve_title", isPresented: $showingResolveConfirmation) {
-                    Button("common.cancel", role: .cancel) {}
-                    Button("report.mark_resolved") { onResolve() }
-                } message: {
-                    Text("report.resolve_message")
+
+                Text(primaryStatusText)
+                    .font(.caption)
+                    .foregroundStyle(statusColor)
+                    .lineLimit(1)
+
+                if let resolvedByText {
+                    Text(resolvedByText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .contentShape(Rectangle())
     }
 
     private func displayStatus(_ status: String) -> String {
@@ -307,14 +316,77 @@ struct ReportItemRow: View {
     }
 
     private var primaryStatusText: String {
-        if status == "resolved", let previousStatus, isResolvableIssue(previousStatus) {
+        if effectiveStatus == "resolved", let previousStatus, isResolvableIssue(previousStatus) {
             return "Resolved from \(displayStatus(previousStatus))"
         }
-        return displayStatus(status)
+        return displayStatus(effectiveStatus)
+    }
+
+    private var effectiveStatus: String {
+        guard sectionKind == .anomalies else { return status }
+
+        if isResolvableIssue(status) {
+            return status
+        }
+        if let previousStatus, isResolvableIssue(previousStatus) {
+            return previousStatus
+        }
+        return status
     }
 
     private func isResolvableIssue(_ status: String) -> Bool {
         status == "missing" || status == "damaged"
+    }
+
+    private var resolvedByText: String? {
+        guard effectiveStatus == "resolved",
+              let notes = item.inspectionItem.notes,
+              notes.localizedCaseInsensitiveContains("resolved by") else {
+            return nil
+        }
+        return notes.replacingOccurrences(of: "Resolved by ", with: "", options: [.caseInsensitive, .anchored])
+    }
+
+    private var imageURL: URL? {
+        guard let imageURLString = item.inspectionItem.image_url else { return nil }
+        return URL(string: imageURLString)
+    }
+
+    private var rowSymbolName: String {
+        switch effectiveStatus {
+        case "missing":
+            return "questionmark.circle.fill"
+        case "damaged":
+            return "exclamationmark.triangle.fill"
+        case "resolved":
+            return "checkmark.circle.fill"
+        default:
+            return "checkmark.seal.fill"
+        }
+    }
+
+    @ViewBuilder
+    private func evidenceThumbnail(url: URL) -> some View {
+        CachedAsyncImage(url: url, width: 160) { image in
+            Button {
+                showFullScreenImage = true
+            } label: {
+                image
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 56, height: 56)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
+                FullScreenImageView(image: .remote(url))
+            }
+        } placeholder: {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.platformSecondarySystemBackground)
+                .frame(width: 56, height: 56)
+                .overlay(ProgressView())
+        }
     }
 }
 

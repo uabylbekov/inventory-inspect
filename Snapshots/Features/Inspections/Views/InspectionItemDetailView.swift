@@ -34,8 +34,12 @@ struct InspectionItemDetailView: View {
         @Bindable var viewModel = viewModel
         List {
             Section {
-                LabeledContent("Item", value: item.name)
-                LabeledContent("Room", value: room.name)
+                Label(item.name, systemImage: "shippingbox")
+                LabeledContent {
+                    Text(room.name)
+                } label: {
+                    Label("property_detail.room", systemImage: roomSymbolName)
+                }
             }
 
             Section {
@@ -61,13 +65,13 @@ struct InspectionItemDetailView: View {
                     statusKey: "damaged"
                 )
             } header: {
-                Text("inspection_item.condition")
+                Label("inspection_item.condition", systemImage: "checklist")
             }
 
             Section {
                 evidenceRow
             } header: {
-                Text("inspection_item.evidence")
+                Label("inspection_item.evidence", systemImage: "photo.on.rectangle")
             } footer: {
                 if !accessManager.hasDirectPaidAccess,
                    let property,
@@ -90,7 +94,7 @@ struct InspectionItemDetailView: View {
                 TextField("inspection_item.notes_placeholder", text: $viewModel.notes, axis: .vertical)
                     .lineLimit(3...6)
             } header: {
-                Text("inspection_item.notes")
+                Label("inspection_item.notes", systemImage: "note.text")
             } footer: {
                 if let err = viewModel.saveError {
                     Text(err)
@@ -100,10 +104,12 @@ struct InspectionItemDetailView: View {
 
             if viewModel.imageURL != nil || viewModel.pendingImageData != nil {
                 Section {
-                    Button("inspection_item.remove_photo", role: .destructive) {
+                    Button(role: .destructive) {
                         withAnimation {
                             viewModel.removePhoto()
                         }
+                    } label: {
+                        Label("inspection_item.remove_photo", systemImage: "trash")
                     }
                 }
             }
@@ -188,12 +194,19 @@ struct InspectionItemDetailView: View {
             }
         }) {
             HStack {
-                Image(systemName: viewModel.status == statusKey ? selectedIcon : icon)
-                    .foregroundColor(viewModel.status == statusKey ? tint : .secondary)
-                Text(title)
+                Label(title, systemImage: viewModel.status == statusKey ? selectedIcon : icon)
+                    .font(.body)
+                    .foregroundStyle(viewModel.status == statusKey ? tint : .primary)
                 Spacer()
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(tint)
+                    .opacity(viewModel.status == statusKey ? 1 : 0)
             }
+            .padding(.vertical, 8)
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .foregroundColor(.primary)
     }
     
@@ -224,13 +237,24 @@ struct InspectionItemDetailView: View {
                     .frame(height: 200)
                     .overlay(ProgressView())
             }
+        } else {
+            ContentUnavailableView(
+                "inspection_item.evidence",
+                systemImage: "camera",
+                description: Text("inspection_item.add_photo")
+            )
         }
 
         Button(action: { showingImageSource = true }) {
             HStack {
-                Text(viewModel.imageURL == nil && viewModel.pendingImageData == nil
-                     ? String(localized: "inspection_item.add_photo")
-                     : String(localized: "inspection_item.change_photo"))
+                Label(
+                    viewModel.imageURL == nil && viewModel.pendingImageData == nil
+                    ? "inspection_item.add_photo"
+                    : "inspection_item.change_photo",
+                    systemImage: viewModel.imageURL == nil && viewModel.pendingImageData == nil
+                    ? "camera"
+                    : "arrow.triangle.2.circlepath"
+                )
                 Spacer()
                 if viewModel.isUploading {
                     ProgressView()
@@ -240,10 +264,10 @@ struct InspectionItemDetailView: View {
         .disabled(viewModel.isUploading)
         .confirmationDialog("inspection_item.attach_photo", isPresented: $showingImageSource) {
             if supportsCameraCapture {
-                Button("inspection_item.camera") { showingCamera = true }
+                Button("inspection_item.camera", systemImage: "camera") { showingCamera = true }
             }
-            Button("inspection_item.photo_library") { showingLibrary = true }
-            Button("Files") { showingFileImporter = true }
+            Button("inspection_item.photo_library", systemImage: "photo.on.rectangle") { showingLibrary = true }
+            Button("common.choose", systemImage: "folder") { showingFileImporter = true }
             Button("common.cancel", role: .cancel) { }
         }
         .sheet(isPresented: $showingCamera) {
@@ -285,6 +309,9 @@ struct InspectionItemDetailView: View {
         }
 
         viewModel.prepareAnnotation(image)
+    }
+    private var roomSymbolName: String {
+        PropertyUI.roomIcon(for: room.room_type)
     }
 }
 

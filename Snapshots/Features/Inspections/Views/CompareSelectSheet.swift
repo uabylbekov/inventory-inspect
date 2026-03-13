@@ -42,12 +42,7 @@ struct CompareSelectSheet: View {
                         NavigationLink {
                             ComparisonReportView(base: inspection, current: currentInspection)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(AppFormatter.formatInspectionType(inspection.inspection_type).capitalized)
-                                Text(AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+                            CompareSelectionRow(inspection: inspection)
                         }
                     }
                 }
@@ -82,6 +77,30 @@ struct CompareSelectSheet: View {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+private struct CompareSelectionRow: View {
+    let inspection: InspectionModel
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
+                .imageScale(.medium)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
+                .frame(width: 22, alignment: .center)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                    .font(.body.weight(.medium))
+
+                Text(AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 }
 

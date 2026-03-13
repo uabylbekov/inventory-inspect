@@ -75,7 +75,7 @@
 "inspections.empty.title" = "No Inspections";
 "inspections.empty.filtered" = "No inspections found for this date.";
 "inspections.empty.all" = "Start your first inspection to begin tracking.";
-"inspections.group.active" = "Active Inspections";
+"inspections.group.active" = "Ongoing Inspections";
 "inspections.group.completed" = "Completed";
 "inspections.group.cancelled" = "Cancelled";
 "inspections.reopen" = "Reopen";

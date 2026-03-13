@@ -57,6 +57,15 @@ final class InspectionsViewModel {
             ) {
                 properties = cachedProperties
             }
+
+            if let cachedCounts = await SnapshotCache.shared.load(
+                InspectionOutcomeCounts.self,
+                key: Self.inspectionCountsCacheKey(for: userId),
+                maxAge: CacheConfig.maxAge
+            ) {
+                anomalyCounts = cachedCounts.anomalyCounts
+                resolvedCounts = cachedCounts.resolvedCounts
+            }
         } catch {
             // If the session is unavailable, the network refresh below will surface the error.
         }
@@ -106,6 +115,13 @@ final class InspectionsViewModel {
             self.anomalyCounts = anomalyCountsDict
             self.resolvedCounts = resolvedCountsDict
             await SnapshotCache.shared.save(fetched, key: Self.inspectionsCacheKey(for: userId))
+            await SnapshotCache.shared.save(
+                InspectionOutcomeCounts(
+                    anomalyCounts: anomalyCountsDict,
+                    resolvedCounts: resolvedCountsDict
+                ),
+                key: Self.inspectionCountsCacheKey(for: userId)
+            )
             Task(priority: .utility) {
                 await PrefetchService.prefetchInspectionDestinations(fetched)
             }
@@ -154,6 +170,7 @@ final class InspectionsViewModel {
             if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
                 inspections[idx].status = "cancelled"
             }
+            await persistInspectionCaches()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -166,6 +183,7 @@ final class InspectionsViewModel {
             if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
                 inspections[idx].status = "in_progress"
             }
+            await persistInspectionCaches()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -176,9 +194,9 @@ final class InspectionsViewModel {
         do {
             try await InspectionWorkflowService.deleteInspection(id: inspection.id)
             inspections.removeAll { $0.id == inspection.id }
-            if let userId = try? await supabase.auth.session.user.id {
-                await SnapshotCache.shared.save(inspections, key: Self.inspectionsCacheKey(for: userId))
-            }
+            anomalyCounts.removeValue(forKey: inspection.id)
+            resolvedCounts.removeValue(forKey: inspection.id)
+            await persistInspectionCaches()
             await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionHub(for: inspection.id))
             await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionReport(for: inspection.id))
         } catch is CancellationError {
@@ -194,4 +212,26 @@ final class InspectionsViewModel {
     private static func propertiesCacheKey(for userId: UUID) -> String {
         SnapshotCacheKey.inspectionProperties(for: userId)
     }
+
+    private static func inspectionCountsCacheKey(for userId: UUID) -> String {
+        SnapshotCacheKey.inspectionCounts(for: userId)
+    }
+
+    private func persistInspectionCaches() async {
+        guard let userId = try? await supabase.auth.session.user.id else { return }
+
+        await SnapshotCache.shared.save(inspections, key: Self.inspectionsCacheKey(for: userId))
+        await SnapshotCache.shared.save(
+            InspectionOutcomeCounts(
+                anomalyCounts: anomalyCounts,
+                resolvedCounts: resolvedCounts
+            ),
+            key: Self.inspectionCountsCacheKey(for: userId)
+        )
+    }
+}
+
+private struct InspectionOutcomeCounts: Codable {
+    let anomalyCounts: [UUID: Int]
+    let resolvedCounts: [UUID: Int]
 }

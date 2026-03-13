@@ -29,14 +29,15 @@ struct StartInspectionSheet: View {
                         )
                     }
                 } else {
-                    Section("Select property") {
+                    Section("start_inspection.select_property") {
                         ForEach(viewModel.properties) { property in
                             Button {
                                 viewModel.selectedPropertyId = property.id
                             } label: {
-                                HStack {
-                                    Image(systemName: viewModel.selectedPropertyId == property.id ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(viewModel.selectedPropertyId == property.id ? .accentColor : .secondary)
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: PropertyUI.icon(for: property.property_type))
+                                        .foregroundStyle(.secondary)
+                                        .frame(width: 20, alignment: .center)
 
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text(property.name)
@@ -46,34 +47,41 @@ struct StartInspectionSheet: View {
                                             .lineLimit(1)
                                     }
                                     Spacer()
+
+                                    Image(systemName: "checkmark")
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.tint)
+                                        .opacity(viewModel.selectedPropertyId == property.id ? 1 : 0)
                                 }
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
                             .foregroundColor(.primary)
                         }
                     }
 
-                    Section("Inspection type") {
+                    Section("start_inspection.type_section") {
                         inspectionTypeOption(
-                            title: "Routine",
-                            tip: "General walkthrough to check condition, maintenance needs, and overall state of the property.",
+                            title: String(localized: "start_inspection.type.routine.title"),
+                            tip: String(localized: "start_inspection.type.routine.tip"),
                             value: "routine"
                         )
                         inspectionTypeOption(
-                            title: "Move-in",
-                            tip: "Document the property condition before a new resident or guest arrives. Creates a baseline record.",
+                            title: String(localized: "start_inspection.type.check_in.title"),
+                            tip: String(localized: "start_inspection.type.check_in.tip"),
                             value: "move-in"
                         )
                         inspectionTypeOption(
-                            title: "Move-out",
-                            tip: "Document the condition at departure and compare against the earlier baseline to catch changes.",
+                            title: String(localized: "start_inspection.type.check_out.title"),
+                            tip: String(localized: "start_inspection.type.check_out.tip"),
                             value: "move-out"
                         )
                     }
 
                     if let activeId = viewModel.activeInspectionId {
-                        Section("Active inspection") {
+                        Section("start_inspection.active.section") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("Another inspection is already in progress for this property.")
+                                Text("start_inspection.active.description")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
 
@@ -82,7 +90,7 @@ struct StartInspectionSheet: View {
                                     dismiss()
                                     NotificationCenter.default.post(name: AppFormatter.joinInspectionNotification, object: activeId)
                                 }) {
-                                    Text("Join")
+                                    Text("start_inspection.active.join")
                                         .frame(maxWidth: .infinity)
                                 }
                                 .padding(.top, 4)
@@ -101,7 +109,7 @@ struct StartInspectionSheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("New Inspection")
+                    Text("start_inspection.title")
                         .font(.body)
                 }
                 ToolbarItem(placement: .cancellationAction) {
@@ -114,7 +122,7 @@ struct StartInspectionSheet: View {
                             if viewModel.isSaving {
                                 ProgressView()
                             } else {
-                                Text("Start")
+                                Text("start_inspection.start")
                                     .font(.body)
                             }
                         }
@@ -170,8 +178,9 @@ struct StartInspectionSheet: View {
             viewModel.inspectionType = value
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: viewModel.inspectionType == value ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(viewModel.inspectionType == value ? .accentColor : .secondary)
+                Image(systemName: inspectionTypeIcon(for: value))
+                    .foregroundStyle(inspectionTypeColor(for: value))
+                    .frame(width: 20, alignment: .center)
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
@@ -182,8 +191,23 @@ struct StartInspectionSheet: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer()
+
+                Image(systemName: "checkmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.tint)
+                    .opacity(viewModel.inspectionType == value ? 1 : 0)
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .foregroundColor(.primary)
+    }
+
+    private func inspectionTypeIcon(for value: String) -> String {
+        AppFormatter.inspectionTypeIcon(for: value)
+    }
+
+    private func inspectionTypeColor(for value: String) -> Color {
+        AppFormatter.inspectionTypeColor(for: value)
     }
 }
