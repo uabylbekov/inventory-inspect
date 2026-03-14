@@ -64,7 +64,6 @@ Required keys:
 Environment values are currently sourced through:
 
 - [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
-- [`Snapshots/Staging.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Staging.xcconfig)
 - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
 
 ### Supabase branches in plain English
@@ -75,7 +74,6 @@ If you are new to the project, this is the simplest way to think about the datab
 - `test` branch: preview/test branch for project ref `nmtifjchsgdnfknkpowu`
 - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig) points at `main`
 - [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig) points at `test`
-- [`Snapshots/Staging.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Staging.xcconfig) currently points at the same backend as `test`
 
 Why this matters:
 
@@ -95,6 +93,7 @@ Important repo rule:
 - shared Supabase migrations should be created from Git `main`
 - Git `test` is for app testing, not for inventing a separate database history
 - if Git `test` contains migration files that Git `main` does not have, Supabase `test` will likely drift and fail again
+- once a migration filename has been applied on a shared remote branch, do not rename its timestamp; add a new follow-up migration instead
 
 ### Backend expectations
 
@@ -168,25 +167,16 @@ Recommended publish flow:
 3. Keep file names unchanged so GitHub uses them as page titles.
 4. Commit and push from the wiki repo.
 
-## GitHub Pages Legal Links
+## Notion Legal Links
 
-This repo now includes a minimal static legal site under [`docs/`](/Users/uabylbekov/Projects/snapshots/docs) for GitHub Pages:
+The app legal links now point to Notion pages:
 
-- [`docs/index.html`](/Users/uabylbekov/Projects/snapshots/docs/index.html)
-- [`docs/terms.html`](/Users/uabylbekov/Projects/snapshots/docs/terms.html)
-- [`docs/privacy.html`](/Users/uabylbekov/Projects/snapshots/docs/privacy.html)
+- Terms of Service: [Snapshots Terms of Service](https://www.notion.so/323de2034815815182d8feff87988288)
+- Privacy Policy: [Snapshots Privacy Policy](https://www.notion.so/323de203481581b7a3d7c8a3be870743)
 
-Recommended setup:
+Configured app targets:
 
-1. Push these files to GitHub.
-2. In the GitHub repository settings, enable GitHub Pages and select:
-   Source: `Deploy from a branch`
-   Branch: `main`
-   Folder: `/docs`
-3. Your public URLs will be:
-   `https://<github-username>.github.io/snapshots/terms.html`
-   `https://<github-username>.github.io/snapshots/privacy.html`
-4. Replace the placeholder URLs in:
-   - [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
-   - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
-5. Use the same privacy URL in App Store Connect.
+- [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
+- [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
+
+Before shipping or submitting to the App Store, make sure those Notion pages are published publicly in Notion so the links can open for users who are not signed in to your workspace.

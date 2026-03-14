@@ -52,6 +52,21 @@ Those are real files in Git `test`. They are a warning sign because they create 
 4. If the same feature exists under different migration versions, that is drift.
 5. The safest recovery is usually to reset or rebuild Supabase `test` from `main`.
 
+## Non-negotiable timestamp rule
+
+- After a migration version has been applied on any shared remote branch, do not rename that file just to change its timestamp.
+- If ordering is wrong, create a new later migration that fixes the problem instead of rewriting shared history.
+- A rename like `20260314022216_feature.sql` to `20260313180500_feature.sql` makes the file look local-only to Supabase even when the old version was already applied remotely.
+- That exact pattern is how preview branches end up with `Remote migration versions not found in local migrations directory`.
+
+## How to keep `test` and `main` compatible
+
+1. Create shared migrations on Git `main`.
+2. Merge or rebase Git `test` on top of Git `main` before trusting QA results.
+3. Treat migration filenames as immutable once a remote branch has seen them.
+4. When Supabase `test` drifts, reset or rebuild the branch instead of inventing replacement timestamps.
+5. Verify that Supabase `main` and Supabase `test` report the same migration versions before app QA signoff.
+
 ## What to do before opening a QA bug
 
 Check these first:

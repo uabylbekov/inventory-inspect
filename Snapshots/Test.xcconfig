@@ -7,5 +7,5 @@
 APS_ENVIRONMENT = development
 SUPABASE_URL = https:/$()/nmtifjchsgdnfknkpowu.supabase.co
 SUPABASE_KEY = sb_publishable_GhjJi1BqBSUatjNAJbPR_g_dzQaIYDp
-TERMS_URL = https:/$()/uabylbekov.github.io/snapshots/terms.html
-PRIVACY_URL = https:/$()/uabylbekov.github.io/snapshots/privacy.html
+TERMS_URL = https:/$()/www.notion.so/323de2034815815182d8feff87988288
+PRIVACY_URL = https:/$()/www.notion.so/323de203481581b7a3d7c8a3be870743
