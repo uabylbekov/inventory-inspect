@@ -78,17 +78,24 @@ struct InspectionsApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(SnapshotsAccessManager.shared)
-                .onOpenURL { url in
-                    Task {
-                        do {
-                            try await supabase.auth.session(from: url)
-                        } catch {
-                            print("Failed to handle deep link: \(error.localizedDescription)")
+            Group {
+                if let uiTestScenarioView = UITestScenarioView() {
+                    uiTestScenarioView
+                } else {
+                    RootView()
+                        .environment(SnapshotsAccessManager.shared)
+                        .onOpenURL { url in
+                            Task {
+                                do {
+                                    try await supabase.auth.session(from: url)
+                                } catch {
+                                    print("Failed to handle deep link: \(error.localizedDescription)")
+                                }
+                            }
                         }
-                    }
                 }
+            }
+            .environment(SnapshotsAccessManager.shared)
         }
     }
 }

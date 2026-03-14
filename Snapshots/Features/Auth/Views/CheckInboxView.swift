@@ -25,6 +25,7 @@ struct CheckInboxView: View {
                 .font(.body)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 40)
+                .accessibilityIdentifier("check_inbox.message")
 
             VStack(alignment: .leading, spacing: 10) {
                 if let retrySuccessMessage {
@@ -54,6 +55,7 @@ struct CheckInboxView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.tint)
                     .disabled(isRetrying)
+                    .accessibilityIdentifier("check_inbox.retry")
 
                     Button("Try another email") {
                         dismiss()
@@ -61,6 +63,7 @@ struct CheckInboxView: View {
                     .buttonStyle(.plain)
                     .foregroundStyle(.tint)
                     .disabled(isRetrying)
+                    .accessibilityIdentifier("check_inbox.try_another")
                 }
                 .font(.footnote)
             }

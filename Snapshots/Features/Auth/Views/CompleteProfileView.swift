@@ -13,6 +13,7 @@ struct CompleteProfileView: View {
                 Section {
                     TextField("profile.full_name", text: $name)
                         .platformNameTextInput()
+                        .accessibilityIdentifier("complete_profile.name")
                 } header: {
                     Text("profile.complete.welcome")
                 } footer: {
@@ -24,6 +25,7 @@ struct CompleteProfileView: View {
                         Text(errorMessage)
                             .foregroundColor(.red)
                             .font(.footnote)
+                            .accessibilityIdentifier("complete_profile.error")
                     }
                 }
                 
@@ -40,6 +42,7 @@ struct CompleteProfileView: View {
                     }
                 }
                 .disabled(isSaving || name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .accessibilityIdentifier("complete_profile.save")
                 .listRowBackground(Color.accentColor)
                 .foregroundColor(.white)
             }

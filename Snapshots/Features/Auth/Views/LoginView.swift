@@ -95,6 +95,7 @@ struct LoginView: View {
             .autocorrectionDisabled()
             .focused($isEmailFocused)
             .disabled(isLoading)
+            .accessibilityIdentifier("login.email")
             .onChange(of: email) { _, newValue in
                 if showValidationError {
                     showValidationError = !isValidEmail(newValue)
@@ -109,6 +110,7 @@ struct LoginView: View {
         Label("auth.login.invalid_email", systemImage: "exclamationmark.circle.fill")
             .font(.caption)
             .foregroundColor(.red)
+            .accessibilityIdentifier("login.invalid_email")
     }
 
     @ViewBuilder
@@ -118,6 +120,7 @@ struct LoginView: View {
                 .font(.footnote)
                 .foregroundColor(.red)
                 .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("login.error")
         }
     }
 
@@ -134,6 +137,7 @@ struct LoginView: View {
             .frame(maxWidth: useProminentStyle ? nil : .infinity)
         }
         .disabled(!canAttemptSignIn || isLoading)
+        .accessibilityIdentifier("login.continue")
         .applyContinueButtonStyle(useProminentStyle: useProminentStyle)
         .keyboardShortcut(.defaultAction)
         .applyCompactButtonRowStyle(isEnabled: canAttemptSignIn && !isLoading, useProminentStyle: useProminentStyle)

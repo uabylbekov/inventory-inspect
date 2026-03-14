@@ -18,6 +18,7 @@ struct SettingsView: View {
                         SettingsProfileRow(displayName: displayName)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.edit_profile")
                 }
                 
                 Section {
@@ -36,6 +37,7 @@ struct SettingsView: View {
                     } label: {
                         Label("settings.feedback", systemImage: "bubble.left.and.bubble.right")
                     }
+                    .accessibilityIdentifier("settings.feedback")
                 } header: {
                     Text("settings.support")
                 }
@@ -80,6 +82,7 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(isSigningOut)
+                    .accessibilityIdentifier("settings.sign_out")
                 } header: {
                     Text("settings.account")
                 }

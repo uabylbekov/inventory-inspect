@@ -20,6 +20,7 @@ struct FeedbackSheet: View {
                         }
                     }
                     .pickerStyle(.menu)
+                    .accessibilityIdentifier("feedback.category")
                 } footer: {
                     Text("feedback.type_footer")
                 }
@@ -28,6 +29,7 @@ struct FeedbackSheet: View {
                     ZStack(alignment: .topLeading) {
                         TextEditor(text: $viewModel.message)
                             .frame(minHeight: 180)
+                            .accessibilityIdentifier("feedback.message")
 
                         if viewModel.trimmedMessage.isEmpty {
                             Text("feedback.message_placeholder")
@@ -74,6 +76,7 @@ struct FeedbackSheet: View {
                         }
                     }
                     .disabled(viewModel.isSubmitDisabled)
+                    .accessibilityIdentifier("feedback.submit")
                 }
             }
             .interactiveDismissDisabled(viewModel.isSubmitting)
