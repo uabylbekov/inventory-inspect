@@ -1,0 +1,58 @@
+name: iOS starter workflow
+
+on:
+  push:
+    branches:
+      - main
+      - test
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and Test default scheme using any available iPhone simulator
+    runs-on: macos-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Default Scheme
+        run: |
+          scheme_list=$(xcodebuild -list -json -project Snapshots.xcodeproj | tr -d "\n")
+          default=$(echo "$scheme_list" | ruby -e "require 'json'; puts JSON.parse(STDIN.read)['project']['targets'][0]")
+          echo "$default" > default
+          echo "Using default scheme: $default"
+
+      - name: Resolve Swift packages
+        env:
+          scheme: ${{ 'default' }}
+        run: |
+          if [ "$scheme" = default ]; then scheme=$(cat default); fi
+          xcodebuild \
+            -resolvePackageDependencies \
+            -scheme "$scheme" \
+            -project Snapshots.xcodeproj
+
+      - name: Build
+        run: |
+          device=$(xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//")
+          scheme=$(cat default)
+          xcodebuild build-for-testing \
+            -scheme "$scheme" \
+            -project Snapshots.xcodeproj \
+            -destination "platform=iOS Simulator,name=$device" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Test
+        run: |
+          device=$(xcrun xctrace list devices 2>&1 | grep -oE 'iPhone.*?[^\(]+' | head -1 | awk '{$1=$1;print}' | sed -e "s/ Simulator$//")
+          scheme=$(cat default)
+          xcodebuild test-without-building \
+            -scheme "$scheme" \
+            -project Snapshots.xcodeproj \
+            -destination "platform=iOS Simulator,name=$device" \
+            CODE_SIGNING_ALLOWED=NO
