@@ -13,5 +13,7 @@ create table if not exists public.app_store_server_notifications (
   created_at timestamptz not null default now()
 );
 
+alter table public.app_store_server_notifications enable row level security;
+
 create index if not exists app_store_server_notifications_original_tx_idx
 on public.app_store_server_notifications (app_store_original_transaction_id);

@@ -9,6 +9,8 @@ final class InspectionsViewModel {
         static let maxAge: TimeInterval = 5 * 60
     }
 
+    private let calendar = Calendar.autoupdatingCurrent
+
     var inspections: [InspectionModel] = []
     var properties: [PropertyModel] = []
     var anomalyCounts: [UUID: Int] = [:]  // inspection_id -> count of missing/damaged
@@ -20,21 +22,45 @@ final class InspectionsViewModel {
     
     var showingStartInspection = false
     
-    var isFilteringByDate = false
-    var selectedDate = Date() {
-        didSet {
-            isFilteringByDate = !Calendar.current.isDateInToday(selectedDate)
-        }
-    }
+    var selectedDate = Date()
     
     var filteredInspections: [InspectionModel] {
-        if !isFilteringByDate {
+        let startOfSelectedDay = calendar.startOfDay(for: selectedDate)
+        guard let endOfSelectedDay = endOfDayRangeStart(for: startOfSelectedDay) else {
             return inspections
         }
+
         return inspections.filter { inspection in
-            guard let date = AppFormatter.parseDate(inspection.started_at) else { return false }
-            return Calendar.current.isDate(date, inSameDayAs: selectedDate)
+            guard let date = inspectionDate(for: inspection) else { return false }
+            return date >= startOfSelectedDay && date < endOfSelectedDay
         }
+    }
+
+    func applyDateFilter(_ date: Date) {
+        selectedDate = date
+    }
+
+    func resetDateFilterToToday() {
+        selectedDate = Date()
+    }
+
+    var isShowingToday: Bool {
+        calendar.isDateInToday(selectedDate)
+    }
+
+    private func endOfDayRangeStart(for startOfDay: Date) -> Date? {
+        calendar.date(byAdding: .day, value: 1, to: startOfDay)
+    }
+
+    private func inspectionDate(for inspection: InspectionModel) -> Date? {
+        let dateString: String
+        if inspection.status == "in_progress" {
+            dateString = inspection.started_at
+        } else {
+            dateString = inspection.completed_at ?? inspection.started_at
+        }
+
+        return AppFormatter.parseDate(dateString)
     }
 
     func loadInitialData() async {
@@ -171,6 +197,7 @@ final class InspectionsViewModel {
                 inspections[idx].status = "cancelled"
             }
             await persistInspectionCaches()
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -184,6 +211,7 @@ final class InspectionsViewModel {
                 inspections[idx].status = "in_progress"
             }
             await persistInspectionCaches()
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -199,6 +227,7 @@ final class InspectionsViewModel {
             await persistInspectionCaches()
             await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionHub(for: inspection.id))
             await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionReport(for: inspection.id))
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription

@@ -89,7 +89,7 @@ final class SnapshotsAccessManager {
     }
 
     var hasDirectPaidAccess: Bool {
-        profile?.hasProFeatures ?? false
+        (profile?.hasProFeatures ?? false) || hasStoreKitProSubscription
     }
 
     var hasBusinessAccess: Bool {
@@ -102,7 +102,7 @@ final class SnapshotsAccessManager {
             propertyLimitOverride: profile?.property_limit_override,
             teamLimitOverride: profile?.team_limit_override,
             photoLimitOverride: profile?.photo_limit_override,
-            hasStoreKitPro: false
+            hasStoreKitPro: hasStoreKitProSubscription
         )
     }
     

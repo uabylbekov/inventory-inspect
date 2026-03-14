@@ -7,6 +7,12 @@ struct GeneratedPDF {
 }
 
 enum InspectionExportService {
+    private struct BrandingDetails {
+        let logoImage: PlatformImage?
+        let isWhiteLabel: Bool
+        let businessDetailsLines: [String]
+    }
+
     static func makeInspectionReportPDF(
         inspection: InspectionModel,
         property: PropertyModel?,
@@ -26,7 +32,8 @@ enum InspectionExportService {
             resolvedItems: resolvedItems,
             presentItems: presentItems,
             logoImage: branding.logoImage,
-            isWhiteLabel: branding.isWhiteLabel
+            isWhiteLabel: branding.isWhiteLabel,
+            businessDetailsLines: branding.businessDetailsLines
         )
         .environment(\.colorScheme, .light)
 
@@ -77,7 +84,8 @@ enum InspectionExportService {
             changedItems: changedItems,
             unchangedItems: unchangedItems,
             logoImage: branding.logoImage,
-            isWhiteLabel: branding.isWhiteLabel
+            isWhiteLabel: branding.isWhiteLabel,
+            businessDetailsLines: branding.businessDetailsLines
         )
 
         let filename = ExportFileNameBuilder.pdfFileName(
@@ -92,18 +100,46 @@ enum InspectionExportService {
         return GeneratedPDF(data: data, filename: filename)
     }
 
-    private static func loadBranding(for property: PropertyModel?) async -> (logoImage: PlatformImage?, isWhiteLabel: Bool) {
+    private static func loadBranding(for property: PropertyModel?) async -> BrandingDetails {
         let accessManager = SnapshotsAccessManager.shared
         let hasPro = accessManager.isPro(for: property)
         let isWhiteLabel = accessManager.isBusiness(for: property)
+        let businessDetailsLines = isWhiteLabel ? parseBusinessDetails(from: property?.owner?.business_details) : []
 
         guard hasPro,
               let logoUrlString = property?.owner?.company_logo_url,
               let logoURL = URL(string: logoUrlString),
               let (data, _) = try? await URLSession.shared.data(from: logoURL) else {
-            return (nil, isWhiteLabel)
+            return BrandingDetails(
+                logoImage: nil,
+                isWhiteLabel: isWhiteLabel,
+                businessDetailsLines: businessDetailsLines
+            )
         }
 
-        return (makePlatformImage(from: data), isWhiteLabel)
+        return BrandingDetails(
+            logoImage: makePlatformImage(from: data),
+            isWhiteLabel: isWhiteLabel,
+            businessDetailsLines: businessDetailsLines
+        )
+    }
+
+    private static func parseBusinessDetails(from rawValue: String?) -> [String] {
+        guard let rawValue,
+              let data = rawValue.data(using: .utf8),
+              let details = try? JSONSerialization.jsonObject(with: data) as? [String: String] else {
+            return []
+        }
+
+        return [
+            details["business_name"],
+            details["business_address"],
+            details["business_phone"],
+            details["business_website"]
+        ]
+        .compactMap { value in
+            guard let value, !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return value
+        }
     }
 }

@@ -28,7 +28,12 @@ struct InspectionHubView: View {
         @Bindable var viewModel = viewModel
         List {
             Section {
-                Label(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type), systemImage: "doc.text.magnifyingglass")
+                Label {
+                    Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
+                } icon: {
+                    Image(systemName: AppFormatter.inspectionTypeIcon(for: viewModel.inspection.inspection_type))
+                        .foregroundStyle(AppFormatter.inspectionTypeColor(for: viewModel.inspection.inspection_type))
+                }
                 Label(
                     String.localizedStringWithFormat(
                         NSLocalizedString("inspection_hub.progress", comment: ""),

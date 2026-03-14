@@ -10,7 +10,7 @@ struct InspectionsView: View {
     @State private var showingCalendar = false
 
     private var activeInspections: [InspectionModel] {
-        viewModel.filteredInspections.filter { $0.status == "in_progress" }
+        viewModel.inspections.filter { $0.status == "in_progress" }
     }
 
     private var completedInspections: [InspectionModel] {
@@ -103,12 +103,12 @@ struct InspectionsView: View {
             inspectionSkeletonSection
         } else if viewModel.isLoading && viewModel.inspections.isEmpty {
             inspectionSkeletonSection
-        } else if viewModel.filteredInspections.isEmpty {
+        } else if activeInspections.isEmpty && completedInspections.isEmpty && cancelledInspections.isEmpty {
             Section {
                 ContentUnavailableView(
                     "inspections.empty.title",
                     systemImage: "checklist",
-                    description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
+                    description: Text("inspections.empty.filtered")
                 )
             }
         } else {
@@ -140,10 +140,9 @@ struct InspectionsView: View {
         VStack(alignment: .leading, spacing: 8) {
             filterDateControl
 
-            if viewModel.isFilteringByDate {
+            if !viewModel.isShowingToday {
                 Button("inspections.filter.clear") {
-                    viewModel.isFilteringByDate = false
-                    viewModel.selectedDate = Date()
+                    viewModel.resetDateFilterToToday()
                 }
             }
         }
@@ -170,7 +169,10 @@ struct InspectionsView: View {
 
                 DatePicker(
                     "",
-                    selection: $viewModel.selectedDate,
+                    selection: Binding(
+                        get: { viewModel.selectedDate },
+                        set: { viewModel.applyDateFilter($0) }
+                    ),
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
@@ -178,8 +180,7 @@ struct InspectionsView: View {
 
                 HStack {
                     Button("Today") {
-                        viewModel.selectedDate = Date()
-                        viewModel.isFilteringByDate = false
+                        viewModel.applyDateFilter(Date())
                     }
 
                     Spacer()
@@ -194,7 +195,13 @@ struct InspectionsView: View {
             .frame(width: 320)
         }
 #else
-        DatePicker(selection: $viewModel.selectedDate, displayedComponents: .date) {
+        DatePicker(
+            selection: Binding(
+                get: { viewModel.selectedDate },
+                set: { viewModel.applyDateFilter($0) }
+            ),
+            displayedComponents: .date
+        ) {
             Label("inspections.filter.show_records_for", systemImage: "calendar")
         }
 #endif
@@ -369,9 +376,7 @@ struct InspectionRow: View {
 
                     if isActive {
                         Spacer()
-                        Circle()
-                            .fill(Color.accentColor)
-                            .frame(width: 8, height: 8)
+                        LiveIndicator()
                     }
                 }
 
@@ -422,6 +427,9 @@ struct InspectionRow: View {
     }
 
     private var rowSymbolName: String {
+        if isActive {
+            return inspectionTypeSymbolName
+        }
         if inspection.status == "completed" {
             if anomalyCount > 0 {
                 return "exclamationmark.triangle.fill"
@@ -438,6 +446,9 @@ struct InspectionRow: View {
     }
 
     private var rowSymbolColor: Color {
+        if isActive {
+            return AppFormatter.inspectionTypeColor(for: inspection.inspection_type)
+        }
         if inspection.status == "completed" {
             if anomalyCount > 0 {
                 return .orange
@@ -455,5 +466,29 @@ struct InspectionRow: View {
 
     private var inspectionTypeSymbolName: String {
         AppFormatter.inspectionTypeIcon(for: inspection.inspection_type)
+    }
+}
+
+private struct LiveIndicator: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.red.opacity(0.22))
+                .frame(width: 16, height: 16)
+                .scaleEffect(isAnimating ? 1.35 : 0.75)
+                .opacity(isAnimating ? 0 : 1)
+
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+        }
+        .onAppear {
+            guard !isAnimating else { return }
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                isAnimating = true
+            }
+        }
     }
 }

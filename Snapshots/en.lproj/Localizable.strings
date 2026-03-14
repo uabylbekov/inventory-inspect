@@ -67,7 +67,7 @@
 "settings.sign_out" = "Sign Out";
 "settings.sign_out_message" = "Are you sure you want to sign out?";
 "inspections.filter.show_records_for" = "Show records for";
-"inspections.filter.clear" = "Clear Filters (Show All)";
+"inspections.filter.clear" = "Reset to Today";
 "inspections.title" = "Inspections";
 "inspections.add" = "Add Inspection";
 "inspections.delete_title" = "Delete Inspection?";
@@ -354,7 +354,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";

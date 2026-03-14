@@ -9,26 +9,13 @@ struct SettingsView: View {
     @State private var showingEditProfile = false
     @State private var legalAlertMessage: String?
     @State private var userName: String = ""
-    @Environment(SnapshotsAccessManager.self) private var accessManager
     
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     Button(action: { showingEditProfile = true }) {
-                        HStack {
-                            Label("profile.title", systemImage: "person.crop.circle")
-                            Spacer()
-                            VStack(alignment: .trailing, spacing: 2) {
-                                Text(displayName)
-                                Text(currentPlanName)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Image(systemName: "chevron.right")
-                                .font(.footnote)
-                                .foregroundStyle(.tertiary)
-                        }
+                        SettingsProfileRow(displayName: displayName)
                     }
                     .buttonStyle(.plain)
                 }
@@ -38,31 +25,10 @@ struct SettingsView: View {
                 } header: {
                     Text("settings.plan")
                 } footer: {
-                    if accessManager.hasDirectPaidAccess {
-                        Text("settings.plan.footer.paid")
-                    } else {
-                        Text("settings.plan.footer.free")
-                    }
+                    SettingsPlanFooter()
                 }
 
-                Section {
-                    LabeledContent("settings.usage.photos") {
-                        Text("\(accessManager.photoUsageCount) / \(accessManager.directTierLimits.photoLimit)")
-                            .foregroundStyle(.secondary)
-                    }
-                    LabeledContent("settings.usage.properties") {
-                        Text(String(accessManager.directTierLimits.propertyLimit))
-                            .foregroundStyle(.secondary)
-                    }
-                    LabeledContent("settings.usage.team") {
-                        Text(accessManager.directTierLimits.teamLimit == 0 ? String(localized: "settings.usage.team_none") : String(accessManager.directTierLimits.teamLimit))
-                            .foregroundStyle(.secondary)
-                    }
-                } header: {
-                    Text("settings.usage")
-                } footer: {
-                    Text("settings.usage.footer")
-                }
+                SettingsUsageSection()
                 
                 Section {
                     Button {
@@ -136,10 +102,7 @@ struct SettingsView: View {
                 Text(legalAlertMessage ?? "")
             }
             .sheet(isPresented: $showingFeedbackSheet) {
-                FeedbackSheet(
-                    userName: userName,
-                    personalTier: effectivePersonalTier
-                )
+                FeedbackSheetContainer(userName: userName)
             }
             .navigationDestination(isPresented: $showingEditProfile) {
                 EditProfileView()
@@ -152,18 +115,6 @@ struct SettingsView: View {
 
     private var displayName: String {
         userName.isEmpty ? String(localized: "settings.loading") : userName
-    }
-
-    private var currentPlanName: String {
-        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
-        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
-        return String(localized: "plan.standard")
-    }
-
-    private var effectivePersonalTier: String {
-        if accessManager.hasBusinessAccess { return "business" }
-        if accessManager.hasDirectPaidAccess { return "pro" }
-        return accessManager.profile?.effectiveSubscriptionTier ?? "free"
     }
 
     private var appVersion: String {
@@ -215,6 +166,96 @@ struct SettingsView: View {
 
 #Preview {
     SettingsView()
+}
+
+private struct SettingsProfileRow: View {
+    @Environment(SnapshotsAccessManager.self) private var accessManager
+
+    let displayName: String
+
+    var body: some View {
+        HStack {
+            Label("profile.title", systemImage: "person.crop.circle")
+            Spacer()
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(displayName)
+                Text(currentPlanName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Image(systemName: "chevron.right")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var currentPlanName: String {
+        if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
+        if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
+        return String(localized: "plan.standard")
+    }
+}
+
+private struct SettingsPlanFooter: View {
+    @Environment(SnapshotsAccessManager.self) private var accessManager
+
+    var body: some View {
+        if accessManager.hasDirectPaidAccess {
+            Text("settings.plan.footer.paid")
+        } else {
+            Text("settings.plan.footer.free")
+        }
+    }
+}
+
+private struct SettingsUsageSection: View {
+    @Environment(SnapshotsAccessManager.self) private var accessManager
+
+    var body: some View {
+        Section {
+            LabeledContent("settings.usage.photos") {
+                Text("\(accessManager.photoUsageCount) / \(accessManager.directTierLimits.photoLimit)")
+                    .foregroundStyle(.secondary)
+            }
+            LabeledContent("settings.usage.properties") {
+                Text(String(accessManager.directTierLimits.propertyLimit))
+                    .foregroundStyle(.secondary)
+            }
+            LabeledContent("settings.usage.team") {
+                Text(teamLimitText)
+                    .foregroundStyle(.secondary)
+            }
+        } header: {
+            Text("settings.usage")
+        } footer: {
+            Text("settings.usage.footer")
+        }
+    }
+
+    private var teamLimitText: String {
+        accessManager.directTierLimits.teamLimit == 0
+            ? String(localized: "settings.usage.team_none")
+            : String(accessManager.directTierLimits.teamLimit)
+    }
+}
+
+private struct FeedbackSheetContainer: View {
+    @Environment(SnapshotsAccessManager.self) private var accessManager
+
+    let userName: String
+
+    var body: some View {
+        FeedbackSheet(
+            userName: userName,
+            personalTier: effectivePersonalTier
+        )
+    }
+
+    private var effectivePersonalTier: String {
+        if accessManager.hasBusinessAccess { return "business" }
+        if accessManager.hasDirectPaidAccess { return "pro" }
+        return accessManager.profile?.effectiveSubscriptionTier ?? "free"
+    }
 }
 
 private struct SettingsAboutView: View {

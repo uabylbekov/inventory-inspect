@@ -30,6 +30,8 @@ final class InspectionHubViewModel {
     var errorMessage: String?
     
     private var channel: RealtimeChannelV2?
+    private var realtimeTask: Task<Void, Never>?
+    private var fallbackPollingTask: Task<Void, Never>?
     
     init(inspection: InspectionModel) {
         self.inspection = inspection
@@ -37,6 +39,10 @@ final class InspectionHubViewModel {
     
     func unsubscribe() {
         let ch = channel
+        realtimeTask?.cancel()
+        realtimeTask = nil
+        fallbackPollingTask?.cancel()
+        fallbackPollingTask = nil
         self.channel = nil
         if let ch {
             Task {
@@ -114,38 +120,61 @@ final class InspectionHubViewModel {
     }
     
     func setupRealtime() async {
+        realtimeTask?.cancel()
+        realtimeTask = nil
         let channel = supabase.channel("inspection_updates")
-        
-        let observation = channel.postgresChange(
-            AnyAction.self,
-            schema: "public",
-            table: "inspection_items",
-            filter: .eq("inspection_id", value: inspection.id.uuidString.lowercased())
-        )
-        
-        Task {
-            for await change in observation {
-                switch change {
-                case .insert(let action):
-                    if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
-                        applyRealtimeChange(updatedRecord)
-                    } else {
+
+        do {
+            let observation = channel.postgresChange(
+                AnyAction.self,
+                schema: "public",
+                table: "inspection_items",
+                filter: .eq("inspection_id", value: inspection.id.uuidString.lowercased())
+            )
+
+            try await channel.subscribeWithError()
+            fallbackPollingTask?.cancel()
+            fallbackPollingTask = nil
+            if errorMessage == "Live updates unavailable. Refreshing periodically." {
+                errorMessage = nil
+            }
+
+            realtimeTask = Task { [weak self] in
+                guard let self else { return }
+                for await change in observation {
+                    switch change {
+                    case .insert(let action):
+                        if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
+                            applyRealtimeChange(updatedRecord)
+                        } else {
+                            await fetchData(showLoadingState: false)
+                        }
+                    case .update(let action):
+                        if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
+                            applyRealtimeChange(updatedRecord)
+                        } else {
+                            await fetchData(showLoadingState: false)
+                        }
+                    default:
                         await fetchData(showLoadingState: false)
                     }
-                case .update(let action):
-                    if let updatedRecord = try? action.decodeRecord(as: InspectionItemModel.self, decoder: JSONDecoder()) {
-                        applyRealtimeChange(updatedRecord)
-                    } else {
-                        await fetchData(showLoadingState: false)
-                    }
-                default:
+                }
+            }
+            self.channel = channel
+        } catch {
+            print("Inspection realtime unavailable, falling back to polling: \(error)")
+            await channel.unsubscribe()
+            self.channel = nil
+            errorMessage = "Live updates unavailable. Refreshing periodically."
+            fallbackPollingTask?.cancel()
+            fallbackPollingTask = Task { [weak self] in
+                guard let self else { return }
+                while !Task.isCancelled {
                     await fetchData(showLoadingState: false)
+                    try? await Task.sleep(for: .seconds(20))
                 }
             }
         }
-        
-        try? await channel.subscribeWithError()
-        self.channel = channel
     }
     
     func calculateProgress() {
@@ -208,7 +237,7 @@ final class InspectionHubViewModel {
         errorMessage = nil
         do {
             try await InspectionWorkflowService.completeInspection(id: inspection.id)
-                
+            await InspectionBadgeStore.shared.refresh()
             isCompleting = false
             return true
         } catch is CancellationError {
@@ -228,6 +257,7 @@ final class InspectionHubViewModel {
                 id: inspection.id,
                 reason: reason.isEmpty ? "Cancelled" : reason
             )
+            await InspectionBadgeStore.shared.refresh()
             return true
         } catch is CancellationError {
             return false
@@ -251,6 +281,7 @@ final class InspectionHubViewModel {
                 cachedInspections.removeAll { $0.id == inspection.id }
                 await SnapshotCache.shared.save(cachedInspections, key: SnapshotCacheKey.inspections(for: userId))
             }
+            await InspectionBadgeStore.shared.refresh()
             return true
         } catch is CancellationError {
             return false

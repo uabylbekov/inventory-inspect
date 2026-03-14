@@ -18,6 +18,7 @@ final class NotificationManager: @unchecked Sendable {
     private var currentToken: String?
     private var observedUserId: UUID?
     private var realtimeTask: Task<Void, Never>?
+    private var periodicRefreshTask: Task<Void, Never>?
     private var hasRequestedNotificationPermission = false
     
     // Deep linking state
@@ -65,6 +66,7 @@ final class NotificationManager: @unchecked Sendable {
         await teardownRealtime()
         observedUserId = userId
         await fetchNotifications()
+        startPeriodicRefresh()
         await setupRealtime()
     }
 
@@ -187,7 +189,7 @@ final class NotificationManager: @unchecked Sendable {
                 .eq("id", value: notification.id.uuidString.lowercased())
                 .execute()
             
-            updateBadgeCount()
+            await fetchNotifications()
         } catch {
             print("Error marking notification as read: \(error)")
             // Re-fetch on actual failure
@@ -213,7 +215,7 @@ final class NotificationManager: @unchecked Sendable {
                     .in("id", values: idsToDelete)
                     .execute()
                 
-                updateBadgeCount()
+                await fetchNotifications()
             } catch {
                 print("Error batch deleting notifications: \(error)")
                 // Background re-fetch in case of failure to keep UI synced
@@ -235,6 +237,7 @@ final class NotificationManager: @unchecked Sendable {
                 .delete()
                 .in("id", values: idsToDelete)
                 .execute()
+            await fetchNotifications()
         } catch {
             notifications = previous
             syncUnreadCount()
@@ -253,44 +256,67 @@ final class NotificationManager: @unchecked Sendable {
         guard let userId else { return }
 
         let channel = supabase.channel("public:notifications")
-        
-        let observation = channel.postgresChange(
-            AnyAction.self,
-            schema: "public",
-            table: "notifications",
-            filter: .eq("user_id", value: userId.uuidString.lowercased())
-        )
-        
-        realtimeTask = Task { [weak self] in
-            guard let self else { return }
-            for await change in observation {
-                switch change {
-                case .insert(let action):
-                    if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
-                        if let existingIndex = self.notifications.firstIndex(where: { $0.id == newNotification.id }) {
-                            self.notifications[existingIndex] = newNotification
-                        } else {
-                            self.notifications.insert(newNotification, at: 0)
+
+        do {
+            let observation = channel.postgresChange(
+                AnyAction.self,
+                schema: "public",
+                table: "notifications",
+                filter: .eq("user_id", value: userId.uuidString.lowercased())
+            )
+
+            try await channel.subscribeWithError()
+
+            realtimeTask = Task { [weak self] in
+                guard let self else { return }
+                for await change in observation {
+                    switch change {
+                    case .insert(let action):
+                        if let newNotification = try? action.decodeRecord(as: NotificationModel.self, decoder: JSONDecoder()) {
+                            if let existingIndex = self.notifications.firstIndex(where: { $0.id == newNotification.id }) {
+                                self.notifications[existingIndex] = newNotification
+                            } else {
+                                self.notifications.insert(newNotification, at: 0)
+                            }
+                            self.syncUnreadCount()
                         }
-                        self.syncUnreadCount()
+                    default:
+                        await fetchNotifications()
                     }
-                default:
-                    await fetchNotifications()
                 }
             }
+            self.channel = channel
+        } catch {
+            print("Notifications realtime unavailable, relying on periodic refresh: \(error)")
+            await channel.unsubscribe()
+            self.channel = nil
         }
-        
-        try? await channel.subscribeWithError()
-        self.channel = channel
     }
 
     private func teardownRealtime() async {
         realtimeTask?.cancel()
         realtimeTask = nil
+        stopPeriodicRefresh()
         if let channel {
             await channel.unsubscribe()
             self.channel = nil
         }
+    }
+
+    private func startPeriodicRefresh() {
+        guard periodicRefreshTask == nil else { return }
+        periodicRefreshTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                await fetchNotifications()
+                try? await Task.sleep(for: .seconds(15))
+            }
+        }
+    }
+
+    private func stopPeriodicRefresh() {
+        periodicRefreshTask?.cancel()
+        periodicRefreshTask = nil
     }
     
     private func currentUserID() async -> UUID? {

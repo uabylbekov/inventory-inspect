@@ -60,7 +60,7 @@
 "settings.sign_out" = "Uitloggen";
 "settings.sign_out_message" = "Weet je zeker dat je wilt uitloggen?";
 "inspections.filter.show_records_for" = "Toon gegevens voor";
-"inspections.filter.clear" = "Filters wissen (alles tonen)";
+"inspections.filter.clear" = "Terug naar vandaag";
 "inspections.title" = "Inspecties";
 "inspections.add" = "Inspectie toevoegen";
 "inspections.delete_title" = "Inspectie verwijderen?";
@@ -345,7 +345,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";

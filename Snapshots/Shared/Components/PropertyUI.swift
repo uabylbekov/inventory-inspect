@@ -13,7 +13,7 @@ struct PropertyUI {
     
     static func color(for propertyType: String) -> Color {
         switch propertyType.lowercased() {
-        case "apartment": return .blue
+        case "apartment": return .indigo
         case "house": return .green
         case "condo": return .purple
         case "townhouse": return .orange

@@ -60,7 +60,7 @@
 "settings.sign_out" = "サインアウト";
 "settings.sign_out_message" = "本当にサインアウトしますか？";
 "inspections.filter.show_records_for" = "表示日";
-"inspections.filter.clear" = "フィルターを解除（すべて表示）";
+"inspections.filter.clear" = "今日に戻る";
 "inspections.title" = "検査";
 "inspections.add" = "検査を追加";
 "inspections.delete_title" = "検査を削除しますか？";
@@ -345,7 +345,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";

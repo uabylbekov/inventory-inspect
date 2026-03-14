@@ -9,7 +9,8 @@ struct PDFReportGenerator {
         presentItems: [ReportItem] = [],
         resolvedItems: [ReportItem] = [],
         logoImage: PlatformImage? = nil,
-        isWhiteLabel: Bool = false
+        isWhiteLabel: Bool = false,
+        businessDetailsLines: [String] = []
     ) -> Data {
         guard let property else { return Data() }
 
@@ -21,7 +22,8 @@ struct PDFReportGenerator {
             resolvedItems: resolvedItems,
             presentItems: presentItems,
             logoImage: logoImage,
-            isWhiteLabel: isWhiteLabel
+            isWhiteLabel: isWhiteLabel,
+            businessDetailsLines: businessDetailsLines
         )
 
         return renderPDF(from: view)
@@ -35,7 +37,8 @@ struct PDFReportGenerator {
         changedItems: [DiffItem],
         unchangedItems: [DiffItem],
         logoImage: PlatformImage? = nil,
-        isWhiteLabel: Bool = false
+        isWhiteLabel: Bool = false,
+        businessDetailsLines: [String] = []
     ) -> Data {
         let view = ComparisonPDFDocumentView(
             older: older,
@@ -45,7 +48,8 @@ struct PDFReportGenerator {
             changedItems: changedItems,
             unchangedItems: unchangedItems,
             logoImage: logoImage,
-            isWhiteLabel: isWhiteLabel
+            isWhiteLabel: isWhiteLabel,
+            businessDetailsLines: businessDetailsLines
         )
 
         return renderPDF(from: view)
@@ -91,6 +95,7 @@ private struct ComparisonPDFDocumentView: View {
     let unchangedItems: [DiffItem]
     let logoImage: PlatformImage?
     let isWhiteLabel: Bool
+    let businessDetailsLines: [String]
 
     private let canvas = Color.white
     private let panel = Color(red: 0.96, green: 0.97, blue: 0.985)
@@ -152,6 +157,16 @@ private struct ComparisonPDFDocumentView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 72, height: 72)
+                }
+            }
+
+            if isWhiteLabel, !businessDetailsLines.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(businessDetailsLines, id: \.self) { line in
+                        Text(line)
+                            .font(.system(size: 11))
+                            .foregroundColor(secondaryText)
+                    }
                 }
             }
 

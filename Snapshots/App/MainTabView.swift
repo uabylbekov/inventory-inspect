@@ -2,7 +2,9 @@ import SwiftUI
 
 struct MainTabView: View {
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @Environment(\.scenePhase) private var scenePhase
     @State private var selectedSection: AppSection? = .inspections
+    @State private var inspectionBadgeStore = InspectionBadgeStore.shared
 
     var body: some View {
         Group {
@@ -12,6 +14,17 @@ struct MainTabView: View {
                 compactTabLayout
             }
         }
+        .task {
+            inspectionBadgeStore.startMonitoring()
+        }
+        .onChange(of: scenePhase) { _, newPhase in
+            switch newPhase {
+            case .active:
+                inspectionBadgeStore.startMonitoring()
+            default:
+                inspectionBadgeStore.stopMonitoring()
+            }
+        }
     }
 
     private var compactTabLayout: some View {
@@ -19,6 +32,7 @@ struct MainTabView: View {
             Tab("Inspections", systemImage: AppSection.inspections.systemImage) {
                 InspectionsView()
             }
+            .badge(inspectionBadgeStore.ongoingCount > 0 ? inspectionBadgeStore.ongoingCount : 0)
             Tab("Properties", systemImage: AppSection.properties.systemImage) {
                 PropertyView()
             }
@@ -31,7 +45,7 @@ struct MainTabView: View {
     private var sidebarLayout: some View {
         NavigationSplitView {
             List(AppSection.allCases, selection: $selectedSection) { section in
-                Label(section.title, systemImage: section.systemImage)
+                sidebarLabel(for: section)
                     .tag(section)
             }
             .navigationTitle("Snapshots")
@@ -63,6 +77,23 @@ struct MainTabView: View {
 #else
         horizontalSizeClass == .regular
 #endif
+    }
+
+    @ViewBuilder
+    private func sidebarLabel(for section: AppSection) -> some View {
+        HStack {
+            Label(section.title, systemImage: section.systemImage)
+
+            if section == .inspections, inspectionBadgeStore.ongoingCount > 0 {
+                Spacer()
+                Text("\(inspectionBadgeStore.ongoingCount)")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Capsule().fill(Color.red))
+            }
+        }
     }
 }
 

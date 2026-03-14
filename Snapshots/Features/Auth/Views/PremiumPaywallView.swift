@@ -14,10 +14,10 @@ struct PremiumPaywallView: View {
 struct SubscriptionCenterView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    private let accessManager = SnapshotsAccessManager.shared
+    @State private var accessManager = SnapshotsAccessManager.shared
     @State private var products: [Product] = []
     @State private var isLoadingProducts = true
-    @State private var isPurchasing = false
+    @State private var purchasingProductID: String?
     @State private var alertMessage: String?
     @State private var productLoadError: String?
     let showsDismissButton: Bool
@@ -28,25 +28,26 @@ struct SubscriptionCenterView: View {
     var body: some View {
         List {
             Section {
-                if accessManager.isCheckingAccess {
-                    ProgressView("paywall.current_plan")
-                        .frame(maxWidth: .infinity, alignment: .center)
-                } else {
-                    LabeledContent {
+                LabeledContent {
+                    HStack(spacing: 8) {
                         Text(currentPlanName)
-                    } label: {
-                        Label {
-                            Text("plan.your")
-                        } icon: {
-                            Image(systemName: currentPlanIcon)
-                                .foregroundStyle(currentPlanTint)
+                        if accessManager.isCheckingAccess {
+                            ProgressView()
+                                .controlSize(.small)
                         }
                     }
-                    Text(currentPlanSummary)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
+                } label: {
+                    Label {
+                        Text("plan.your")
+                    } icon: {
+                        Image(systemName: currentPlanIcon)
+                            .foregroundStyle(currentPlanTint)
+                    }
                 }
+                Text(currentPlanSummary)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             Section {
@@ -101,6 +102,7 @@ struct SubscriptionCenterView: View {
                 } label: {
                     Label("paywall.restore_purchases", systemImage: "arrow.clockwise")
                 }
+                .disabled(isPurchasingAnyPlan || accessManager.isCheckingAccess)
             }
         }
         .navigationTitle("plan.your")
@@ -137,11 +139,13 @@ struct SubscriptionCenterView: View {
             Text("paywall.current_plan")
                 .foregroundColor(.secondary)
         } else {
-            Button("paywall.subscribe") {
+            Button(action: {
                 Task { await purchase(product) }
+            }) {
+                Text("paywall.subscribe")
             }
             .buttonStyle(.borderedProminent)
-            .disabled(isPurchasing)
+            .disabled(isPurchasing(product) || accessManager.isCheckingAccess)
         }
     }
 
@@ -169,7 +173,7 @@ struct SubscriptionCenterView: View {
 
     @ViewBuilder
     private var professionalPlanSection: some View {
-        if isLoadingProducts || accessManager.isCheckingAccess {
+        if isLoadingProducts && products.isEmpty {
             ProgressView("paywall.loading_plans")
                 .frame(maxWidth: .infinity, alignment: .center)
         } else if let proMonthlyProduct = products.first(where: { $0.id == proMonthlyProductId }) {
@@ -209,6 +213,7 @@ struct SubscriptionCenterView: View {
                 Button("common.try_again") {
                     Task { await loadProducts() }
                 }
+                .disabled(isPurchasingAnyPlan || accessManager.isCheckingAccess)
             }
         }
     }
@@ -228,8 +233,13 @@ struct SubscriptionCenterView: View {
 
     private func pricingRow(title: String, icon: String, price: String, product: Product, isActive: Bool) -> some View {
         HStack(alignment: .center, spacing: 12) {
+            Image(systemName: icon)
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 24)
+
             VStack(alignment: .leading, spacing: 2) {
-                Label(title, systemImage: icon)
+                Text(title)
                     .lineLimit(1)
                 Text(price)
                     .font(.subheadline)
@@ -246,15 +256,31 @@ struct SubscriptionCenterView: View {
                     .lineLimit(1)
                     .foregroundStyle(.secondary)
             } else {
-                Button("paywall.subscribe") {
+                Button(action: {
                     Task { await purchase(product) }
+                }) {
+                    HStack(spacing: 6) {
+                        if isPurchasing(product) {
+                            ProgressView()
+                                .controlSize(.small)
+                        }
+                        Text("paywall.subscribe")
+                    }
+                    .font(.body.weight(.semibold))
+                    .lineLimit(1)
                 }
                 .buttonStyle(.borderless)
-                .font(.body.weight(.semibold))
-                .lineLimit(1)
-                .disabled(isPurchasing)
+                .disabled(isPurchasing(product) || accessManager.isCheckingAccess)
             }
         }
+    }
+
+    private var isPurchasingAnyPlan: Bool {
+        purchasingProductID != nil
+    }
+
+    private func isPurchasing(_ product: Product) -> Bool {
+        purchasingProductID == product.id
     }
 
     private func planSectionHeader(title: String, icon: String, tint: Color) -> some View {
@@ -318,9 +344,9 @@ struct SubscriptionCenterView: View {
     }
 
     private func purchase(_ product: Product) async {
-        guard !isPurchasing else { return }
-        isPurchasing = true
-        defer { isPurchasing = false }
+        guard !isPurchasingAnyPlan else { return }
+        purchasingProductID = product.id
+        defer { purchasingProductID = nil }
         do {
             let result = try await product.purchase()
             switch result {
@@ -330,8 +356,6 @@ struct SubscriptionCenterView: View {
                     await accessManager.refreshEntitlementsForCurrentUser()
                     if let syncError = accessManager.lastBillingSyncError {
                         alertMessage = syncError
-                    } else {
-                        dismiss()
                     }
                 } else {
                     alertMessage = String(localized: "paywall.purchase_unverified")

@@ -84,6 +84,7 @@ final class StartInspectionViewModel {
         
         do {
             let inspectionID = try await createInspection(for: propertyId)
+            await InspectionBadgeStore.shared.refresh()
             isSaving = false
             return inspectionID
         } catch is CancellationError {
@@ -135,7 +136,9 @@ final class StartInspectionViewModel {
 
     private func errorMessage(for error: Error) -> String {
         let message = error.localizedDescription
-        if message.contains("unq_active_inspection_per_property") || message.contains("duplicate key value") {
+        if message.contains("unq_active_inspection_per_property")
+            || message.contains("inspections_one_in_progress_per_property_idx")
+            || message.contains("duplicate key value") {
             return "An inspection is already in progress for this property. Please wait for it to be completed or cancelled."
         }
         return message

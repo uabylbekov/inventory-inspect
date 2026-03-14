@@ -145,7 +145,15 @@ struct PropertyDetailView: View {
                         } label: {
                             Label {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                                    HStack {
+                                        Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+
+                                        if inspection.status == "in_progress" {
+                                            Spacer()
+                                            LiveIndicator()
+                                        }
+                                    }
+
                                     Text(AppFormatter.formatDate(inspection.started_at))
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
@@ -342,6 +350,30 @@ struct PropertyDetailView: View {
                 showingPropertyActiveInspectionAlert = true
             } else {
                 showingPropertyDeleteAlert = true
+            }
+        }
+    }
+}
+
+private struct LiveIndicator: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.red.opacity(0.22))
+                .frame(width: 16, height: 16)
+                .scaleEffect(isAnimating ? 1.35 : 0.75)
+                .opacity(isAnimating ? 0 : 1)
+
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+        }
+        .onAppear {
+            guard !isAnimating else { return }
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                isAnimating = true
             }
         }
     }
