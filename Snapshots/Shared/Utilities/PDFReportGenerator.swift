@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct PDFReportGenerator {
     static func generate(
         inspection: InspectionModel,

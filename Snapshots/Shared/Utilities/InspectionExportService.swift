@@ -24,6 +24,75 @@ enum InspectionExportService {
         guard let property else { return nil }
 
         let branding = await loadBranding(for: property)
+        let pdfData = await renderInspectionReportPDF(
+            inspection: inspection,
+            property: property,
+            inspectorName: inspectorName,
+            anomalies: anomalies,
+            resolvedItems: resolvedItems,
+            presentItems: presentItems,
+            branding: branding
+        )
+
+        guard pdfData.length > 0 else { return nil }
+
+        let filename = ExportFileNameBuilder.pdfFileName(
+            prefix: "Report",
+            parts: [
+                property.name,
+                AppFormatter.formatInspectionType(inspection.inspection_type),
+                AppFormatter.formatDate(inspection.started_at)
+            ]
+        )
+
+        return GeneratedPDF(data: pdfData as Data, filename: filename)
+    }
+
+    static func makeComparisonReportPDF(
+        older: InspectionModel,
+        newer: InspectionModel,
+        property: PropertyModel?,
+        inspectorName: String?,
+        changedItems: [DiffItem],
+        unchangedItems: [DiffItem]
+    ) async -> GeneratedPDF {
+        let branding = await loadBranding(for: property)
+        let data = await MainActor.run {
+            PDFReportGenerator.generateComparison(
+                older: older,
+                newer: newer,
+                property: property,
+                inspectorName: inspectorName,
+                changedItems: changedItems,
+                unchangedItems: unchangedItems,
+                logoImage: branding.logoImage,
+                isWhiteLabel: branding.isWhiteLabel,
+                businessDetailsLines: branding.businessDetailsLines
+            )
+        }
+
+        let filename = ExportFileNameBuilder.pdfFileName(
+            prefix: "ComparisonReport",
+            parts: [
+                property?.name ?? "Inspection",
+                AppFormatter.formatDate(older.completed_at ?? older.started_at),
+                AppFormatter.formatDate(newer.completed_at ?? newer.started_at)
+            ]
+        )
+
+        return GeneratedPDF(data: data, filename: filename)
+    }
+
+    @MainActor
+    private static func renderInspectionReportPDF(
+        inspection: InspectionModel,
+        property: PropertyModel,
+        inspectorName: String?,
+        anomalies: [ReportItem],
+        resolvedItems: [ReportItem],
+        presentItems: [ReportItem],
+        branding: BrandingDetails
+    ) -> NSMutableData {
         let pdfView = InspectionPDFView(
             property: property,
             inspection: inspection,
@@ -53,51 +122,7 @@ enum InspectionExportService {
             pdfContext.closePDF()
         }
 
-        guard pdfData.length > 0 else { return nil }
-
-        let filename = ExportFileNameBuilder.pdfFileName(
-            prefix: "Report",
-            parts: [
-                property.name,
-                AppFormatter.formatInspectionType(inspection.inspection_type),
-                AppFormatter.formatDate(inspection.started_at)
-            ]
-        )
-
-        return GeneratedPDF(data: pdfData as Data, filename: filename)
-    }
-
-    static func makeComparisonReportPDF(
-        older: InspectionModel,
-        newer: InspectionModel,
-        property: PropertyModel?,
-        inspectorName: String?,
-        changedItems: [DiffItem],
-        unchangedItems: [DiffItem]
-    ) async -> GeneratedPDF {
-        let branding = await loadBranding(for: property)
-        let data = PDFReportGenerator.generateComparison(
-            older: older,
-            newer: newer,
-            property: property,
-            inspectorName: inspectorName,
-            changedItems: changedItems,
-            unchangedItems: unchangedItems,
-            logoImage: branding.logoImage,
-            isWhiteLabel: branding.isWhiteLabel,
-            businessDetailsLines: branding.businessDetailsLines
-        )
-
-        let filename = ExportFileNameBuilder.pdfFileName(
-            prefix: "ComparisonReport",
-            parts: [
-                property?.name ?? "Inspection",
-                AppFormatter.formatDate(older.completed_at ?? older.started_at),
-                AppFormatter.formatDate(newer.completed_at ?? newer.started_at)
-            ]
-        )
-
-        return GeneratedPDF(data: data, filename: filename)
+        return pdfData
     }
 
     private static func loadBranding(for property: PropertyModel?) async -> BrandingDetails {
