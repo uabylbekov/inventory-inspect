@@ -34,7 +34,15 @@ struct ComparisonReportView: View {
                         }
                     }
                 }
-            } else if !viewModel.isLoading && viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty {
+            } else if !viewModel.hasLoadedInitialState || (viewModel.isLoading && viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty) {
+                Section {
+                    ForEach(0..<3, id: \.self) { _ in
+                        ComparisonDiffSkeletonRow()
+                    }
+                } header: {
+                    Label("comparison.changes_found", systemImage: "arrow.triangle.2.circlepath")
+                }
+            } else if viewModel.changedItems.isEmpty && viewModel.unchangedItems.isEmpty {
                 Section {
                     ContentUnavailableView(
                         "comparison.empty_title",
@@ -46,39 +54,36 @@ struct ComparisonReportView: View {
                 if !viewModel.changedItems.isEmpty {
                     Section {
                         ForEach(viewModel.changedItems) { diff in
-                            DiffRowView(diff: diff)
+                            DiffRowView(diff: diff, sectionKind: .changed)
                         }
                     } header: {
-                        Text(String.localizedStringWithFormat(
-                            NSLocalizedString("comparison.changes_found", comment: ""),
-                            viewModel.changedItems.count
-                        ))
-                            .foregroundColor(.red)
+                        HStack {
+                            Label(
+                                String.localizedStringWithFormat(
+                                    NSLocalizedString("comparison.changes_found", comment: ""),
+                                    viewModel.changedItems.count
+                                ),
+                                systemImage: "arrow.triangle.2.circlepath"
+                            )
+                            .foregroundStyle(.orange)
+                        }
                     }
                 }
                 
                 if !viewModel.unchangedItems.isEmpty {
                     Section {
                         ForEach(viewModel.unchangedItems) { diff in
-                            DiffRowView(diff: diff)
+                            DiffRowView(diff: diff, sectionKind: .unchanged)
                         }
                     } header: {
-                        Text(String.localizedStringWithFormat(
-                            NSLocalizedString("comparison.unchanged_items", comment: ""),
-                            viewModel.unchangedItems.count
-                        ))
+                        Label(
+                            String.localizedStringWithFormat(
+                                NSLocalizedString("comparison.unchanged_items", comment: ""),
+                                viewModel.unchangedItems.count
+                            ),
+                            systemImage: "checkmark.circle"
+                        )
                     }
-                }
-            }
-        }
-        .overlay {
-            if viewModel.isLoading {
-                ZStack {
-                    Color.platformGroupedBackground
-                        .ignoresSafeArea()
-                    ProgressView("comparison.loading")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
                 }
             }
         }
@@ -116,14 +121,20 @@ struct ComparisonReportView: View {
             PremiumPaywallView()
         }
         .task {
-            await viewModel.fetchComparison()
+            await viewModel.loadInitialData()
         }
     }
     
     // MARK: - Diff Row UI
     
     private struct DiffRowView: View {
+        enum SectionKind {
+            case changed
+            case unchanged
+        }
+
         let diff: DiffItem
+        let sectionKind: SectionKind
         @State private var showOldImage = false
         @State private var showNewImage = false
 
@@ -136,74 +147,31 @@ struct ComparisonReportView: View {
         }
         
         var body: some View {
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 10) {
                 Text(diff.itemName)
+                    .font(.body.weight(.medium))
+
                 Text(diff.roomName)
                     .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .foregroundStyle(.secondary)
 
-                LabeledContent("comparison.previous") {
-                    Text(displayStatus(diff.oldStatus))
-                        .foregroundColor(oldStatusColor)
-                }
-                LabeledContent("comparison.current") {
-                    Text(displayCurrentStatus)
-                        .foregroundColor(newStatusColor)
-                }
+                comparisonStatusRow(
+                    titleKey: "comparison.previous",
+                    statusText: displayStatus(diff.oldStatus),
+                    color: oldStatusColor,
+                    imageURL: diff.oldImage.flatMap(URL.init(string:)),
+                    isPresented: $showOldImage
+                )
 
-                if let oldImg = diff.oldImage, let url = URL(string: oldImg) {
-                    CachedAsyncImage(url: url, width: 300) { image in
-                        Button { showOldImage = true } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.platformSecondarySystemBackground)
+                Divider()
 
-                                image
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxWidth: .infinity, maxHeight: 110)
-                                    .padding(6)
-                            }
-                            .frame(maxWidth: 220)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .adaptiveImagePresentation(isPresented: $showOldImage) {
-                            FullScreenImageView(image: .remote(url))
-                        }
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.platformGray5)
-                            .frame(width: 220, height: 110)
-                    }
-                }
-
-                if let newImg = diff.newImage, let url = URL(string: newImg) {
-                    CachedAsyncImage(url: url, width: 300) { image in
-                        Button { showNewImage = true } label: {
-                            ZStack {
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.platformSecondarySystemBackground)
-
-                                image
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(maxWidth: .infinity, maxHeight: 110)
-                                    .padding(6)
-                            }
-                            .frame(maxWidth: 220)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                        .adaptiveImagePresentation(isPresented: $showNewImage) {
-                            FullScreenImageView(image: .remote(url))
-                        }
-                    } placeholder: {
-                        RoundedRectangle(cornerRadius: 10)
-                            .fill(Color.platformGray5)
-                            .frame(width: 220, height: 110)
-                    }
-                }
+                comparisonStatusRow(
+                    titleKey: "comparison.current",
+                    statusText: displayCurrentStatus,
+                    color: newStatusColor,
+                    imageURL: diff.newImage.flatMap(URL.init(string:)),
+                    isPresented: $showNewImage
+                )
 
                 if let newNotes = diff.newNotes, !newNotes.isEmpty {
                     VStack(alignment: .leading, spacing: 6) {
@@ -217,7 +185,7 @@ struct ComparisonReportView: View {
                     }
                 }
             }
-            .opacity(diff.oldStatus == diff.newStatus && (diff.newNotes == nil || diff.newNotes?.isEmpty == true) ? 0.72 : 1)
+            .opacity(sectionKind == .unchanged ? 0.72 : 1)
         }
 
         private func color(for status: String) -> Color {
@@ -262,6 +230,73 @@ struct ComparisonReportView: View {
         private func isResolvableIssue(_ status: String) -> Bool {
             status == "missing" || status == "damaged"
         }
+
+        private func comparisonStatusRow(
+            titleKey: LocalizedStringKey,
+            statusText: String,
+            color: Color,
+            imageURL: URL?,
+            isPresented: Binding<Bool>
+        ) -> some View {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(titleKey)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+
+                    Text(statusText)
+                        .foregroundColor(color)
+                }
+
+                Spacer(minLength: 0)
+
+                if let imageURL {
+                    comparisonThumbnail(url: imageURL, isPresented: isPresented)
+                }
+            }
+        }
+
+        @ViewBuilder
+        private func comparisonThumbnail(url: URL, isPresented: Binding<Bool>) -> some View {
+            CachedAsyncImage(url: url, width: 300) { image in
+                Button { isPresented.wrappedValue = true } label: {
+                    image
+                        .resizable()
+                        .scaledToFill()
+                        .frame(width: 96, height: 72)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .adaptiveImagePresentation(isPresented: isPresented) {
+                    FullScreenImageView(image: .remote(url))
+                }
+            } placeholder: {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.platformGray5)
+                    .frame(width: 96, height: 72)
+            }
+        }
+    }
+}
+
+private struct ComparisonDiffSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 170, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 120, height: 13)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 150, height: 13)
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color.secondary.opacity(0.08))
+                .frame(width: 220, height: 110)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

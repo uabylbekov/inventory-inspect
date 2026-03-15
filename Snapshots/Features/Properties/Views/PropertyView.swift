@@ -22,7 +22,10 @@ struct PropertyView: View {
                 }
 
                 Section("property.your_properties") {
-                    if viewModel.isLoading && viewModel.properties.isEmpty {
+                    if !viewModel.hasLoadedInitialState {
+                        ProgressView()
+                            .frame(maxWidth: .infinity, alignment: .center)
+                    } else if viewModel.isLoading && viewModel.properties.isEmpty {
                         ProgressView()
                             .frame(maxWidth: .infinity, alignment: .center)
                     } else if viewModel.properties.isEmpty {
@@ -97,7 +100,7 @@ struct PropertyView: View {
                 }
             }
                 .task {
-                    await viewModel.fetchProperties()
+                    await viewModel.loadInitialData()
                 }
                 .alert("property.delete.active_title", isPresented: $showingActiveInspectionWarning) {
                     Button("common.cancel", role: .cancel) { propertyToDelete = nil }
@@ -189,18 +192,24 @@ struct PropertyRow: View {
     let property: PropertyModel
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(property.name)
-                .lineLimit(1)
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(property.name)
+                    .lineLimit(1)
 
-            Text(property.address_line1 ?? String(localized: "property.no_address"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(2)
+                Text(property.address_line1 ?? String(localized: "property.no_address"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
 
-            Text(property.property_type)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                Text(property.property_type)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } icon: {
+            Image(systemName: PropertyUI.icon(for: property.property_type))
+                .foregroundStyle(PropertyUI.color(for: property.property_type))
         }
     }
 }

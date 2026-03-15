@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 import SwiftUI
 
-struct ReportItem: Identifiable {
+struct ReportItem: Codable, Hashable, Identifiable {
     var id: UUID { inspectionItem.id }
     let inspectionItem: InspectionItemModel
     let inventoryItem: RoomInventoryItemModel
@@ -11,6 +11,19 @@ struct ReportItem: Identifiable {
 
 @Observable @MainActor
 final class InspectionReportViewModel {
+    private struct CachedSnapshot: Codable {
+        let property: PropertyModel?
+        let inspectorName: String?
+        let anomalies: [ReportItem]
+        let presentItems: [ReportItem]
+        let resolvedItems: [ReportItem]
+    }
+
+    private enum CacheConfig {
+        static let keyPrefix = "inspection-report"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
     let inspection: InspectionModel
     
     var property: PropertyModel?
@@ -21,11 +34,25 @@ final class InspectionReportViewModel {
     
     var isLoading = false
     var isRefreshing = false
+    var hasLoadedInitialState = false
     var isGeneratingPDF = false
     var errorMessage: String?
     
     init(inspection: InspectionModel) {
         self.inspection = inspection
+    }
+
+    func loadInitialData() async {
+        if let cachedSnapshot = await SnapshotCache.shared.load(
+            CachedSnapshot.self,
+            key: Self.cacheKey(for: inspection.id),
+            maxAge: CacheConfig.maxAge
+        ) {
+            apply(snapshot: cachedSnapshot)
+        }
+
+        hasLoadedInitialState = true
+        await fetchReportData(showLoadingState: anomalies.isEmpty && presentItems.isEmpty && resolvedItems.isEmpty)
     }
     
     func fetchReportData(showLoadingState: Bool = true) async {
@@ -42,14 +69,20 @@ final class InspectionReportViewModel {
         
         do {
             let snapshot = try await InspectionDataService.loadReportSnapshot(for: inspection)
-            self.property = snapshot.property
-            self.inspectorName = snapshot.inspectorName
-            self.anomalies = snapshot.anomalies
-            self.presentItems = snapshot.presentItems
-            self.resolvedItems = snapshot.resolvedItems
+            let cachedSnapshot = CachedSnapshot(
+                property: snapshot.property,
+                inspectorName: snapshot.inspectorName,
+                anomalies: snapshot.anomalies,
+                presentItems: snapshot.presentItems,
+                resolvedItems: snapshot.resolvedItems
+            )
+            apply(snapshot: cachedSnapshot)
+            await SnapshotCache.shared.save(cachedSnapshot, key: Self.cacheKey(for: inspection.id))
+            hasLoadedInitialState = true
         } catch is CancellationError {
         } catch {
             self.errorMessage = error.localizedDescription
+            self.hasLoadedInitialState = true
         }
     }
 
@@ -106,6 +139,7 @@ final class InspectionReportViewModel {
                 ])
                 .eq("id", value: reportItem.inspectionItem.id.uuidString.lowercased())
                 .execute()
+            await persistCurrentSnapshot()
         } catch {
             print("Error resolving anomaly: \(error)")
             // 3. Fallback on Error
@@ -117,6 +151,7 @@ final class InspectionReportViewModel {
                     anomalies.sort(by: { $0.room.name < $1.room.name })
                 }
             }
+            await persistCurrentSnapshot()
         }
     }
     
@@ -133,5 +168,30 @@ final class InspectionReportViewModel {
             resolvedItems: resolvedItems,
             presentItems: presentItems
         )
+    }
+
+    private func apply(snapshot: CachedSnapshot) {
+        property = snapshot.property
+        inspectorName = snapshot.inspectorName
+        anomalies = snapshot.anomalies
+        presentItems = snapshot.presentItems
+        resolvedItems = snapshot.resolvedItems
+    }
+
+    private func persistCurrentSnapshot() async {
+        await SnapshotCache.shared.save(
+            CachedSnapshot(
+                property: property,
+                inspectorName: inspectorName,
+                anomalies: anomalies,
+                presentItems: presentItems,
+                resolvedItems: resolvedItems
+            ),
+            key: Self.cacheKey(for: inspection.id)
+        )
+    }
+
+    private static func cacheKey(for inspectionId: UUID) -> String {
+        SnapshotCacheKey.inspectionReport(for: inspectionId)
     }
 }

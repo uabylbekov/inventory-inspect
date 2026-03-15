@@ -3,6 +3,11 @@ import Supabase
 
 @Observable @MainActor
 final class PropertyViewModel {
+    private enum CacheConfig {
+        static let keyPrefix = "properties"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
     enum AddPropertyDestination {
         case addProperty
         case paywall
@@ -13,6 +18,7 @@ final class PropertyViewModel {
     var isLoading = false
     var errorMessage: String?
     var properties: [PropertyModel] = []
+    var hasLoadedInitialState = false
     
     private let accessManager = SnapshotsAccessManager.shared
 
@@ -40,15 +46,42 @@ final class PropertyViewModel {
             let session = try await supabase.auth.session
             let userId = session.user.id
 
-            properties = try await PropertyAccessService.loadAccessibleProperties(for: userId)
+            let fetchedProperties = try await PropertyAccessService.loadAccessibleProperties(for: userId)
+            properties = fetchedProperties
+            await SnapshotCache.shared.save(fetchedProperties, key: Self.cacheKey(for: userId))
+            Task(priority: .utility) {
+                await PrefetchService.prefetchPropertyDetails(fetchedProperties)
+            }
             isLoading = false
+            hasLoadedInitialState = true
         } catch is CancellationError {
             self.isLoading = false
         } catch {
             print("PropertyViewModel: Fetch Error: \(error)")
             self.errorMessage = error.localizedDescription
             self.isLoading = false
+            self.hasLoadedInitialState = true
         }
+    }
+
+    func loadInitialData() async {
+        do {
+            let session = try await supabase.auth.session
+            let userId = session.user.id
+
+            if let cachedProperties = await SnapshotCache.shared.load(
+                [PropertyModel].self,
+                key: Self.cacheKey(for: userId),
+                maxAge: CacheConfig.maxAge
+            ) {
+                properties = cachedProperties
+            }
+        } catch {
+            // Fall through to the network refresh below.
+        }
+
+        hasLoadedInitialState = true
+        await fetchProperties(showLoadingState: properties.isEmpty)
     }
     
     /// Returns the number of active (in_progress) inspections for the properties at the given offsets.
@@ -89,6 +122,10 @@ final class PropertyViewModel {
         properties.remove(atOffsets: offsets)
         
         Task {
+            if let userId = accessManager.profile?.id {
+                await SnapshotCache.shared.save(properties, key: Self.cacheKey(for: userId))
+            }
+
             for item in itemsToDelete {
                 do {
                     try await supabase
@@ -96,6 +133,7 @@ final class PropertyViewModel {
                         .delete()
                         .eq("id", value: item.id.uuidString.lowercased())
                         .execute()
+                    await SnapshotCache.shared.remove(key: SnapshotCacheKey.propertyDetail(for: item.id))
                 } catch {
                     print("Failed to delete property: \(error)")
                 }
@@ -106,5 +144,9 @@ final class PropertyViewModel {
     private func ownedPropertyCount(for userId: UUID?) -> Int {
         guard let userId else { return 0 }
         return properties.filter { $0.owner_id == userId }.count
+    }
+
+    private static func cacheKey(for userId: UUID) -> String {
+        SnapshotCacheKey.properties(for: userId)
     }
 }

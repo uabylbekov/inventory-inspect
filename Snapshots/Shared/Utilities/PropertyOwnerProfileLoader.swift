@@ -8,6 +8,7 @@ struct PropertyOwnerProfileLoader {
         let full_name: String?
         let email: String?
         let company_logo_url: String?
+        let business_details: String?
         let property_limit_override: Int?
         let team_limit_override: Int?
         let photo_limit_override: Int?
@@ -30,6 +31,7 @@ struct PropertyOwnerProfileLoader {
                         full_name: $0.full_name,
                         email: $0.email,
                         company_logo_url: $0.company_logo_url,
+                        business_details: $0.business_details,
                         property_limit_override: $0.property_limit_override,
                         team_limit_override: $0.team_limit_override,
                         photo_limit_override: $0.photo_limit_override,
@@ -62,13 +64,14 @@ struct PropertyOwnerProfileLoader {
         do {
             return try await supabase
                 .from("profiles")
-                .select("id, subscription_tier, full_name, email, company_logo_url, property_limit_override, team_limit_override, photo_limit_override, app_store_subscription_active, app_store_subscription_expires_at")
+                .select("id, subscription_tier, full_name, email, company_logo_url, business_details, property_limit_override, team_limit_override, photo_limit_override, app_store_subscription_active, app_store_subscription_expires_at")
                 .in("id", values: ownerIds)
                 .execute()
                 .value
         } catch {
             let message = error.localizedDescription.lowercased()
-            if message.contains("property_limit_override")
+            if message.contains("business_details")
+                || message.contains("property_limit_override")
                 || message.contains("team_limit_override")
                 || message.contains("photo_limit_override")
                 || message.contains("app_store_subscription_active")
@@ -102,6 +105,7 @@ struct PropertyOwnerProfileLoader {
                 full_name: $0.full_name,
                 email: $0.email,
                 company_logo_url: $0.company_logo_url,
+                business_details: nil,
                 property_limit_override: nil,
                 team_limit_override: nil,
                 photo_limit_override: nil,
@@ -176,7 +180,7 @@ struct PropertyAccessService {
 
         let accessByPropertyId = Dictionary(uniqueKeysWithValues: accessRows.map { ($0.property_id, $0) })
 
-        return fetchedProperties.compactMap { property in
+        let contractProperties: [PropertyModel] = fetchedProperties.compactMap { property in
             guard let access = accessByPropertyId[property.id] else { return nil }
             return PropertyModel(
                 id: property.id,
@@ -195,6 +199,7 @@ struct PropertyAccessService {
                     full_name: access.owner_full_name,
                     email: access.owner_email,
                     company_logo_url: access.owner_company_logo_url,
+                    business_details: nil,
                     property_limit_override: access.owner_property_limit_override,
                     team_limit_override: access.owner_team_limit_override,
                     photo_limit_override: access.owner_photo_limit_override,
@@ -203,5 +208,7 @@ struct PropertyAccessService {
                 )
             )
         }
+
+        return try await PropertyOwnerProfileLoader.enrich(contractProperties)
     }
 }

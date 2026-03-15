@@ -9,6 +9,7 @@ struct InspectionPDFView: View {
     let presentItems: [ReportItem]
     var logoImage: PlatformImage? = nil
     var isWhiteLabel: Bool = false
+    var businessDetailsLines: [String] = []
 
     private let canvas = Color.white
     private let panel = Color(red: 0.96, green: 0.97, blue: 0.985)
@@ -87,6 +88,16 @@ struct InspectionPDFView: View {
                         .resizable()
                         .scaledToFit()
                         .frame(width: 72, height: 72)
+                }
+            }
+
+            if isWhiteLabel, !businessDetailsLines.isEmpty {
+                VStack(alignment: .leading, spacing: 3) {
+                    ForEach(businessDetailsLines, id: \.self) { line in
+                        Text(line)
+                            .font(.system(size: 11, weight: .regular))
+                            .foregroundColor(secondaryText)
+                    }
                 }
             }
 

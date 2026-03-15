@@ -6,8 +6,13 @@ final class AuthManager {
     var isAuthenticated = false
     var isCheckingSession = true
     var isProfileComplete = false
-    
-    init() {
+
+    init(skipBootstrap: Bool = false) {
+        guard !skipBootstrap else {
+            isCheckingSession = false
+            return
+        }
+
         Task {
             do {
                 let session = try await supabase.auth.session
@@ -47,6 +52,17 @@ final class AuthManager {
                 }
             }
         }
+    }
+
+    convenience init(
+        isAuthenticated: Bool,
+        isCheckingSession: Bool,
+        isProfileComplete: Bool
+    ) {
+        self.init(skipBootstrap: true)
+        self.isAuthenticated = isAuthenticated
+        self.isCheckingSession = isCheckingSession
+        self.isProfileComplete = isProfileComplete
     }
     
     private func checkProfileCompletion(_ session: Session) {

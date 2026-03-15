@@ -60,7 +60,7 @@
 "settings.sign_out" = "로그아웃";
 "settings.sign_out_message" = "정말 로그아웃하시겠습니까?";
 "inspections.filter.show_records_for" = "다음 날짜 기록 보기";
-"inspections.filter.clear" = "필터 지우기 (전체 보기)";
+"inspections.filter.clear" = "오늘로 돌아가기";
 "inspections.title" = "점검";
 "inspections.add" = "점검 추가";
 "inspections.delete_title" = "점검을 삭제할까요?";
@@ -99,6 +99,7 @@
 "paywall.all_plans_footer" = "사진 기능과 팀 협업에는 유료 요금제가 필요합니다.";
 "paywall.restore_purchases" = "구매 복원";
 "paywall.restore_failed" = "구매를 복원할 수 없습니다. 다시 시도하세요.";
+"paywall.monthly" = "월간";
 "paywall.terms" = "서비스 약관";
 "paywall.privacy" = "개인정보처리방침";
 "paywall.legal" = "법적 정보";
@@ -111,7 +112,9 @@
 "paywall.legal_missing" = "법적 URL이 설정되지 않았습니다. Info.plist에 TERMS_URL과 PRIVACY_URL을 추가하세요.";
 "paywall.price_per_month" = "%@ / 월";
 "paywall.subscribe" = "구독";
+"paywall.contact_support" = "한도 변경은 지원팀에 문의하세요.";
 "common.cancel" = "취소";
+"common.id" = "ID";
 "common.ok" = "확인";
 "common.delete" = "삭제";
 "common.try_again" = "다시 시도";
@@ -139,6 +142,7 @@
 "inspection_item.status.present" = "Present";
 "inspection_item.status.missing" = "Missing";
 "inspection_item.status.damaged" = "Damaged";
+"inspection_item.status.resolved" = "해결됨";
 "inspection_item.evidence" = "Evidence";
 "inspection_item.notes" = "Notes";
 "inspection_item.notes_placeholder" = "Add details about the condition...";
@@ -240,6 +244,7 @@
 "team.title" = "Team";
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
+"team.role.owner" = "소유자";
 "team.role.manager" = "Manager";
 "team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
@@ -269,6 +274,8 @@
 "property_sheet.country" = "Country";
 "property_sheet.interior_details" = "Interior Details";
 "property_sheet.details" = "Details";
+"property_sheet.bedrooms_title" = "침실";
+"property_sheet.bathrooms_title" = "욕실";
 "property_sheet.bedrooms" = "Bedrooms: %d";
 "property_sheet.bathrooms" = "Bathrooms: %.1f";
 "property_sheet.max_guests" = "Max Guests";
@@ -338,7 +345,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";
@@ -349,6 +356,7 @@
 "notifications.empty.description" = "Alerts about invitations or inspection activities will appear here.";
 "notifications.title" = "Notifications";
 "notifications.mark_all_read" = "Mark All as Read";
+"notifications.clear_all" = "모두 지우기";
 "annotation.title" = "Annotate Photo";
 "pdf.address_missing" = "No address recorded";
 "pdf.report.title" = "Inspection Report";

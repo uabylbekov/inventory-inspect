@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRO_PRODUCT_IDS = [
-  "com.ulukskywalker.snapshots.pro.monthly",
-  "com.ulukskywalker.snapshots.pro.yearly",
+  "dev.ukulabs.snapshots.pro.monthly",
+  "dev.ukulabs.snapshots.pro.yearly",
 ];
 
 type AppleTransaction = {
@@ -66,7 +66,7 @@ async function buildAppStoreToken() {
     issuerIdPrefix: issuerId?.slice(0, 8) ?? null,
     keyId,
     bundleId,
-    privateKeyPrefix: privateKey.slice(0, 27),
+    privateKeyPresent: Boolean(privateKey),
   }));
 
   return await new SignJWT({ bid: bundleId })
@@ -224,6 +224,13 @@ serve(async (req) => {
 
     const appStoreToken = await buildAppStoreToken();
     const history = await fetchTransactionHistory(transactionId, appStoreToken);
+    if (history.transactions.length === 0) {
+      return json(
+        { error: "No verified App Store transaction history was found for this transactionId." },
+        404,
+      );
+    }
+
     const subscription = resolveSubscriptionState(history.transactions);
     const originalTransactionId = subscription.originalTransactionId ?? transactionId;
     const ownershipConflict = await assertTransactionOwnership(

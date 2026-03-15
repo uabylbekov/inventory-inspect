@@ -5,6 +5,7 @@
 //  Created by Uluk Abylbekov on 3/2/26.
 //
 
+APS_ENVIRONMENT = production
 SUPABASE_URL = https:/$()/ulsckwhhnaxxebrthzpn.supabase.co
 SUPABASE_KEY = sb_publishable_cMtvYMTK7HfwzXt-02eXlg_Y1kqdNs6
 TERMS_URL = https:/$()/uabylbekov.github.io/snapshots/terms.html

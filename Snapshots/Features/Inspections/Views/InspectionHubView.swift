@@ -28,11 +28,28 @@ struct InspectionHubView: View {
         @Bindable var viewModel = viewModel
         List {
             Section {
-                LabeledContent("Type", value: AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
-                LabeledContent("Progress", value: "\(checkedItems)/\(totalItems)")
+                Label {
+                    Text(AppFormatter.formatInspectionType(viewModel.inspection.inspection_type))
+                } icon: {
+                    Image(systemName: AppFormatter.inspectionTypeIcon(for: viewModel.inspection.inspection_type))
+                        .foregroundStyle(AppFormatter.inspectionTypeColor(for: viewModel.inspection.inspection_type))
+                }
+                Label(
+                    String.localizedStringWithFormat(
+                        NSLocalizedString("inspection_hub.progress", comment: ""),
+                        checkedItems,
+                        totalItems
+                    ),
+                    systemImage: "checklist.checked"
+                )
             }
 
-            if viewModel.isLoading && viewModel.rooms.isEmpty {
+            if !viewModel.hasLoadedInitialState {
+                Section {
+                    ProgressView("inspection_hub.loading")
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
+            } else if viewModel.isLoading && viewModel.rooms.isEmpty {
                 Section {
                     ProgressView("inspection_hub.loading")
                         .frame(maxWidth: .infinity, alignment: .center)
@@ -62,10 +79,10 @@ struct InspectionHubView: View {
                             }
                         } header: {
                             HStack {
-                                Text(room.name)
+                                Label(room.name, systemImage: PropertyUI.roomIcon(for: room.room_type))
                                 Spacer()
                                 if let progress = progress, progress.isComplete {
-                                    Text("Done")
+                                    Text("common.done")
                                         .foregroundColor(.secondary)
                                 } else {
                                     Text(progress?.progressString ?? String(localized: "common.empty"))
@@ -151,7 +168,7 @@ struct InspectionHubView: View {
             Text("inspection_hub.delete_message")
         }
         .task {
-            await viewModel.fetchData()
+            await viewModel.loadInitialData()
             await viewModel.setupRealtime()
         }
         .onDisappear {
@@ -219,32 +236,33 @@ struct TacticalItemRow: View {
     }
     
     var body: some View {
-        HStack {
+        Label {
             VStack(alignment: .leading, spacing: 4) {
                 Text(item.name)
 
-                HStack(spacing: 8) {
-                    Text(status.capitalized)
-                        .font(.caption)
-                        .foregroundColor(statusColor)
+                Text(status.capitalized)
+                    .font(.subheadline)
+                    .foregroundColor(statusColor)
 
+                HStack(spacing: 8) {
                     if item.expected_qty > 1 {
                         Text(String.localizedStringWithFormat(
                             NSLocalizedString("inspection_hub.qty", comment: ""),
                             item.expected_qty
                         ))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
                     }
 
                     if let notes = record?.notes, !notes.isEmpty {
                         Image(systemName: "note.text")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                     }
                 }
+                .font(.caption)
+                .foregroundColor(.secondary)
             }
-            Spacer()
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } icon: {
+            Image(systemName: StatusUI.icon(for: status))
+                .foregroundColor(statusColor)
         }
     }
 }

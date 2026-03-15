@@ -10,7 +10,7 @@ struct InspectionsView: View {
     @State private var showingCalendar = false
 
     private var activeInspections: [InspectionModel] {
-        viewModel.filteredInspections.filter { $0.status == "in_progress" }
+        viewModel.inspections.filter { $0.status == "in_progress" }
     }
 
     private var completedInspections: [InspectionModel] {
@@ -62,9 +62,7 @@ struct InspectionsView: View {
                 _ = await (fetchI, fetchP)
             }
             .task {
-                async let fetchI: () = self.viewModel.fetchInspections()
-                async let fetchP: () = self.viewModel.fetchProperties()
-                _ = await (fetchI, fetchP)
+                await viewModel.loadInitialData()
             }
             .sheet(isPresented: $viewModel.showingStartInspection) {
                 StartInspectionSheet(preloadedProperties: viewModel.properties) {
@@ -102,21 +100,15 @@ struct InspectionsView: View {
     @ViewBuilder
     private var inspectionBody: some View {
         if !viewModel.hasLoadedInitialState {
-            Section {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
+            inspectionSkeletonSection
         } else if viewModel.isLoading && viewModel.inspections.isEmpty {
-            Section {
-                ProgressView()
-                    .frame(maxWidth: .infinity, alignment: .center)
-            }
-        } else if viewModel.filteredInspections.isEmpty {
+            inspectionSkeletonSection
+        } else if activeInspections.isEmpty && completedInspections.isEmpty && cancelledInspections.isEmpty {
             Section {
                 ContentUnavailableView(
                     "inspections.empty.title",
                     systemImage: "checklist",
-                    description: Text(viewModel.isFilteringByDate ? "inspections.empty.filtered" : "inspections.empty.all")
+                    description: Text("inspections.empty.filtered")
                 )
             }
         } else {
@@ -134,14 +126,23 @@ struct InspectionsView: View {
         }
     }
 
+    private var inspectionSkeletonSection: some View {
+        Section {
+            ForEach(0..<4, id: \.self) { _ in
+                InspectionRowSkeleton()
+            }
+        } header: {
+            Label("inspections.group.active", systemImage: "clock")
+        }
+    }
+
     private var filterHeader: some View {
         VStack(alignment: .leading, spacing: 8) {
             filterDateControl
 
-            if viewModel.isFilteringByDate {
+            if !viewModel.isShowingToday {
                 Button("inspections.filter.clear") {
-                    viewModel.isFilteringByDate = false
-                    viewModel.selectedDate = Date()
+                    viewModel.resetDateFilterToToday()
                 }
             }
         }
@@ -153,20 +154,25 @@ struct InspectionsView: View {
                 Button {
                     showingCalendar = true
                 } label: {
-                    LabeledContent("inspections.filter.show_records_for") {
+                    LabeledContent {
                         Text(dateLabel(for: viewModel.selectedDate))
                             .foregroundStyle(.primary)
+                    } label: {
+                        Label("inspections.filter.show_records_for", systemImage: "calendar")
                     }
                 }
         .buttonStyle(.plain)
         .popover(isPresented: $showingCalendar, arrowEdge: .bottom) {
             VStack(alignment: .leading, spacing: 12) {
-                Text("inspections.filter.show_records_for")
+                Label("inspections.filter.show_records_for", systemImage: "calendar")
                     .font(.headline)
 
                 DatePicker(
                     "",
-                    selection: $viewModel.selectedDate,
+                    selection: Binding(
+                        get: { viewModel.selectedDate },
+                        set: { viewModel.applyDateFilter($0) }
+                    ),
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
@@ -174,8 +180,7 @@ struct InspectionsView: View {
 
                 HStack {
                     Button("Today") {
-                        viewModel.selectedDate = Date()
-                        viewModel.isFilteringByDate = false
+                        viewModel.applyDateFilter(Date())
                     }
 
                     Spacer()
@@ -190,7 +195,15 @@ struct InspectionsView: View {
             .frame(width: 320)
         }
 #else
-        DatePicker("inspections.filter.show_records_for", selection: $viewModel.selectedDate, displayedComponents: .date)
+        DatePicker(
+            selection: Binding(
+                get: { viewModel.selectedDate },
+                set: { viewModel.applyDateFilter($0) }
+            ),
+            displayedComponents: .date
+        ) {
+            Label("inspections.filter.show_records_for", systemImage: "calendar")
+        }
 #endif
     }
 
@@ -203,7 +216,7 @@ struct InspectionsView: View {
     
     @ViewBuilder
     private func inspectionGroup(title: String, inspections: [InspectionModel]) -> some View {
-        Section(title) {
+        Section {
             ForEach(inspections) { inspection in
                 let property = viewModel.properties.first(where: { $0.id == inspection.property_id })
                 let anomalyCount = viewModel.anomalyCounts[inspection.id] ?? 0
@@ -281,9 +294,45 @@ struct InspectionsView: View {
                 }
                 .alignmentGuide(.listRowSeparatorLeading) { _ in 0 }
             }
+        } header: {
+            Label(title, systemImage: groupIcon(for: title))
         }
     }
 
+    private func groupIcon(for title: String) -> String {
+        switch title {
+        case String(localized: "inspections.group.active"):
+            return "clock"
+        case String(localized: "inspections.group.completed"):
+            return "checkmark.circle"
+        case String(localized: "inspections.group.cancelled"):
+            return "xmark.circle"
+        default:
+            return "checklist"
+        }
+    }
+
+}
+
+private struct InspectionRowSkeleton: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 160, height: 16)
+
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.14))
+                .frame(maxWidth: .infinity)
+                .frame(height: 14)
+
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 90, height: 12)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
+    }
 }
 
 private extension View {
@@ -319,55 +368,126 @@ struct InspectionRow: View {
     private var hasIssues: Bool { anomalyCount > 0 && !isActive }
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(propertyName)
+        Label {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(propertyName)
+                        .lineLimit(1)
+
+                    if isActive {
+                        Spacer()
+                        LiveIndicator()
+                    }
+                }
+
+                Label(propertyAddress, systemImage: "mappin.and.ellipse")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
                     .lineLimit(1)
 
-                if isActive {
-                    Spacer()
-                    Circle()
-                        .fill(Color.accentColor)
-                        .frame(width: 8, height: 8)
+                HStack(spacing: 4) {
+                    Label(AppFormatter.formatInspectionType(inspection.inspection_type), systemImage: inspectionTypeSymbolName)
+                        .lineLimit(1)
+                        .labelStyle(.titleAndIcon)
+                        .layoutPriority(1)
+                        .foregroundColor(.primary)
+
+                    Text("•")
+
+                    Text(AppFormatter.formatDate(isActive ? inspection.started_at : (inspection.completed_at ?? inspection.started_at)))
+                        .lineLimit(1)
+
+                    if hasIssues {
+                        Text("•")
+                        Text(String.localizedStringWithFormat(
+                            NSLocalizedString("inspections.issue_count", comment: ""),
+                            anomalyCount
+                        ))
+                        .foregroundColor(.orange)
+                    } else if !isActive && anomalyCount == 0 && resolvedCount > 0 {
+                        Text("•")
+                        Text("pdf.summary.resolved")
+                            .foregroundColor(.blue)
+                    }
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+                if resolvedCount > 0 && !isActive && anomalyCount > 0 {
+                    Text("\(resolvedCount) resolved")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        } icon: {
+            Image(systemName: rowSymbolName)
+                .foregroundColor(rowSymbolColor)
+        }
+    }
 
-            Text(propertyAddress)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .lineLimit(1)
-
-            Text(AppFormatter.formatInspectionType(inspection.inspection_type))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-
-            HStack(spacing: 4) {
-                Text(AppFormatter.formatDate(isActive ? inspection.started_at : (inspection.completed_at ?? inspection.started_at)))
-
-                if hasIssues {
-                    Text("•")
-                    Text(String.localizedStringWithFormat(
-                        NSLocalizedString("inspections.issue_count", comment: ""),
-                        anomalyCount
-                    ))
-                    .foregroundColor(.orange)
-                } else if !isActive && anomalyCount == 0 && resolvedCount > 0 {
-                    Text("•")
-                    Text("pdf.summary.resolved")
-                        .foregroundColor(.blue)
-                } else if !isActive && anomalyCount == 0 {
-                    Text("•")
-                    Text("inspections.cleared")
-                        .foregroundColor(.green)
-                }
+    private var rowSymbolName: String {
+        if isActive {
+            return inspectionTypeSymbolName
+        }
+        if inspection.status == "completed" {
+            if anomalyCount > 0 {
+                return "exclamationmark.triangle.fill"
             }
-            .font(.caption)
-            .foregroundColor(.secondary)
+            if resolvedCount > 0 {
+                return "checkmark.circle.fill"
+            }
+            return "checkmark.seal.fill"
+        }
+        if inspection.status == "cancelled" {
+            return "xmark.circle.fill"
+        }
+        return "clock.fill"
+    }
 
-            if resolvedCount > 0 && !isActive && anomalyCount > 0 {
-                Text("\(resolvedCount) resolved")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+    private var rowSymbolColor: Color {
+        if isActive {
+            return AppFormatter.inspectionTypeColor(for: inspection.inspection_type)
+        }
+        if inspection.status == "completed" {
+            if anomalyCount > 0 {
+                return .orange
+            }
+            if resolvedCount > 0 {
+                return .blue
+            }
+            return .green
+        }
+        if inspection.status == "cancelled" {
+            return .secondary
+        }
+        return .accentColor
+    }
+
+    private var inspectionTypeSymbolName: String {
+        AppFormatter.inspectionTypeIcon(for: inspection.inspection_type)
+    }
+}
+
+private struct LiveIndicator: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(Color.red.opacity(0.22))
+                .frame(width: 16, height: 16)
+                .scaleEffect(isAnimating ? 1.35 : 0.75)
+                .opacity(isAnimating ? 0 : 1)
+
+            Circle()
+                .fill(Color.red)
+                .frame(width: 8, height: 8)
+        }
+        .onAppear {
+            guard !isAnimating else { return }
+            withAnimation(.easeOut(duration: 1.2).repeatForever(autoreverses: false)) {
+                isAnimating = true
             }
         }
     }

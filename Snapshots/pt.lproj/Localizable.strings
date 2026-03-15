@@ -60,7 +60,7 @@
 "settings.sign_out" = "Sair";
 "settings.sign_out_message" = "Tem certeza de que deseja sair?";
 "inspections.filter.show_records_for" = "Mostrar registros de";
-"inspections.filter.clear" = "Limpar filtros (mostrar tudo)";
+"inspections.filter.clear" = "Voltar para hoje";
 "inspections.title" = "Inspeções";
 "inspections.add" = "Adicionar inspeção";
 "inspections.delete_title" = "Excluir inspeção?";
@@ -99,6 +99,7 @@
 "paywall.all_plans_footer" = "Fotos e colaboração em equipe exigem um plano pago.";
 "paywall.restore_purchases" = "Restaurar compras";
 "paywall.restore_failed" = "Não foi possível restaurar as compras. Tente novamente.";
+"paywall.monthly" = "Mensal";
 "paywall.terms" = "Termos de serviço";
 "paywall.privacy" = "Política de privacidade";
 "paywall.legal" = "Legal";
@@ -111,7 +112,9 @@
 "paywall.legal_missing" = "A URL legal não está configurada. Adicione TERMS_URL e PRIVACY_URL ao Info.plist.";
 "paywall.price_per_month" = "%@ / mês";
 "paywall.subscribe" = "Assinar";
+"paywall.contact_support" = "Entre em contato com o suporte para alterar limites.";
 "common.cancel" = "Cancelar";
+"common.id" = "ID";
 "common.ok" = "OK";
 "common.delete" = "Excluir";
 "common.try_again" = "Tentar novamente";
@@ -139,6 +142,7 @@
 "inspection_item.status.present" = "Present";
 "inspection_item.status.missing" = "Missing";
 "inspection_item.status.damaged" = "Damaged";
+"inspection_item.status.resolved" = "Resolvido";
 "inspection_item.evidence" = "Evidence";
 "inspection_item.notes" = "Notes";
 "inspection_item.notes_placeholder" = "Add details about the condition...";
@@ -240,6 +244,7 @@
 "team.title" = "Team";
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
+"team.role.owner" = "Proprietário";
 "team.role.manager" = "Manager";
 "team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
@@ -269,6 +274,8 @@
 "property_sheet.country" = "Country";
 "property_sheet.interior_details" = "Interior Details";
 "property_sheet.details" = "Details";
+"property_sheet.bedrooms_title" = "Quartos";
+"property_sheet.bathrooms_title" = "Banheiros";
 "property_sheet.bedrooms" = "Bedrooms: %d";
 "property_sheet.bathrooms" = "Bathrooms: %.1f";
 "property_sheet.max_guests" = "Max Guests";
@@ -338,7 +345,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";
@@ -349,6 +356,7 @@
 "notifications.empty.description" = "Alerts about invitations or inspection activities will appear here.";
 "notifications.title" = "Notifications";
 "notifications.mark_all_read" = "Mark All as Read";
+"notifications.clear_all" = "Limpar tudo";
 "annotation.title" = "Annotate Photo";
 "pdf.address_missing" = "No address recorded";
 "pdf.report.title" = "Inspection Report";

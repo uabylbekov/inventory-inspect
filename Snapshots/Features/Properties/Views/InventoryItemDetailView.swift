@@ -13,8 +13,18 @@ struct InventoryItemDetailView: View {
     var body: some View {
         List {
             Section {
-                LabeledContent("Quantity", value: "\(viewModel.item.expected_qty)")
-                LabeledContent("ID", value: viewModel.item.id.uuidString.prefix(8).uppercased())
+                LabeledContent {
+                    Text("\(viewModel.item.expected_qty)")
+                } label: {
+                    Label("property_sheet.count", systemImage: "number")
+                        .symbolRenderingMode(.hierarchical)
+                }
+                LabeledContent {
+                    Text(viewModel.item.id.uuidString.prefix(8).uppercased())
+                } label: {
+                    Label("common.id", systemImage: "number.square")
+                        .symbolRenderingMode(.hierarchical)
+                }
             }
 
             if let desc = viewModel.item.description, !desc.isEmpty {
@@ -34,17 +44,27 @@ struct InventoryItemDetailView: View {
                     )
                 } else {
                     ForEach(viewModel.history) { record in
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(record.status.capitalized)
-                            Text(AppFormatter.formatDate(record.updated_at))
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-
-                            if let notes = record.notes, !notes.isEmpty {
-                                Text(notes)
+                        Label {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(statusTitle(for: record.status))
+                                Text(AppFormatter.formatDate(record.updated_at))
                                     .font(.subheadline)
-                                    .foregroundColor(.secondary)
+                                    .foregroundStyle(.secondary)
+
+                                if let notes = record.notes, !notes.isEmpty {
+                                    Text(notes)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
                             }
+                        } icon: {
+                            Image(systemName: statusIcon(for: record.status))
+                                .symbolRenderingMode(.hierarchical)
+                                .foregroundStyle(statusColor(for: record.status))
+                        }
+                        .labelStyle(.titleAndIcon)
+                        .alignmentGuide(.listRowSeparatorLeading) { dimensions in
+                            dimensions[.leading]
                         }
                     }
                 }
@@ -115,6 +135,47 @@ struct InventoryItemDetailView: View {
         }
         .task {
             await viewModel.fetchHistory()
+        }
+    }
+}
+
+private extension InventoryItemDetailView {
+    func statusTitle(for status: String) -> String {
+        switch status {
+        case "missing":
+            return String(localized: "inspection_item.status.missing")
+        case "damaged":
+            return String(localized: "inspection_item.status.damaged")
+        case "resolved":
+            return String(localized: "inspection_item.status.resolved")
+        default:
+            return String(localized: "inspection_item.status.present")
+        }
+    }
+
+    func statusIcon(for status: String) -> String {
+        switch status {
+        case "missing":
+            return "questionmark.circle.fill"
+        case "damaged":
+            return "exclamationmark.triangle.fill"
+        case "resolved":
+            return "checkmark.circle.fill"
+        default:
+            return "checkmark.seal.fill"
+        }
+    }
+
+    func statusColor(for status: String) -> Color {
+        switch status {
+        case "missing":
+            return .orange
+        case "damaged":
+            return .red
+        case "resolved":
+            return .blue
+        default:
+            return .green
         }
     }
 }

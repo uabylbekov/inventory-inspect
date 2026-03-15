@@ -3,6 +3,14 @@ import Supabase
 
 @Observable @MainActor
 final class InspectionsViewModel {
+    private enum CacheConfig {
+        static let inspectionsKeyPrefix = "inspections"
+        static let propertiesKeyPrefix = "inspection-properties"
+        static let maxAge: TimeInterval = 5 * 60
+    }
+
+    private let calendar = Calendar.autoupdatingCurrent
+
     var inspections: [InspectionModel] = []
     var properties: [PropertyModel] = []
     var anomalyCounts: [UUID: Int] = [:]  // inspection_id -> count of missing/damaged
@@ -14,21 +22,85 @@ final class InspectionsViewModel {
     
     var showingStartInspection = false
     
-    var isFilteringByDate = false
-    var selectedDate = Date() {
-        didSet {
-            isFilteringByDate = !Calendar.current.isDateInToday(selectedDate)
-        }
-    }
+    var selectedDate = Date()
     
     var filteredInspections: [InspectionModel] {
-        if !isFilteringByDate {
+        let startOfSelectedDay = calendar.startOfDay(for: selectedDate)
+        guard let endOfSelectedDay = endOfDayRangeStart(for: startOfSelectedDay) else {
             return inspections
         }
+
         return inspections.filter { inspection in
-            guard let date = AppFormatter.parseDate(inspection.started_at) else { return false }
-            return Calendar.current.isDate(date, inSameDayAs: selectedDate)
+            guard let date = inspectionDate(for: inspection) else { return false }
+            return date >= startOfSelectedDay && date < endOfSelectedDay
         }
+    }
+
+    func applyDateFilter(_ date: Date) {
+        selectedDate = date
+    }
+
+    func resetDateFilterToToday() {
+        selectedDate = Date()
+    }
+
+    var isShowingToday: Bool {
+        calendar.isDateInToday(selectedDate)
+    }
+
+    private func endOfDayRangeStart(for startOfDay: Date) -> Date? {
+        calendar.date(byAdding: .day, value: 1, to: startOfDay)
+    }
+
+    private func inspectionDate(for inspection: InspectionModel) -> Date? {
+        let dateString: String
+        if inspection.status == "in_progress" {
+            dateString = inspection.started_at
+        } else {
+            dateString = inspection.completed_at ?? inspection.started_at
+        }
+
+        return AppFormatter.parseDate(dateString)
+    }
+
+    func loadInitialData() async {
+        do {
+            let session = try await supabase.auth.session
+            let userId = session.user.id
+
+            if let cachedInspections = await SnapshotCache.shared.load(
+                [InspectionModel].self,
+                key: Self.inspectionsCacheKey(for: userId),
+                maxAge: CacheConfig.maxAge
+            ) {
+                inspections = cachedInspections
+            }
+
+            if let cachedProperties = await SnapshotCache.shared.load(
+                [PropertyModel].self,
+                key: Self.propertiesCacheKey(for: userId),
+                maxAge: CacheConfig.maxAge
+            ) {
+                properties = cachedProperties
+            }
+
+            if let cachedCounts = await SnapshotCache.shared.load(
+                InspectionOutcomeCounts.self,
+                key: Self.inspectionCountsCacheKey(for: userId),
+                maxAge: CacheConfig.maxAge
+            ) {
+                anomalyCounts = cachedCounts.anomalyCounts
+                resolvedCounts = cachedCounts.resolvedCounts
+            }
+        } catch {
+            // If the session is unavailable, the network refresh below will surface the error.
+        }
+
+        hasLoadedInitialState = true
+
+        async let fetchInspectionsTask: Void = fetchInspections(showLoadingState: inspections.isEmpty)
+        async let fetchPropertiesTask: Void = fetchProperties(showLoadingState: false)
+        _ = await (fetchInspectionsTask, fetchPropertiesTask)
     }
     
     func fetchInspections(showLoadingState: Bool = true) async {
@@ -39,7 +111,8 @@ final class InspectionsViewModel {
         
         do {
             let session = try await supabase.auth.session
-            let fetched = try await InspectionDataService.loadAccessibleInspections(for: session.user.id)
+            let userId = session.user.id
+            let fetched = try await InspectionDataService.loadAccessibleInspections(for: userId)
             
             var anomalyCountsDict: [UUID: Int] = [:]
             var resolvedCountsDict: [UUID: Int] = [:]
@@ -67,6 +140,17 @@ final class InspectionsViewModel {
             self.inspections = fetched
             self.anomalyCounts = anomalyCountsDict
             self.resolvedCounts = resolvedCountsDict
+            await SnapshotCache.shared.save(fetched, key: Self.inspectionsCacheKey(for: userId))
+            await SnapshotCache.shared.save(
+                InspectionOutcomeCounts(
+                    anomalyCounts: anomalyCountsDict,
+                    resolvedCounts: resolvedCountsDict
+                ),
+                key: Self.inspectionCountsCacheKey(for: userId)
+            )
+            Task(priority: .utility) {
+                await PrefetchService.prefetchInspectionDestinations(fetched)
+            }
             
             self.isLoading = false
             self.hasLoadedInitialState = true
@@ -79,15 +163,30 @@ final class InspectionsViewModel {
         }
     }
 
-    func fetchProperties() async {
+    func fetchProperties(showLoadingState: Bool = false) async {
+        if showLoadingState && properties.isEmpty {
+            isLoading = true
+        }
+
         do {
             let session = try await supabase.auth.session
-            let fetched = try await PropertyAccessService.loadAccessibleProperties(for: session.user.id)
+            let userId = session.user.id
+            let fetched = try await PropertyAccessService.loadAccessibleProperties(for: userId)
 
             self.properties = fetched
+            await SnapshotCache.shared.save(fetched, key: Self.propertiesCacheKey(for: userId))
+            if showLoadingState {
+                isLoading = false
+            }
         } catch is CancellationError {
+            if showLoadingState {
+                isLoading = false
+            }
         } catch {
             self.errorMessage = error.localizedDescription
+            if showLoadingState {
+                isLoading = false
+            }
         }
     }
 
@@ -97,6 +196,8 @@ final class InspectionsViewModel {
             if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
                 inspections[idx].status = "cancelled"
             }
+            await persistInspectionCaches()
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -109,6 +210,8 @@ final class InspectionsViewModel {
             if let idx = inspections.firstIndex(where: { $0.id == inspection.id }) {
                 inspections[idx].status = "in_progress"
             }
+            await persistInspectionCaches()
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
@@ -119,9 +222,45 @@ final class InspectionsViewModel {
         do {
             try await InspectionWorkflowService.deleteInspection(id: inspection.id)
             inspections.removeAll { $0.id == inspection.id }
+            anomalyCounts.removeValue(forKey: inspection.id)
+            resolvedCounts.removeValue(forKey: inspection.id)
+            await persistInspectionCaches()
+            await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionHub(for: inspection.id))
+            await SnapshotCache.shared.remove(key: SnapshotCacheKey.inspectionReport(for: inspection.id))
+            await InspectionBadgeStore.shared.refresh()
         } catch is CancellationError {
         } catch {
             errorMessage = error.localizedDescription
         }
     }
+
+    private static func inspectionsCacheKey(for userId: UUID) -> String {
+        SnapshotCacheKey.inspections(for: userId)
+    }
+
+    private static func propertiesCacheKey(for userId: UUID) -> String {
+        SnapshotCacheKey.inspectionProperties(for: userId)
+    }
+
+    private static func inspectionCountsCacheKey(for userId: UUID) -> String {
+        SnapshotCacheKey.inspectionCounts(for: userId)
+    }
+
+    private func persistInspectionCaches() async {
+        guard let userId = try? await supabase.auth.session.user.id else { return }
+
+        await SnapshotCache.shared.save(inspections, key: Self.inspectionsCacheKey(for: userId))
+        await SnapshotCache.shared.save(
+            InspectionOutcomeCounts(
+                anomalyCounts: anomalyCounts,
+                resolvedCounts: resolvedCounts
+            ),
+            key: Self.inspectionCountsCacheKey(for: userId)
+        )
+    }
+}
+
+private struct InspectionOutcomeCounts: Codable {
+    let anomalyCounts: [UUID: Int]
+    let resolvedCounts: [UUID: Int]
 }

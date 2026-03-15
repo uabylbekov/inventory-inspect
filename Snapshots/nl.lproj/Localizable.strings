@@ -60,7 +60,7 @@
 "settings.sign_out" = "Uitloggen";
 "settings.sign_out_message" = "Weet je zeker dat je wilt uitloggen?";
 "inspections.filter.show_records_for" = "Toon gegevens voor";
-"inspections.filter.clear" = "Filters wissen (alles tonen)";
+"inspections.filter.clear" = "Terug naar vandaag";
 "inspections.title" = "Inspecties";
 "inspections.add" = "Inspectie toevoegen";
 "inspections.delete_title" = "Inspectie verwijderen?";
@@ -99,6 +99,7 @@
 "paywall.all_plans_footer" = "Foto's en teamsamenwerking vereisen een betaald plan.";
 "paywall.restore_purchases" = "Aankopen herstellen";
 "paywall.restore_failed" = "Aankopen konden niet worden hersteld. Probeer opnieuw.";
+"paywall.monthly" = "Maandelijks";
 "paywall.terms" = "Servicevoorwaarden";
 "paywall.privacy" = "Privacybeleid";
 "paywall.legal" = "Juridisch";
@@ -111,7 +112,9 @@
 "paywall.legal_missing" = "Juridische URL is niet geconfigureerd. Voeg TERMS_URL en PRIVACY_URL toe aan Info.plist.";
 "paywall.price_per_month" = "%@ / maand";
 "paywall.subscribe" = "Abonneren";
+"paywall.contact_support" = "Neem contact op met support voor limietwijzigingen.";
 "common.cancel" = "Annuleren";
+"common.id" = "ID";
 "common.ok" = "OK";
 "common.delete" = "Verwijderen";
 "common.try_again" = "Opnieuw proberen";
@@ -139,6 +142,7 @@
 "inspection_item.status.present" = "Present";
 "inspection_item.status.missing" = "Missing";
 "inspection_item.status.damaged" = "Damaged";
+"inspection_item.status.resolved" = "Opgelost";
 "inspection_item.evidence" = "Evidence";
 "inspection_item.notes" = "Notes";
 "inspection_item.notes_placeholder" = "Add details about the condition...";
@@ -240,6 +244,7 @@
 "team.title" = "Team";
 "team.unlocked_by_your_plan" = "Unlocked by Your Plan";
 "team.invite_member" = "Invite Team Member";
+"team.role.owner" = "Eigenaar";
 "team.role.manager" = "Manager";
 "team.role.maintainer" = "Maintainer";
 "team.limit_reached" = "Team limit reached";
@@ -269,6 +274,8 @@
 "property_sheet.country" = "Country";
 "property_sheet.interior_details" = "Interior Details";
 "property_sheet.details" = "Details";
+"property_sheet.bedrooms_title" = "Slaapkamers";
+"property_sheet.bathrooms_title" = "Badkamers";
 "property_sheet.bedrooms" = "Bedrooms: %d";
 "property_sheet.bathrooms" = "Bathrooms: %.1f";
 "property_sheet.max_guests" = "Max Guests";
@@ -338,7 +345,7 @@
 "start_inspection.active.description" = "A team member is already inspecting this property. You can join them to split the work.";
 "start_inspection.active.join" = "Join Existing Session";
 "start_inspection.active.section" = "Active Session Found";
-"start_inspection.start" = "Start New Inspection";
+"start_inspection.start" = "Start";
 "start_inspection.title" = "New Inspection";
 "start_inspection.duplicate.title" = "Inspection Already Exists";
 "start_inspection.duplicate.confirm" = "Start Anyway";
@@ -349,6 +356,7 @@
 "notifications.empty.description" = "Alerts about invitations or inspection activities will appear here.";
 "notifications.title" = "Notifications";
 "notifications.mark_all_read" = "Mark All as Read";
+"notifications.clear_all" = "Wis alles";
 "annotation.title" = "Annotate Photo";
 "pdf.address_missing" = "No address recorded";
 "pdf.report.title" = "Inspection Report";

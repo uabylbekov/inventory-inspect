@@ -14,8 +14,9 @@ struct CompareSelectSheet: View {
             List {
                 if isLoading {
                     Section {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, alignment: .center)
+                        ForEach(0..<3, id: \.self) { _ in
+                            CompareSelectionSkeletonRow()
+                        }
                     }
                 } else if let error = errorMessage {
                     Section {
@@ -41,12 +42,7 @@ struct CompareSelectSheet: View {
                         NavigationLink {
                             ComparisonReportView(base: inspection, current: currentInspection)
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(AppFormatter.formatInspectionType(inspection.inspection_type).capitalized)
-                                Text(AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at))
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                            }
+                            CompareSelectionRow(inspection: inspection)
                         }
                     }
                 }
@@ -71,6 +67,9 @@ struct CompareSelectSheet: View {
             )
             
             self.inspections = fetched
+            Task(priority: .utility) {
+                await PrefetchService.prefetchComparisons(current: currentInspection, candidates: fetched)
+            }
         } catch is CancellationError {
             isLoading = false
             return
@@ -78,6 +77,45 @@ struct CompareSelectSheet: View {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+}
+
+private struct CompareSelectionRow: View {
+    let inspection: InspectionModel
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: AppFormatter.inspectionTypeIcon(for: inspection.inspection_type))
+                .imageScale(.medium)
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(AppFormatter.inspectionTypeColor(for: inspection.inspection_type))
+                .frame(width: 22, alignment: .center)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text(AppFormatter.formatInspectionType(inspection.inspection_type))
+                    .font(.body.weight(.medium))
+
+                Text(AppFormatter.formatDate(inspection.completed_at ?? inspection.started_at))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+private struct CompareSelectionSkeletonRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.18))
+                .frame(width: 170, height: 16)
+            RoundedRectangle(cornerRadius: 4)
+                .fill(Color.secondary.opacity(0.12))
+                .frame(width: 110, height: 13)
+        }
+        .padding(.vertical, 4)
+        .redacted(reason: .placeholder)
     }
 }
 

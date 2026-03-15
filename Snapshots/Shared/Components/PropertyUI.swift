@@ -7,13 +7,13 @@ struct PropertyUI {
         case "house": return "house.fill"
         case "condo": return "building.fill"
         case "townhouse": return "house.and.flag.fill"
-        default: return "mappin.circle.fill"
+        default: return "building.2.crop.circle"
         }
     }
     
     static func color(for propertyType: String) -> Color {
         switch propertyType.lowercased() {
-        case "apartment": return .blue
+        case "apartment": return .indigo
         case "house": return .green
         case "condo": return .purple
         case "townhouse": return .orange
