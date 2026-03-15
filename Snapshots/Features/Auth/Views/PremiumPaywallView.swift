@@ -22,8 +22,8 @@ struct SubscriptionCenterView: View {
     @State private var productLoadError: String?
     let showsDismissButton: Bool
 
-    private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
-    private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
+    private let proMonthlyProductId = "dev.ukulabs.snapshots.pro.monthly"
+    private let proYearlyProductId = "dev.ukulabs.snapshots.pro.yearly"
 
     var body: some View {
         List {
@@ -221,7 +221,7 @@ struct SubscriptionCenterView: View {
     private var businessContactFooter: AnyView {
         AnyView(
             Button {
-                if let emailURL = URL(string: "mailto:support@uluksywalker.com") {
+                if let emailURL = URL(string: "mailto:support@ukulabs.dev") {
                     openURL(emailURL)
                 }
             } label: {

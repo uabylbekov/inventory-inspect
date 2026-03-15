@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const PRO_PRODUCT_IDS = [
-  "com.ulukskywalker.snapshots.pro.monthly",
-  "com.ulukskywalker.snapshots.pro.yearly",
+  "dev.ukulabs.snapshots.pro.monthly",
+  "dev.ukulabs.snapshots.pro.yearly",
 ];
 
 type AppleTransaction = {

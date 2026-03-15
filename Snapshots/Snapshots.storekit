@@ -34,7 +34,7 @@
           "codeOffers" : [
 
           ],
-          "displayPrice" : "9.99",
+          "displayPrice" : "19.99",
           "familyShareable" : false,
           "groupNumber" : 1,
           "internalID" : "D4F7A91A-6B21-4B4A-A438-C4CBF9868857",
@@ -46,7 +46,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ulukskywalker.snapshots.pro.monthly",
+          "productID" : "dev.ukulabs.snapshots.pro.monthly",
           "recurringSubscriptionPeriod" : "P1M",
           "referenceName" : "Professional",
           "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",
@@ -71,7 +71,7 @@
               "locale" : "en_US"
             }
           ],
-          "productID" : "com.ulukskywalker.snapshots.pro.yearly",
+          "productID" : "dev.ukulabs.snapshots.pro.yearly",
           "recurringSubscriptionPeriod" : "P1Y",
           "referenceName" : "Professional Yearly",
           "subscriptionGroupID" : "A5DF6A7F-2E08-4978-A8D8-BF12B6E24785",

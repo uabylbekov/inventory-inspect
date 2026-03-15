@@ -19,7 +19,7 @@ The app uses a three-tier model that scales with the size of the user's property
 
 ### Price Points
 *   **Standard (Free)**: $0 (For evaluation and single-unit landlords).
-*   **PRO (Professional)**: **$19.99 / month** or **$149 / year** (Perfect for small teams).
+*   **PRO (Professional)**: **$19.99 / month** or **$149.99 / year** (Perfect for small teams).
 *   **BUSINESS**: **Custom pricing** (Designed for agencies and larger teams).
 
 ---

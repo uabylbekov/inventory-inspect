@@ -22,8 +22,8 @@ Snapshots uses **StoreKit 2**. For local testing in the Simulator or on a physic
 2.  Save it as `Snapshots.storekit` in the `Snapshots/` folder.
 3.  Add the following **Auto-Renewable Subscriptions**:
     *   **Group**: `Snapshots Plans`
-    *   **Product ID**: `com.ulukskywalker.snapshots.pro.monthly`
-    *   **Product ID**: `com.ulukskywalker.snapshots.pro.yearly`
+    *   **Product ID**: `dev.ukulabs.snapshots.pro.monthly`
+    *   **Product ID**: `dev.ukulabs.snapshots.pro.yearly`
 
 ### B. Enable the Configuration
 1.  In Xcode, click on the **Snapshots** scheme (near the Play button).

@@ -70,8 +70,8 @@ These values are useful for internal testers, VIPs, and manually managed busines
 
 The app checks verified current entitlements for:
 
-- `com.ulukskywalker.snapshots.pro.monthly`
-- `com.ulukskywalker.snapshots.pro.yearly`
+- `dev.ukulabs.snapshots.pro.monthly`
+- `dev.ukulabs.snapshots.pro.yearly`
 
 The app also sends the App Store transaction id to the `sync-storekit-subscription` Supabase Edge Function so the backend can stay in sync with the device.
 

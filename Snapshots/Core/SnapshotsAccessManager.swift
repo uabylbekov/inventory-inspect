@@ -57,8 +57,8 @@ final class SnapshotsAccessManager {
     private var activeProductID: String?
     private var billingSyncTask: Task<Bool, Never>?
 
-    private let proMonthlyProductId = "com.ulukskywalker.snapshots.pro.monthly"
-    private let proYearlyProductId = "com.ulukskywalker.snapshots.pro.yearly"
+    private let proMonthlyProductId = "dev.ukulabs.snapshots.pro.monthly"
+    private let proYearlyProductId = "dev.ukulabs.snapshots.pro.yearly"
     private let defaultFreeLimits = TierLimits(propertyLimit: 1, teamLimit: 0, photoLimit: 150)
     private let defaultProLimits = TierLimits(propertyLimit: 10, teamLimit: 3, photoLimit: 10_000)
     private let defaultBusinessLimits = TierLimits(propertyLimit: 50, teamLimit: 20, photoLimit: 50_000)
