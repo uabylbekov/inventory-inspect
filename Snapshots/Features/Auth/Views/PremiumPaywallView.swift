@@ -20,10 +20,11 @@ struct SubscriptionCenterView: View {
     @State private var purchasingProductID: String?
     @State private var alertMessage: String?
     @State private var productLoadError: String?
+    @State private var legalAlertMessage: String?
     let showsDismissButton: Bool
 
-    private let proMonthlyProductId = "dev.ukulabs.snapshots.pro.monthly"
-    private let proYearlyProductId = "dev.ukulabs.snapshots.pro.yearly"
+    private let proMonthlyProductId = "dev.ukulabs.snapshots.subscription.pro.monthly"
+    private let proYearlyProductId = "dev.ukulabs.snapshots.subscription.pro.yearly"
 
     var body: some View {
         List {
@@ -104,6 +105,20 @@ struct SubscriptionCenterView: View {
                 }
                 .disabled(isPurchasingAnyPlan || accessManager.isCheckingAccess)
             }
+
+            Section {
+                Button {
+                    openLegalURL(EnvConfig.termsOfServiceURL)
+                } label: {
+                    Label("paywall.terms", systemImage: "doc.text")
+                }
+
+                Button {
+                    openLegalURL(EnvConfig.privacyPolicyURL)
+                } label: {
+                    Label("paywall.privacy", systemImage: "hand.raised")
+                }
+            }
         }
         .navigationTitle("plan.your")
         .applyInlineNavigationTitleIfSupported()
@@ -124,6 +139,14 @@ struct SubscriptionCenterView: View {
             Button("common.ok", role: .cancel) { alertMessage = nil }
         } message: {
             Text(alertMessage ?? "")
+        }
+        .alert("paywall.legal", isPresented: Binding(
+            get: { legalAlertMessage != nil },
+            set: { if !$0 { legalAlertMessage = nil } }
+        )) {
+            Button("common.ok", role: .cancel) { legalAlertMessage = nil }
+        } message: {
+            Text(legalAlertMessage ?? "")
         }
     }
 
@@ -281,6 +304,14 @@ struct SubscriptionCenterView: View {
 
     private func isPurchasing(_ product: Product) -> Bool {
         purchasingProductID == product.id
+    }
+
+    private func openLegalURL(_ url: URL?) {
+        guard let url else {
+            legalAlertMessage = String(localized: "paywall.legal_missing")
+            return
+        }
+        openURL(url)
     }
 
     private func planSectionHeader(title: String, icon: String, tint: Color) -> some View {

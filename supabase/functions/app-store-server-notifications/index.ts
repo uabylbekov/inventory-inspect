@@ -12,8 +12,8 @@ const corsHeaders = {
 };
 
 const PRO_PRODUCT_IDS = [
-  "dev.ukulabs.snapshots.pro.monthly",
-  "dev.ukulabs.snapshots.pro.yearly",
+  "dev.ukulabs.snapshots.subscription.pro.monthly",
+  "dev.ukulabs.snapshots.subscription.pro.yearly",
 ];
 
 const APPLE_ROOT_CA_URLS = [

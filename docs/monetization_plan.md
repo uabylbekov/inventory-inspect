@@ -6,7 +6,7 @@ This document outlines the architecture and implementation steps for transitioni
 We will implement an `AccessManager` that grants "Pro" status if **ANY** of these conditions are met:
 1.  **VIP Status**: The user's Supabase profile has `subscription_tier = 'lifetime'`.
 2.  **TestFlight**: The app detects it is running in the Apple Sandbox environment.
-3.  **Paid Subscription**: A valid StoreKit 2 transaction is found (Product IDs: `dev.ukulabs.snapshots.pro.monthly`, `dev.ukulabs.snapshots.pro.yearly`).
+3.  **Paid Subscription**: A valid StoreKit 2 transaction is found (Product IDs: `dev.ukulabs.snapshots.subscription.pro.monthly`, `dev.ukulabs.snapshots.subscription.pro.yearly`).
 
 ## 2. Database Schema Updates (Supabase)
 We need to modify the `profiles` table to store entitlement data that persists across devices.
