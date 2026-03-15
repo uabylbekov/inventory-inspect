@@ -167,16 +167,25 @@ Recommended publish flow:
 3. Keep file names unchanged so GitHub uses them as page titles.
 4. Commit and push from the wiki repo.
 
-## Notion Legal Links
+## GitHub Pages Legal Links
 
-The app legal links now point to Notion pages:
+This repo includes a minimal static legal site under [`docs/`](/Users/uabylbekov/Projects/snapshots/docs) for GitHub Pages:
 
-- Terms of Service: [Snapshots Terms of Service](https://www.notion.so/323de2034815815182d8feff87988288)
-- Privacy Policy: [Snapshots Privacy Policy](https://www.notion.so/323de203481581b7a3d7c8a3be870743)
+- [`docs/index.html`](/Users/uabylbekov/Projects/snapshots/docs/index.html)
+- [`docs/terms.html`](/Users/uabylbekov/Projects/snapshots/docs/terms.html)
+- [`docs/privacy.html`](/Users/uabylbekov/Projects/snapshots/docs/privacy.html)
 
-Configured app targets:
+Recommended setup:
 
-- [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
-- [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
-
-Before shipping or submitting to the App Store, make sure those Notion pages are published publicly in Notion so the links can open for users who are not signed in to your workspace.
+1. Push these files to GitHub.
+2. In the GitHub repository settings, enable GitHub Pages and select:
+   Source: `Deploy from a branch`
+   Branch: `main`
+   Folder: `/docs`
+3. Your public URLs will be:
+   `https://<github-username>.github.io/snapshots/terms.html`
+   `https://<github-username>.github.io/snapshots/privacy.html`
+4. Replace the placeholder URLs in:
+   - [`Snapshots/Test.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Test.xcconfig)
+   - [`Snapshots/Prod.xcconfig`](/Users/uabylbekov/Projects/snapshots/Snapshots/Prod.xcconfig)
+5. Use the same privacy URL in App Store Connect.

@@ -92,7 +92,7 @@ enum InspectionExportService {
         resolvedItems: [ReportItem],
         presentItems: [ReportItem],
         branding: BrandingDetails
-    ) -> NSMutableData {
+    ) async -> NSMutableData {
         let pdfView = InspectionPDFView(
             property: property,
             inspection: inspection,
