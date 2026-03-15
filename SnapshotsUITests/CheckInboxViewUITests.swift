@@ -10,11 +10,11 @@ final class CheckInboxViewUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForScenario("checkInbox")
 
-        let message = app.staticTexts["check_inbox.message"]
+        let message = app.identifiedElement("check_inbox.message")
         XCTAssertTrue(message.waitForExistence(timeout: 2))
         XCTAssertTrue(message.label.contains("tester@example.com"))
 
-        XCTAssertTrue(app.buttons["check_inbox.retry"].exists)
-        XCTAssertTrue(app.buttons["check_inbox.try_another"].exists)
+        XCTAssertTrue(app.identifiedElement("check_inbox.retry").waitForExistence(timeout: 2))
+        XCTAssertTrue(app.identifiedElement("check_inbox.try_another").waitForExistence(timeout: 2))
     }
 }

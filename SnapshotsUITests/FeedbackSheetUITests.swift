@@ -10,8 +10,8 @@ final class FeedbackSheetUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForScenario("feedback")
 
-        let message = app.textViews["feedback.message"]
-        let submit = app.buttons["feedback.submit"]
+        let message = app.identifiedElement("feedback.message")
+        let submit = app.identifiedElement("feedback.submit")
 
         XCTAssertTrue(message.waitForExistence(timeout: 2))
         XCTAssertFalse(submit.isEnabled)
@@ -27,6 +27,6 @@ final class FeedbackSheetUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForScenario("feedback")
 
-        XCTAssertTrue(app.buttons["feedback.category"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.identifiedElement("feedback.category").waitForExistence(timeout: 2))
     }
 }

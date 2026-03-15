@@ -10,14 +10,14 @@ final class LoginViewUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForScenario("login")
 
-        let emailField = app.textFields["login.email"]
+        let emailField = app.identifiedElement("login.email")
         XCTAssertTrue(emailField.waitForExistence(timeout: 2))
 
         emailField.tap()
         emailField.typeText("invalid-email")
-        app.buttons["login.continue"].tap()
+        app.identifiedElement("login.continue").tap()
 
-        XCTAssertTrue(app.staticTexts["login.invalid_email"].waitForExistence(timeout: 2))
+        XCTAssertTrue(app.identifiedElement("login.invalid_email").waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -25,8 +25,8 @@ final class LoginViewUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchForScenario("login")
 
-        let emailField = app.textFields["login.email"]
-        let continueButton = app.buttons["login.continue"]
+        let emailField = app.identifiedElement("login.email")
+        let continueButton = app.identifiedElement("login.continue")
 
         XCTAssertTrue(emailField.waitForExistence(timeout: 2))
         XCTAssertFalse(continueButton.isEnabled)

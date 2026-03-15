@@ -5,4 +5,8 @@ extension XCUIApplication {
         launchEnvironment["SNAPSHOTS_UI_TEST_SCENARIO"] = scenario
         launch()
     }
+
+    func identifiedElement(_ identifier: String) -> XCUIElement {
+        descendants(matching: .any)[identifier]
+    }
 }
