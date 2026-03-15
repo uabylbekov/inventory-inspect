@@ -222,7 +222,10 @@ struct ComparisonReportView: View {
             if diff.newStatus == "resolved",
                let previousStatus = diff.newPreviousStatus,
                isResolvableIssue(previousStatus) {
-                return "Resolved from \(displayStatus(previousStatus))"
+                return String.localizedStringWithFormat(
+                    NSLocalizedString("pdf.status.resolved_from", comment: ""),
+                    displayStatus(previousStatus)
+                )
             }
             return displayStatus(diff.newStatus)
         }

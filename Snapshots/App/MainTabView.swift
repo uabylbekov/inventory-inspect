@@ -29,14 +29,14 @@ struct MainTabView: View {
 
     private var compactTabLayout: some View {
         TabView {
-            Tab("Inspections", systemImage: AppSection.inspections.systemImage) {
+            Tab("inspections.title", systemImage: AppSection.inspections.systemImage) {
                 InspectionsView()
             }
             .badge(inspectionBadgeStore.ongoingCount > 0 ? inspectionBadgeStore.ongoingCount : 0)
-            Tab("Properties", systemImage: AppSection.properties.systemImage) {
+            Tab("property.title", systemImage: AppSection.properties.systemImage) {
                 PropertyView()
             }
-            Tab("Settings", systemImage: AppSection.settings.systemImage) {
+            Tab("settings.title", systemImage: AppSection.settings.systemImage) {
                 SettingsView()
             }
         }
@@ -48,7 +48,7 @@ struct MainTabView: View {
                 sidebarLabel(for: section)
                     .tag(section)
             }
-            .navigationTitle("Snapshots")
+            .navigationTitle("auth.login.app_name")
             .listStyle(.sidebar)
             .frame(minWidth: 220)
         } detail: {
@@ -107,11 +107,11 @@ private enum AppSection: String, CaseIterable, Identifiable {
     var title: LocalizedStringKey {
         switch self {
         case .inspections:
-            return "Inspections"
+            return "inspections.title"
         case .properties:
-            return "Properties"
+            return "property.title"
         case .settings:
-            return "Settings"
+            return "settings.title"
         }
     }
 

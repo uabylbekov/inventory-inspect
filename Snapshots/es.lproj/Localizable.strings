@@ -119,7 +119,6 @@
 "common.delete" = "Eliminar";
 "common.try_again" = "Reintentar";
 "common.unknown_error" = "Se produjo un error desconocido.";
-
 "common.edit" = "Edit";
 "common.save" = "Save";
 "common.choose" = "Choose";
@@ -327,7 +326,6 @@
 "inventory_item.notes_specs" = "Notes & Specs";
 "inventory_item.condition_history" = "Condition History";
 "inventory_item.no_history" = "No past inspection records.";
-
 "start_inspection.loading_properties" = "Loading Properties...";
 "start_inspection.empty.title" = "No Properties";
 "start_inspection.empty.description" = "Add a property first before starting an inspection.";
@@ -374,14 +372,12 @@
 "image.filename" = "inspection-photo.jpg";
 "image.saved_to_photos" = "Saved to Photos";
 "common.unknown" = "Unknown";
-
 "settings.version" = "Version";
 "settings.build" = "Build";
 "settings.feedback" = "Send Feedback";
 "settings.feedback_subject" = "Snapshots Feedback";
 "settings.feedback_missing" = "Feedback email is not configured. Add SUPPORT_EMAIL to Info.plist or your build settings.";
 "settings.feedback_unavailable" = "Mail is not available on this device right now.";
-
 "feedback.title" = "Feedback";
 "feedback.type" = "Type";
 "feedback.type_footer" = "Choose the kind of feedback so it lands in Discord with the right context.";
@@ -396,9 +392,48 @@
 "feedback.submit" = "Send";
 "feedback.success.title" = "Feedback Sent";
 "feedback.success.message" = "Your feedback was sent to the team.";
-
 "settings.loading" = "Loading...";
 "settings.profile.subtitle" = "Manage your account details, branding, and workspace setup.";
 "settings.support" = "Support";
 "settings.feedback.subtitle" = "Report an issue, request a feature, or share product feedback.";
 "settings.about" = "About";
+"auth.check_inbox.try_another" = "Usar otro correo electronico";
+"auth.check_inbox.retry_success" = "Hemos enviado un nuevo enlace magico.";
+"dashboard.subtitle.attention_count" = "%d items need attention.";
+"settings.usage" = "Current Limits";
+"settings.usage.photos" = "Saved Photos";
+"settings.usage.properties" = "Owned Properties";
+"settings.usage.team" = "Team Members per Property";
+"settings.usage.team_none" = "Not included";
+"settings.usage.footer" = "Business plans can use custom limits set from the backend.";
+"paywall.yearly_plan" = "Professional Yearly";
+"paywall.price_per_year" = "%@ / year";
+"inspections.issue_count" = "%d Issues";
+"inspection_item.photo_limit_footer" = "Saved evidence photos used: %d / %d.";
+"team.role" = "Rol";
+"team.error.invalid_email" = "Introduce una direccion de correo electronico valida.";
+"team.error.limit_reached" = "Se alcanzo el limite de miembros del equipo para el plan de esta propiedad.";
+"team.error.invite_rules_unavailable" = "Las reglas de invitacion no estan disponibles en este entorno. Aplica las migraciones mas recientes de la base de datos antes de enviar invitaciones.";
+"team.success.invite_sent" = "Invitacion enviada. %@ recibira un correo electronico para descargar la app.";
+"team.success.member_added" = "Se agrego correctamente a %@ al equipo.";
+"annotation.unavailable_mac" = "La anotacion aun no esta disponible en Mac.";
+"image_picker.camera_unavailable_title" = "La camara no esta disponible en Mac";
+"image_picker.camera_unavailable_description" = "Usa Fotos o Archivos en su lugar.";
+"comparison_pdf.title" = "INFORME DE COMPARACION";
+"comparison_pdf.changed_items" = "Elementos modificados";
+"comparison_pdf.changed_items_subtitle" = "Se detectaron %d cambios";
+"comparison_pdf.unchanged_items" = "Elementos sin cambios";
+"comparison_pdf.unchanged_items_subtitle" = "%d elementos permanecieron igual";
+"comparison_pdf.changed" = "Modificados";
+"comparison_pdf.unchanged" = "Sin cambios";
+"comparison_pdf.generated_on" = "Generado el %@";
+"comparison_pdf.generated_by" = "Generado por Snapshots";
+"comparison_pdf.previous_status" = "Anterior: %@";
+"comparison_pdf.current_status" = "Actual: %@";
+"paywall.products_missing" = "No se devolvieron productos para los ID de productos Pro configurados.";
+"paywall.products_partial_missing" = "Faltan algunos planes en App Store Connect para esta compilacion: %@.";
+"paywall.restore_success" = "Las compras se restauraron correctamente.";
+"paywall.restore_none_found" = "No se encontro una suscripcion activa del App Store para esta cuenta.";
+
+"pdf.footer_with_date" = "Generado por Snapshots • %@";
+"pdf.status.resolved_from" = "Resuelto desde %@";

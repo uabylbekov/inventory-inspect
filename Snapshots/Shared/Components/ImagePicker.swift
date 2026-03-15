@@ -53,7 +53,11 @@ struct ImagePicker: View {
     var sourceType: PlatformImagePickerSourceType = .camera
 
     var body: some View {
-        ContentUnavailableView("Camera is unavailable on Mac", systemImage: "camera", description: Text("Use Photos or Files instead."))
+        ContentUnavailableView(
+            "image_picker.camera_unavailable_title",
+            systemImage: "camera",
+            description: Text("image_picker.camera_unavailable_description")
+        )
     }
 }
 #endif

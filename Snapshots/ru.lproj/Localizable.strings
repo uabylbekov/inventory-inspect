@@ -120,7 +120,6 @@
 "common.delete" = "Удалить";
 "common.try_again" = "Повторить";
 "common.unknown_error" = "Произошла неизвестная ошибка.";
-
 "common.edit" = "Edit";
 "common.save" = "Save";
 "common.choose" = "Choose";
@@ -328,7 +327,6 @@
 "inventory_item.notes_specs" = "Notes & Specs";
 "inventory_item.condition_history" = "Condition History";
 "inventory_item.no_history" = "No past inspection records.";
-
 "start_inspection.loading_properties" = "Loading Properties...";
 "start_inspection.empty.title" = "No Properties";
 "start_inspection.empty.description" = "Add a property first before starting an inspection.";
@@ -375,14 +373,12 @@
 "image.filename" = "inspection-photo.jpg";
 "image.saved_to_photos" = "Saved to Photos";
 "common.unknown" = "Unknown";
-
 "settings.version" = "Version";
 "settings.build" = "Build";
 "settings.feedback" = "Send Feedback";
 "settings.feedback_subject" = "Snapshots Feedback";
 "settings.feedback_missing" = "Feedback email is not configured. Add SUPPORT_EMAIL to Info.plist or your build settings.";
 "settings.feedback_unavailable" = "Mail is not available on this device right now.";
-
 "feedback.title" = "Feedback";
 "feedback.type" = "Type";
 "feedback.type_footer" = "Choose the kind of feedback so it lands in Discord with the right context.";
@@ -397,9 +393,47 @@
 "feedback.submit" = "Send";
 "feedback.success.title" = "Feedback Sent";
 "feedback.success.message" = "Your feedback was sent to the team.";
-
 "settings.loading" = "Loading...";
 "settings.profile.subtitle" = "Manage your account details, branding, and workspace setup.";
 "settings.support" = "Support";
 "settings.feedback.subtitle" = "Report an issue, request a feature, or share product feedback.";
 "settings.about" = "About";
+"auth.check_inbox.try_another" = "Использовать другой e-mail";
+"auth.check_inbox.retry_success" = "Мы отправили новую магическую ссылку.";
+"dashboard.subtitle.attention_count" = "%d items need attention.";
+"settings.usage" = "Current Limits";
+"settings.usage.photos" = "Saved Photos";
+"settings.usage.properties" = "Owned Properties";
+"settings.usage.team" = "Team Members per Property";
+"settings.usage.team_none" = "Not included";
+"settings.usage.footer" = "Business plans can use custom limits set from the backend.";
+"paywall.yearly_plan" = "Professional Yearly";
+"paywall.price_per_year" = "%@ / year";
+"inspection_item.photo_limit_footer" = "Saved evidence photos used: %d / %d.";
+"team.role" = "Роль";
+"team.error.invalid_email" = "Введите действительный адрес электронной почты.";
+"team.error.limit_reached" = "Достигнут лимит участников команды для плана этого объекта.";
+"team.error.invite_rules_unavailable" = "Правила приглашения недоступны в этой среде. Примените последние миграции базы данных перед отправкой приглашений.";
+"team.success.invite_sent" = "Приглашение отправлено. %@ получит письмо для загрузки приложения.";
+"team.success.member_added" = "%@ успешно добавлен(а) в команду.";
+"annotation.unavailable_mac" = "Аннотации пока недоступны на Mac.";
+"image_picker.camera_unavailable_title" = "Камера недоступна на Mac";
+"image_picker.camera_unavailable_description" = "Используйте вместо этого Фото или Файлы.";
+"comparison_pdf.title" = "ОТЧЕТ О СРАВНЕНИИ";
+"comparison_pdf.changed_items" = "Измененные элементы";
+"comparison_pdf.changed_items_subtitle" = "Обнаружено %d изменений";
+"comparison_pdf.unchanged_items" = "Неизмененные элементы";
+"comparison_pdf.unchanged_items_subtitle" = "%d элементов остались без изменений";
+"comparison_pdf.changed" = "Изменено";
+"comparison_pdf.unchanged" = "Без изменений";
+"comparison_pdf.generated_on" = "Создан %@";
+"comparison_pdf.generated_by" = "Создано в Snapshots";
+"comparison_pdf.previous_status" = "Ранее: %@";
+"comparison_pdf.current_status" = "Сейчас: %@";
+"paywall.products_missing" = "Для настроенных идентификаторов продуктов Pro не было возвращено ни одного продукта.";
+"paywall.products_partial_missing" = "Некоторые планы отсутствуют в App Store Connect для этой сборки: %@.";
+"paywall.restore_success" = "Покупки успешно восстановлены.";
+"paywall.restore_none_found" = "Для этой учетной записи не найдена активная подписка App Store.";
+
+"pdf.footer_with_date" = "Создано в Snapshots • %@";
+"pdf.status.resolved_from" = "Исправлено из %@";

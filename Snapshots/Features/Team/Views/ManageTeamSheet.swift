@@ -49,7 +49,7 @@ struct ManageTeamSheet: View {
                                 .platformEmailTextInput()
                                 .autocorrectionDisabled()
                             
-                            Picker("Role", selection: $viewModel.newMemberRole) {
+                            Picker("team.role", selection: $viewModel.newMemberRole) {
                                 if isOwner || isManager {
                                     Text("team.role.manager").tag("manager")
                                 }
@@ -207,20 +207,33 @@ struct ManageTeamSheet: View {
         return String.localizedStringWithFormat(
             NSLocalizedString("team.access.inherited", comment: ""),
             property.ownerDisplayName,
-            property.ownerTier.capitalized
+            ownerPlanDisplayName
         )
     }
 
     private func displayRole(_ role: String) -> String {
         switch role {
         case "owner":
-            return "Owner"
+            return String(localized: "team.role.owner")
         case "manager":
-            return "Manager"
+            return String(localized: "team.role.manager")
         case "cleaner", "maintainer":
-            return "Maintainer"
+            return String(localized: "team.role.maintainer")
         default:
             return role.capitalized
+        }
+    }
+
+    private var ownerPlanDisplayName: String {
+        switch property.ownerTier.lowercased() {
+        case "business":
+            return String(localized: "plan.business")
+        case "professional", "pro":
+            return String(localized: "plan.professional")
+        case "standard", "free":
+            return String(localized: "plan.standard")
+        default:
+            return property.ownerTier.capitalized
         }
     }
 }

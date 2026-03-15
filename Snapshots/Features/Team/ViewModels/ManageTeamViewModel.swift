@@ -33,7 +33,7 @@ final class ManageTeamViewModel {
         
         let email = newMemberEmail.trimmingCharacters(in: .whitespaces).lowercased()
         if !email.contains("@") || !email.contains(".") {
-            self.errorMessage = "Please enter a valid email address."
+            self.errorMessage = String(localized: "team.error.invalid_email")
             self.isSaving = false
             return false
         }
@@ -45,7 +45,7 @@ final class ManageTeamViewModel {
                 userId: session.user.id
             )
             if !canInvite {
-                self.errorMessage = "Team member limit reached for this property's plan."
+                self.errorMessage = String(localized: "team.error.limit_reached")
                 self.isSaving = false
                 return false
             }
@@ -76,8 +76,14 @@ final class ManageTeamViewModel {
 
             self.isSaving = false
             self.successMessage = response.status == "pending_created"
-                ? "Invite sent! \(email) will receive an email to download the app."
-                : "Successfully added \(email) to the team!"
+                ? String.localizedStringWithFormat(
+                    NSLocalizedString("team.success.invite_sent", comment: ""),
+                    email
+                )
+                : String.localizedStringWithFormat(
+                    NSLocalizedString("team.success.member_added", comment: ""),
+                    email
+                )
             self.newMemberEmail = ""
             return true
 
@@ -110,7 +116,7 @@ final class ManageTeamViewModel {
                 throw NSError(
                     domain: "ManageTeamViewModel",
                     code: 1001,
-                    userInfo: [NSLocalizedDescriptionKey: "Invite rules are unavailable in this environment. Apply the latest database migrations before sending invites."]
+                    userInfo: [NSLocalizedDescriptionKey: String(localized: "team.error.invite_rules_unavailable")]
                 )
             }
             throw error

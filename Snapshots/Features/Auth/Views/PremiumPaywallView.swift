@@ -339,14 +339,17 @@ struct SubscriptionCenterView: View {
         do {
             self.products = try await Product.products(for: [proMonthlyProductId, proYearlyProductId])
             if products.isEmpty {
-                productLoadError = "No products were returned for the configured Pro product IDs."
+                productLoadError = String(localized: "paywall.products_missing")
             } else {
                 let loadedIds = Set(products.map(\.id))
                 let expectedIds: Set<String> = [proMonthlyProductId, proYearlyProductId]
                 let missingIds = expectedIds.subtracting(loadedIds)
                 if !missingIds.isEmpty {
                     let missingPlanList = missingIds.sorted().joined(separator: ", ")
-                    productLoadError = "Some plans are missing from App Store Connect for this build: \(missingPlanList)."
+                    productLoadError = String.localizedStringWithFormat(
+                        NSLocalizedString("paywall.products_partial_missing", comment: ""),
+                        missingPlanList
+                    )
                 }
             }
         } catch {
@@ -368,9 +371,9 @@ struct SubscriptionCenterView: View {
         if let syncError = accessManager.lastBillingSyncError {
             alertMessage = syncError
         } else if accessManager.hasDirectPaidAccess {
-            alertMessage = "Purchases restored successfully."
+            alertMessage = String(localized: "paywall.restore_success")
         } else {
-            alertMessage = "No active App Store subscription was found for this account."
+            alertMessage = String(localized: "paywall.restore_none_found")
         }
     }
 

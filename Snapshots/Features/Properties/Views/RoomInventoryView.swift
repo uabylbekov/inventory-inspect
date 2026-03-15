@@ -212,12 +212,16 @@ struct RoomInventoryView: View {
 
     private func confirmDeleteRoom() {
         Task {
-            let count = await viewModel.activeInspectionItemCount()
-            if count > 0 {
-                roomActiveInspectionItemCount = count
-                showingRoomActiveInspectionAlert = true
-            } else {
-                showingRoomDeleteAlert = true
+            do {
+                let count = try await viewModel.activeInspectionItemCount()
+                if count > 0 {
+                    roomActiveInspectionItemCount = count
+                    showingRoomActiveInspectionAlert = true
+                } else {
+                    showingRoomDeleteAlert = true
+                }
+            } catch {
+                viewModel.errorMessage = error.localizedDescription
             }
         }
     }

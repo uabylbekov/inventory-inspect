@@ -122,7 +122,7 @@ struct InventoryImageAnnotationView: View {
                     .scaledToFit()
                     .frame(maxHeight: 320)
 
-                Text("Annotation is not available on Mac yet.")
+                Text("annotation.unavailable_mac")
                     .foregroundStyle(.secondary)
 
                 Button("common.done") {

@@ -141,13 +141,9 @@ final class PropertyDetailViewModel {
     }
     
     /// Returns count of inspection items for the given rooms that belong to an in-progress inspection.
-    func activeInspectionItemCount(at offsets: IndexSet) async -> Int {
+    func activeInspectionItemCount(at offsets: IndexSet) async throws -> Int {
         let roomIds = offsets.map { rooms[$0].id }
-        do {
-            return try await PropertyDataService.activeInspectionItemCount(propertyId: property.id, roomIds: roomIds)
-        } catch {
-            return 0
-        }
+        return try await PropertyDataService.activeInspectionItemCount(propertyId: property.id, roomIds: roomIds)
     }
     
     func deleteRooms(at offsets: IndexSet) async {
@@ -167,12 +163,8 @@ final class PropertyDetailViewModel {
         }
     }
 
-    func activeInspectionCount() async -> Int {
-        do {
-            return try await PropertyDataService.activeInspectionCount(propertyId: property.id)
-        } catch {
-            return 0
-        }
+    func activeInspectionCount() async throws -> Int {
+        try await PropertyDataService.activeInspectionCount(propertyId: property.id)
     }
 
     func deleteProperty() async -> Bool {

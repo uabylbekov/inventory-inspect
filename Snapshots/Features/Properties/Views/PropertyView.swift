@@ -120,10 +120,10 @@ struct PropertyView: View {
                     Button("common.delete", role: .destructive) {
                         if let property = propertyToDelete, deleteConfirmationText == "DELETE" {
                             HapticManager.shared.impact(style: .medium)
-                            if let index = viewModel.properties.firstIndex(where: { $0.id == property.id }) {
-                                viewModel.deleteProperties(at: IndexSet(integer: index))
+                            Task {
+                                let deleted = await viewModel.deleteProperty(id: property.id)
+                                HapticManager.shared.notification(type: deleted ? .success : .error)
                             }
-                            HapticManager.shared.notification(type: .success)
                         }
                         propertyToDelete = nil
                         deleteConfirmationText = ""
@@ -157,12 +157,17 @@ struct PropertyView: View {
         propertyToDelete = property
         deleteConfirmationText = ""
         Task {
-            let count = await viewModel.activeInspectionCount(for: property.id)
-            if count > 0 {
-                activeInspectionWarningCount = count
-                showingActiveInspectionWarning = true
-            } else {
-                showingPropertyDeleteAlert = true
+            do {
+                let count = try await viewModel.activeInspectionCount(for: property.id)
+                if count > 0 {
+                    activeInspectionWarningCount = count
+                    showingActiveInspectionWarning = true
+                } else {
+                    showingPropertyDeleteAlert = true
+                }
+            } catch {
+                viewModel.errorMessage = error.localizedDescription
+                propertyToDelete = nil
             }
         }
     }

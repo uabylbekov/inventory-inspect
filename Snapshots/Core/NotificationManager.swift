@@ -78,6 +78,7 @@ final class NotificationManager: @unchecked Sendable {
     
     func handleJoinRequest(id: UUID) async {
         joinError = nil
+        joiningInspection = nil
         do {
             let inspection: [InspectionModel] = try await supabase
                 .from("inspections")
@@ -86,8 +87,10 @@ final class NotificationManager: @unchecked Sendable {
                 .execute()
                 .value
             
-            if let first = inspection.first {
+            if let first = inspection.first, first.status == "in_progress" {
                 self.joiningInspection = first
+            } else {
+                self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
             }
         } catch {
             self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
