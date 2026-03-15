@@ -16,9 +16,9 @@ struct SettingsView: View {
                 Section {
                     Button(action: { showingEditProfile = true }) {
                         SettingsProfileRow(displayName: displayName)
+                            .accessibilityIdentifier("settings.edit_profile")
                     }
                     .buttonStyle(.plain)
-                    .accessibilityIdentifier("settings.edit_profile")
                 }
                 
                 Section {
@@ -36,8 +36,8 @@ struct SettingsView: View {
                         showingFeedbackSheet = true
                     } label: {
                         Label("settings.feedback", systemImage: "bubble.left.and.bubble.right")
+                            .accessibilityIdentifier("settings.feedback")
                     }
-                    .accessibilityIdentifier("settings.feedback")
                 } header: {
                     Text("settings.support")
                 }
@@ -75,6 +75,7 @@ struct SettingsView: View {
                     Button(role: .destructive, action: { showingSignOutAlert = true }) {
                         HStack {
                             Label("settings.sign_out", systemImage: "rectangle.portrait.and.arrow.right")
+                                .accessibilityIdentifier("settings.sign_out")
                             Spacer()
                             if isSigningOut {
                                 ProgressView()
@@ -82,7 +83,6 @@ struct SettingsView: View {
                         }
                     }
                     .disabled(isSigningOut)
-                    .accessibilityIdentifier("settings.sign_out")
                 } header: {
                     Text("settings.account")
                 }
