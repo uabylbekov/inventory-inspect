@@ -13,6 +13,18 @@ type SourceConfig = {
   sql: string;
 };
 
+type CursorRow = {
+  source: string;
+  last_checked_at: string;
+};
+
+type AlertCandidate = {
+  source: string;
+  eventKey: string;
+  eventTimestamp: string;
+  line: string;
+};
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -20,6 +32,7 @@ const corsHeaders = {
 };
 
 const MAX_EVENTS_PER_RUN = 12;
+const SOURCE_BATCH_LIMIT = 25;
 const INITIAL_LOOKBACK_MINUTES = 5;
 const DEDUPE_RETENTION_DAYS = 7;
 
@@ -32,8 +45,9 @@ const sources: SourceConfig[] = [
         datetime(timestamp) as ts,
         event_message
       from function_logs
-      where regexp_contains(lower(event_message), '(error|exception|fatal|panic)')
-      order by timestamp desc
+      where regexp_contains(event_message, '^(GET|POST|PUT|PATCH|DELETE) \\| [45][0-9][0-9] \\|')
+        and not regexp_contains(lower(event_message), 'forward-supabase-errors')
+      order by timestamp asc
       limit 25
     `,
   },
@@ -46,7 +60,7 @@ const sources: SourceConfig[] = [
         event_message
       from auth_logs
       where regexp_contains(lower(event_message), '(error|fail|invalid|denied)')
-      order by timestamp desc
+      order by timestamp asc
       limit 25
     `,
   },
@@ -56,13 +70,10 @@ const sources: SourceConfig[] = [
     sql: `
       select
         datetime(timestamp) as ts,
-        parsed.error_severity as severity,
         event_message
       from postgres_logs
-      cross join unnest(postgres_logs.metadata) as metadata
-      cross join unnest(metadata.parsed) as parsed
-      where parsed.error_severity in ('ERROR', 'FATAL', 'PANIC')
-      order by timestamp desc
+      where regexp_contains(lower(event_message), '(error|fatal|panic)')
+      order by timestamp asc
       limit 25
     `,
   },
@@ -98,6 +109,19 @@ function hashString(input: string) {
     hash = Math.imul(hash, 16777619);
   }
   return `h${(hash >>> 0).toString(16)}`;
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === "string") return error;
+  if (error && typeof error === "object") {
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return String(error);
+    }
+  }
+  return "Unexpected error.";
 }
 
 async function fetchLogsForSource(
@@ -147,10 +171,22 @@ Deno.serve(async (req) => {
   const expectedCronToken = Deno.env.get("ALERTS_CRON_TOKEN");
   const discordWebhook = Deno.env.get("DISCORD_ALERTS_WEBHOOK");
   const managementToken = Deno.env.get("ALERTS_MANAGEMENT_PAT");
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   const projectRef = getProjectRef();
 
-  if (!expectedCronToken || !discordWebhook || !managementToken || !projectRef) {
-    return json({ error: "Required secrets are not configured." }, 500);
+  const missingConfig = [
+    !expectedCronToken ? "ALERTS_CRON_TOKEN" : null,
+    !discordWebhook ? "DISCORD_ALERTS_WEBHOOK" : null,
+    !managementToken ? "ALERTS_MANAGEMENT_PAT" : null,
+    !supabaseUrl ? "SUPABASE_URL" : null,
+    !serviceRoleKey ? "SUPABASE_SERVICE_ROLE_KEY" : null,
+    !projectRef ? "SUPABASE_PROJECT_REF" : null,
+  ].filter((value): value is string => value !== null);
+
+  if (missingConfig.length > 0) {
+    console.error("forward-supabase-errors config missing", { missingConfig });
+    return json({ error: `Required secrets are not configured: ${missingConfig.join(", ")}` }, 500);
   }
 
   const authHeader = req.headers.get("Authorization");
@@ -160,8 +196,8 @@ Deno.serve(async (req) => {
   }
 
   const adminClient = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+    supabaseUrl,
+    serviceRoleKey,
   );
 
   try {
@@ -169,78 +205,89 @@ Deno.serve(async (req) => {
     const defaultStart = new Date(now.getTime() - INITIAL_LOOKBACK_MINUTES * 60_000);
 
     const { data: cursorRows, error: cursorError } = await adminClient
-      .schema("ops")
-      .from("supabase_alert_cursor")
-      .select("source, last_checked_at");
+      .rpc("get_supabase_alert_cursor");
 
-    if (cursorError) throw cursorError;
+    if (cursorError) {
+      throw new Error(`Failed to load alert cursor: ${getErrorMessage(cursorError)}`);
+    }
 
     const cursorMap = new Map<string, string>(
-      (cursorRows ?? []).map((row: { source: string; last_checked_at: string }) => [row.source, row.last_checked_at]),
+      ((cursorRows ?? []) as CursorRow[]).map((row) => [row.source, row.last_checked_at]),
     );
 
-    const outboundLines: string[] = [];
+    const candidates: AlertCandidate[] = [];
     const cursorUpdates: { source: string; last_checked_at: string }[] = [];
 
     for (const source of sources) {
-      const startIso = cursorMap.get(source.key) ?? defaultStart.toISOString();
+      const storedCursor = cursorMap.get(source.key);
+      const startIso = storedCursor ? new Date(storedCursor).toISOString() : defaultStart.toISOString();
       const endIso = now.toISOString();
 
       const logs = await fetchLogsForSource(projectRef, managementToken, source, startIso, endIso);
+      let lastScannedTimestamp: string | null = null;
+      let stoppedByRunLimit = false;
 
       for (const row of logs) {
         const ts = row.ts ?? endIso;
         const message = (row.event_message ?? "").trim();
+        lastScannedTimestamp = ts;
         if (!message) continue;
 
         const eventKey = hashString(`${source.key}|${ts}|${message}`);
-        const { error: dedupeError } = await adminClient
-          .schema("ops")
-          .from("supabase_alert_dedupe")
-          .insert({
-            event_key: eventKey,
-            source: source.key,
-            event_timestamp: ts,
+        const { data: alreadySent, error: dedupeCheckError } = await adminClient
+          .rpc("supabase_alert_dedupe_exists", {
+            p_event_key: eventKey,
           });
 
-        if (dedupeError) {
-          const duplicate = dedupeError.code === "23505" || dedupeError.message.toLowerCase().includes("duplicate");
-          if (duplicate) continue;
-          throw dedupeError;
+        if (dedupeCheckError) {
+          throw new Error(`Failed to check alert dedupe for ${source.key}: ${getErrorMessage(dedupeCheckError)}`);
         }
+        if (alreadySent === true) continue;
 
         const severityPrefix = row.severity ? `[${row.severity}] ` : "";
-        outboundLines.push(
-          `• ${source.label} | ${ts}\n${severityPrefix}${truncate(message, 800)}`
-        );
+        candidates.push({
+          source: source.key,
+          eventKey,
+          eventTimestamp: ts,
+          line: `• ${source.label} | ${ts}\n${severityPrefix}${truncate(message, 800)}`,
+        });
 
-        if (outboundLines.length >= MAX_EVENTS_PER_RUN) break;
+        if (candidates.length >= MAX_EVENTS_PER_RUN) {
+          stoppedByRunLimit = true;
+          break;
+        }
       }
 
       cursorUpdates.push({
         source: source.key,
-        last_checked_at: endIso,
+        last_checked_at: (!stoppedByRunLimit && logs.length < SOURCE_BATCH_LIMIT)
+          ? endIso
+          : (lastScannedTimestamp ?? endIso),
       });
 
-      if (outboundLines.length >= MAX_EVENTS_PER_RUN) break;
+      if (stoppedByRunLimit) break;
     }
 
-    if (cursorUpdates.length > 0) {
-      const { error: upsertError } = await adminClient
-        .schema("ops")
-        .from("supabase_alert_cursor")
-        .upsert(cursorUpdates, { onConflict: "source" });
-      if (upsertError) throw upsertError;
-    }
+    if (candidates.length === 0) {
+      if (cursorUpdates.length > 0) {
+        const { error: upsertError } = await adminClient
+          .rpc("upsert_supabase_alert_cursor", {
+            p_rows: cursorUpdates,
+          });
+        if (upsertError) {
+          throw new Error(`Failed to store alert cursor: ${getErrorMessage(upsertError)}`);
+        }
+      }
 
-    const cutoff = new Date(now.getTime() - DEDUPE_RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
-    await adminClient
-      .schema("ops")
-      .from("supabase_alert_dedupe")
-      .delete()
-      .lt("first_sent_at", cutoff);
+      const cutoff = new Date(now.getTime() - DEDUPE_RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
+      const { error: cleanupError } = await adminClient
+        .rpc("cleanup_supabase_alert_dedupe", {
+          p_cutoff: cutoff,
+        });
+      if (cleanupError) {
+        throw new Error(`Failed to clean alert dedupe: ${getErrorMessage(cleanupError)}`);
+      }
 
-    if (outboundLines.length === 0) {
       return json({ success: true, sent: 0 });
     }
 
@@ -250,7 +297,7 @@ Deno.serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        content: `Supabase alerts for \`${projectRef}\`\n\n${truncate(outboundLines.join("\n\n"), 1800)}`,
+        content: `Supabase alerts for \`${projectRef}\`\n\n${truncate(candidates.map((candidate) => candidate.line).join("\n\n"), 1800)}`,
       }),
     });
 
@@ -259,8 +306,42 @@ Deno.serve(async (req) => {
       return json({ error: `Discord webhook failed: ${message || discordResponse.statusText}` }, 502);
     }
 
-    return json({ success: true, sent: outboundLines.length });
+    for (const candidate of candidates) {
+      const { error: dedupeError } = await adminClient
+        .rpc("insert_supabase_alert_dedupe", {
+          p_event_key: candidate.eventKey,
+          p_source: candidate.source,
+          p_event_timestamp: candidate.eventTimestamp,
+        });
+
+      if (dedupeError) {
+        throw new Error(`Failed to mark alert as sent for ${candidate.source}: ${getErrorMessage(dedupeError)}`);
+      }
+    }
+
+    if (cursorUpdates.length > 0) {
+      const { error: upsertError } = await adminClient
+        .rpc("upsert_supabase_alert_cursor", {
+          p_rows: cursorUpdates,
+        });
+      if (upsertError) {
+        throw new Error(`Failed to store alert cursor: ${getErrorMessage(upsertError)}`);
+      }
+    }
+
+    const cutoff = new Date(now.getTime() - DEDUPE_RETENTION_DAYS * 24 * 60 * 60_000).toISOString();
+    const { error: cleanupError } = await adminClient
+      .rpc("cleanup_supabase_alert_dedupe", {
+        p_cutoff: cutoff,
+      });
+    if (cleanupError) {
+      throw new Error(`Failed to clean alert dedupe: ${getErrorMessage(cleanupError)}`);
+    }
+
+    return json({ success: true, sent: candidates.length });
   } catch (error) {
-    return json({ error: error instanceof Error ? error.message : "Unexpected error." }, 500);
+    const message = getErrorMessage(error);
+    console.error("forward-supabase-errors failed", message);
+    return json({ error: message }, 500);
   }
 });

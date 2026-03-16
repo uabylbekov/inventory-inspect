@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "此邮箱地址没有对应账户。要创建一个吗？";
 "auth.check_inbox.title" = "请查看收件箱";
 "auth.check_inbox.message" = "我们已向 **%@** 发送魔法链接。点击链接即可立即登录。";
+"auth.check_inbox.resend_email" = "重新发送邮件";
+"auth.check_inbox.open_mail" = "打开邮件";
 "profile.full_name" = "姓名";
 "profile.complete.welcome" = "欢迎";
 "profile.complete.subtitle" = "请输入您的姓名以继续。";

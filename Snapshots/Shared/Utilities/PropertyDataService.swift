@@ -8,14 +8,19 @@ struct PropertyDetailSnapshot {
 
 enum PropertyDataService {
     static func loadProperty(id: UUID) async throws -> PropertyModel {
-        let property: PropertyModel = try await supabase
-            .from("properties")
-            .select("*, property_members(role)")
-            .eq("id", value: id.uuidString.lowercased())
-            .single()
-            .execute()
-            .value
-        return try await PropertyOwnerProfileLoader.enrich([property]).first ?? property
+        let session = try await supabase.auth.session
+
+        if let accessibleProperty = try await PropertyAccessService
+            .loadAccessibleProperties(for: session.user.id)
+            .first(where: { $0.id == id }) {
+            return accessibleProperty
+        }
+
+        throw NSError(
+            domain: "PropertyDataService",
+            code: 404,
+            userInfo: [NSLocalizedDescriptionKey: "Property not found or you no longer have access to it."]
+        )
     }
 
     static func loadPropertyDetailSnapshot(propertyId: UUID) async throws -> PropertyDetailSnapshot {

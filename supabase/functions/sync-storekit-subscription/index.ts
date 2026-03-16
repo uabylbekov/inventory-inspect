@@ -22,6 +22,8 @@ type AppleTransaction = {
   purchaseDate?: number;
 };
 
+type AppStoreEnvironment = "Production" | "Sandbox";
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -78,8 +80,18 @@ async function buildAppStoreToken() {
     .sign(signingKey);
 }
 
-async function fetchTransactionHistory(transactionId: string, appStoreToken: string) {
-  const environments = [
+async function fetchTransactionHistory(
+  transactionId: string,
+  appStoreToken: string,
+  requestedEnvironment?: AppStoreEnvironment,
+) {
+  const environments: { baseUrl: string; environment: AppStoreEnvironment }[] = requestedEnvironment
+    ? [
+      requestedEnvironment === "Sandbox"
+        ? { baseUrl: "https://api.storekit-sandbox.itunes.apple.com", environment: "Sandbox" }
+        : { baseUrl: "https://api.storekit.itunes.apple.com", environment: "Production" },
+    ]
+    : [
     { baseUrl: "https://api.storekit.itunes.apple.com", environment: "Production" },
     { baseUrl: "https://api.storekit-sandbox.itunes.apple.com", environment: "Sandbox" },
   ];
@@ -205,9 +217,16 @@ serve(async (req) => {
       return json({ error: "Missing Authorization header." }, 401);
     }
 
-    const { transactionId } = await req.json();
+    const { transactionId, environment } = await req.json();
     if (!transactionId || typeof transactionId !== "string") {
       return json({ error: "transactionId is required." }, 400);
+    }
+    if (
+      environment !== undefined &&
+      environment !== "Production" &&
+      environment !== "Sandbox"
+    ) {
+      return json({ error: "environment must be Production or Sandbox." }, 400);
     }
 
     const adminClient = createClient(
@@ -223,7 +242,11 @@ serve(async (req) => {
     }
 
     const appStoreToken = await buildAppStoreToken();
-    const history = await fetchTransactionHistory(transactionId, appStoreToken);
+    const history = await fetchTransactionHistory(
+      transactionId,
+      appStoreToken,
+      environment as AppStoreEnvironment | undefined,
+    );
     if (history.transactions.length === 0) {
       return json(
         { error: "No verified App Store transaction history was found for this transactionId." },

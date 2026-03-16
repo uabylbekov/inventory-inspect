@@ -1,6 +1,10 @@
 [remotes.test]
 project_id = "nmtifjchsgdnfknkpowu"
 
+[remotes.test.auth]
+site_url = "snapshots://login-callback"
+additional_redirect_urls = ["snapshots://login-callback"]
+
 [functions.app-store-server-notifications]
 verify_jwt = false
 

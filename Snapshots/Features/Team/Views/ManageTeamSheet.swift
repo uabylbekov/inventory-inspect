@@ -150,8 +150,8 @@ struct ManageTeamSheet: View {
                                         if member.role != "owner" { 
                                             Task { 
                                                 HapticManager.shared.impact(style: .medium)
-                                                await viewModel.removeMember(memberId: member.id) 
-                                                HapticManager.shared.notification(type: .success)
+                                                let removed = await viewModel.removeMember(memberId: member.id)
+                                                HapticManager.shared.notification(type: removed ? .success : .error)
                                             }
                                         }                              }
                             }

@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "Аккаунта с таким адресом нет. Создать новый?";
 "auth.check_inbox.title" = "Проверьте почту";
 "auth.check_inbox.message" = "Мы отправили магическую ссылку на **%@**. Нажмите на ссылку, чтобы сразу войти.";
+"auth.check_inbox.resend_email" = "Отправить письмо снова";
+"auth.check_inbox.open_mail" = "Открыть Почту";
 "profile.full_name" = "Полное имя";
 "profile.complete.welcome" = "Добро пожаловать!";
 "profile.complete.subtitle" = "Введите ваше имя, чтобы продолжить.";

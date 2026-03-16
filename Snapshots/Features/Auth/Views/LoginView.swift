@@ -53,7 +53,7 @@ struct LoginView: View {
                     .listRowBackground(Color.clear)
             }
 
-            Section("auth.login.email_section") {
+            Section {
                 emailField
 
                 if showValidationError {

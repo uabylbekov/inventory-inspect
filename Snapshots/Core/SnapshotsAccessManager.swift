@@ -18,10 +18,12 @@ final class SnapshotsAccessManager {
         let productID: String?
         let transactionID: String?
         let originalTransactionID: String?
+        let environment: String?
     }
 
     private struct StoreKitSyncPayload: Encodable {
         let transactionId: String
+        let environment: String?
     }
 
     private struct StoreKitSyncResponse: Decodable {
@@ -86,6 +88,17 @@ final class SnapshotsAccessManager {
 
     var hasStoreKitProSubscription: Bool {
         activeProductTier == "pro"
+    }
+
+    var activeBillingCadenceLabel: String? {
+        switch activeProductID {
+        case proMonthlyProductId:
+            return String(localized: "paywall.monthly")
+        case proYearlyProductId:
+            return String(localized: "paywall.yearly")
+        default:
+            return nil
+        }
     }
 
     var hasDirectPaidAccess: Bool {
@@ -192,6 +205,7 @@ final class SnapshotsAccessManager {
         var matchedProductID: String?
         var matchedTransactionID: String?
         var matchedOriginalTransactionID: String?
+        var matchedEnvironment: String?
 
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
@@ -203,6 +217,7 @@ final class SnapshotsAccessManager {
                 matchedProductID = transaction.productID
                 matchedTransactionID = String(transaction.id)
                 matchedOriginalTransactionID = String(transaction.originalID)
+                matchedEnvironment = String(describing: transaction.environment)
             }
         }
 
@@ -210,7 +225,8 @@ final class SnapshotsAccessManager {
             tier: highestTierFound,
             productID: matchedProductID,
             transactionID: matchedTransactionID,
-            originalTransactionID: matchedOriginalTransactionID
+            originalTransactionID: matchedOriginalTransactionID,
+            environment: matchedEnvironment
         )
     }
 
@@ -255,7 +271,10 @@ final class SnapshotsAccessManager {
                                 "Authorization": "Bearer \(session.accessToken)",
                                 "apikey": EnvConfig.supabaseKey
                             ],
-                            body: StoreKitSyncPayload(transactionId: transactionIdentifier)
+                            body: StoreKitSyncPayload(
+                                transactionId: transactionIdentifier,
+                                environment: entitlement.environment ?? profile?.app_store_environment
+                            )
                         )
                     )
                 if let backendError = response.error, !backendError.isEmpty {

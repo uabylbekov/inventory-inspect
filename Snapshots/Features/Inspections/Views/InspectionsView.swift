@@ -171,8 +171,9 @@ struct InspectionsView: View {
                     "",
                     selection: Binding(
                         get: { viewModel.selectedDate },
-                        set: { viewModel.applyDateFilter($0) }
+                        set: { viewModel.applyDateFilter(clampedFilterDate($0)) }
                     ),
+                    in: ...Date(),
                     displayedComponents: .date
                 )
                 .datePickerStyle(.graphical)
@@ -198,13 +199,18 @@ struct InspectionsView: View {
         DatePicker(
             selection: Binding(
                 get: { viewModel.selectedDate },
-                set: { viewModel.applyDateFilter($0) }
+                set: { viewModel.applyDateFilter(clampedFilterDate($0)) }
             ),
+            in: ...Date(),
             displayedComponents: .date
         ) {
             Label("inspections.filter.show_records_for", systemImage: "calendar")
         }
 #endif
+    }
+
+    private func clampedFilterDate(_ date: Date) -> Date {
+        min(date, Date())
     }
 
     private func dateLabel(for date: Date) -> String {

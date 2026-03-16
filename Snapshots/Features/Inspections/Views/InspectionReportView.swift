@@ -182,8 +182,8 @@ struct InspectionReportView: View {
         Button {
             Task {
                 HapticManager.shared.impact(style: .medium)
-                await viewModel.resolveAnomaly(reportItem: item)
-                HapticManager.shared.notification(type: .success)
+                let resolved = await viewModel.resolveAnomaly(reportItem: item)
+                HapticManager.shared.notification(type: resolved ? .success : .error)
             }
         } label: {
             Text("report.mark_resolved")
@@ -278,8 +278,8 @@ struct ReportItemRow: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if let imageURL {
-                        evidenceThumbnail(url: imageURL)
+                    if let imagePath = item.inspectionItem.image_url {
+                        evidenceThumbnail(path: imagePath)
                     }
                 }
 
@@ -350,11 +350,6 @@ struct ReportItemRow: View {
         return notes.replacingOccurrences(of: "Resolved by ", with: "", options: [.caseInsensitive, .anchored])
     }
 
-    private var imageURL: URL? {
-        guard let imageURLString = item.inspectionItem.image_url else { return nil }
-        return URL(string: imageURLString)
-    }
-
     private var rowSymbolName: String {
         switch effectiveStatus {
         case "missing":
@@ -369,8 +364,8 @@ struct ReportItemRow: View {
     }
 
     @ViewBuilder
-    private func evidenceThumbnail(url: URL) -> some View {
-        CachedAsyncImage(url: url, width: 160) { image in
+    private func evidenceThumbnail(path: String) -> some View {
+        InspectionEvidenceAsyncImage(imagePath: path, width: 160) { image in
             Button {
                 showFullScreenImage = true
             } label: {
@@ -382,7 +377,7 @@ struct ReportItemRow: View {
             }
             .buttonStyle(.plain)
             .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
-                FullScreenImageView(image: .remote(url))
+                InspectionEvidenceFullScreenView(imagePath: path)
             }
         } placeholder: {
             RoundedRectangle(cornerRadius: 10, style: .continuous)

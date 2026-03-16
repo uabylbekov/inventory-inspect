@@ -151,7 +151,7 @@ final class ManageTeamViewModel {
         }
     }
     
-    func removeMember(memberId: UUID) async {
+    func removeMember(memberId: UUID) async -> Bool {
         do {
             try await supabase.from("property_members")
                 .delete()
@@ -159,9 +159,12 @@ final class ManageTeamViewModel {
                 .execute()
             
             await fetchMembers() // Refresh list
+            return true
         } catch is CancellationError {
+            return false
         } catch {
             self.errorMessage = error.localizedDescription
+            return false
         }
     }
 
