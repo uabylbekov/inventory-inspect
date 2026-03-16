@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "Aucun compte n'existe avec cette adresse e-mail. Voulez-vous en créer un ?";
 "auth.check_inbox.title" = "Vérifiez votre boîte mail";
 "auth.check_inbox.message" = "Nous avons envoyé un lien magique à **%@**. Cliquez sur le lien pour vous connecter immédiatement.";
+"auth.check_inbox.resend_email" = "Renvoyer l'e-mail";
+"auth.check_inbox.open_mail" = "Ouvrir Mail";
 "profile.full_name" = "Nom complet";
 "profile.complete.welcome" = "Bienvenue !";
 "profile.complete.subtitle" = "Saisissez votre nom pour continuer.";

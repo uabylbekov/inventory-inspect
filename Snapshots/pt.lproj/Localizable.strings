@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "Não existe uma conta com este e-mail. Deseja criar uma?";
 "auth.check_inbox.title" = "Verifique sua caixa de entrada";
 "auth.check_inbox.message" = "Enviamos um link mágico para **%@**. Toque no link para entrar imediatamente.";
+"auth.check_inbox.resend_email" = "Reenviar e-mail";
+"auth.check_inbox.open_mail" = "Abrir Mail";
 "profile.full_name" = "Nome completo";
 "profile.complete.welcome" = "Bem-vindo!";
 "profile.complete.subtitle" = "Digite seu nome para continuar.";

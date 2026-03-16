@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "이 이메일 주소로 된 계정이 없습니다. 새로 만들까요?";
 "auth.check_inbox.title" = "받은편지함을 확인하세요";
 "auth.check_inbox.message" = "**%@** 로 매직 링크를 보냈습니다. 링크를 눌러 바로 로그인하세요.";
+"auth.check_inbox.resend_email" = "이메일 다시 보내기";
+"auth.check_inbox.open_mail" = "메일 열기";
 "profile.full_name" = "이름";
 "profile.complete.welcome" = "환영합니다";
 "profile.complete.subtitle" = "계속하려면 이름을 입력하세요.";

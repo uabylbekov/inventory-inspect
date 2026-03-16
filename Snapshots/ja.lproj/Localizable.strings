@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "このメールアドレスのアカウントは存在しません。作成しますか？";
 "auth.check_inbox.title" = "受信トレイを確認してください";
 "auth.check_inbox.message" = "**%@** にマジックリンクを送信しました。リンクをタップするとすぐにログインできます。";
+"auth.check_inbox.resend_email" = "メールを再送";
+"auth.check_inbox.open_mail" = "メールを開く";
 "profile.full_name" = "氏名";
 "profile.complete.welcome" = "ようこそ";
 "profile.complete.subtitle" = "続行するには氏名を入力してください。";

@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "An account with this email does not exist. Would you like to create one?";
 "auth.check_inbox.title" = "Check your inbox";
 "auth.check_inbox.message" = "We've sent a magic link to **%@**. Click the link to log in instantly.";
+"auth.check_inbox.resend_email" = "Resend email";
+"auth.check_inbox.open_mail" = "Open Mail";
 "auth.check_inbox.try_another" = "Try another email";
 "auth.check_inbox.retry_success" = "We sent a new magic link.";
 "profile.full_name" = "Full Name";

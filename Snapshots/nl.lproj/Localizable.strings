@@ -9,6 +9,8 @@
 "auth.login.account_not_found_message" = "Er bestaat geen account met dit e-mailadres. Wil je er een aanmaken?";
 "auth.check_inbox.title" = "Controleer je inbox";
 "auth.check_inbox.message" = "We hebben een magic link gestuurd naar **%@**. Tik op de link om direct in te loggen.";
+"auth.check_inbox.resend_email" = "E-mail opnieuw verzenden";
+"auth.check_inbox.open_mail" = "Mail openen";
 "profile.full_name" = "Volledige naam";
 "profile.complete.welcome" = "Welkom!";
 "profile.complete.subtitle" = "Voer je naam in om verder te gaan.";
