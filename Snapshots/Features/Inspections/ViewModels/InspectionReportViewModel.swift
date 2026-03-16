@@ -86,9 +86,9 @@ final class InspectionReportViewModel {
         }
     }
 
-    func resolveAnomaly(reportItem: ReportItem) async {
+    func resolveAnomaly(reportItem: ReportItem) async -> Bool {
         // Find existing index and store local copy for potential fallback
-        guard let index = anomalies.firstIndex(where: { $0.id == reportItem.id }) else { return }
+        guard let index = anomalies.firstIndex(where: { $0.id == reportItem.id }) else { return false }
         let originalItem = anomalies[index]
         
         var currentName = "unknown user"
@@ -140,6 +140,7 @@ final class InspectionReportViewModel {
                 .eq("id", value: reportItem.inspectionItem.id.uuidString.lowercased())
                 .execute()
             await persistCurrentSnapshot()
+            return true
         } catch {
             print("Error resolving anomaly: \(error)")
             // 3. Fallback on Error
@@ -152,6 +153,7 @@ final class InspectionReportViewModel {
                 }
             }
             await persistCurrentSnapshot()
+            return false
         }
     }
     

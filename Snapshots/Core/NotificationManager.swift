@@ -66,7 +66,6 @@ final class NotificationManager: @unchecked Sendable {
         await teardownRealtime()
         observedUserId = userId
         await fetchNotifications()
-        startPeriodicRefresh()
         await setupRealtime()
     }
 
@@ -271,6 +270,7 @@ final class NotificationManager: @unchecked Sendable {
             )
 
             try await channel.subscribeWithError()
+            stopPeriodicRefresh()
 
             realtimeTask = Task { [weak self] in
                 guard let self else { return }
@@ -289,12 +289,18 @@ final class NotificationManager: @unchecked Sendable {
                         await fetchNotifications()
                     }
                 }
+
+                guard !Task.isCancelled else { return }
+                self.channel = nil
+                startPeriodicRefresh()
+                await fetchNotifications()
             }
             self.channel = channel
         } catch {
             print("Notifications realtime unavailable, relying on periodic refresh: \(error)")
             await channel.unsubscribe()
             self.channel = nil
+            startPeriodicRefresh()
         }
     }
 

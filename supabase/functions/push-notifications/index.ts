@@ -4,6 +4,18 @@ import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts"
 
 serve(async (req) => {
     try {
+        const authHeader = req.headers.get('Authorization')
+        const expectedToken = Deno.env.get('PUSH_NOTIFICATIONS_WEBHOOK_TOKEN')
+        const [bearer, token] = (authHeader ?? '').split(' ')
+
+        if (!expectedToken) {
+            return new Response("Missing push notification webhook configuration", { status: 500 })
+        }
+
+        if (bearer !== 'Bearer' || token !== expectedToken) {
+            return new Response("Unauthorized", { status: 401 })
+        }
+
         const payload = await req.json()
         const { record } = payload
 
@@ -92,15 +104,43 @@ serve(async (req) => {
                         .eq('device_token', t.device_token)
                 }
 
-                return response.status
-            } catch (e) {
-                return 500
+                const errorBody = response.ok ? null : await response.text()
+                if (!response.ok) {
+                    console.error('push-notifications apns_delivery_failed', JSON.stringify({
+                        status: response.status,
+                        token: t.device_token,
+                        body: errorBody || response.statusText,
+                    }))
+                }
+
+                return {
+                    token: t.device_token,
+                    status: response.status,
+                    ok: response.ok,
+                }
+            } catch (error) {
+                console.error('push-notifications request_failed', JSON.stringify({
+                    token: t.device_token,
+                    error: error instanceof Error ? error.message : String(error),
+                }))
+                return {
+                    token: t.device_token,
+                    status: 500,
+                    ok: false,
+                }
             }
         }))
 
-        return new Response(JSON.stringify({ sent: results.length, badge: unreadCount }), {
+        const failed = results.filter((result) => !result.ok)
+        const status = failed.length == results.length ? 502 : 200
+
+        return new Response(JSON.stringify({
+            sent: results.length,
+            badge: unreadCount,
+            failed: failed.length,
+        }), {
             headers: { "Content-Type": "application/json" },
-            status: 200
+            status
         })
 
     } catch (error) {

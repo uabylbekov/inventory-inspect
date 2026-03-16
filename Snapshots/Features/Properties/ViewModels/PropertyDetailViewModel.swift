@@ -146,8 +146,9 @@ final class PropertyDetailViewModel {
         return try await PropertyDataService.activeInspectionItemCount(propertyId: property.id, roomIds: roomIds)
     }
     
-    func deleteRooms(at offsets: IndexSet) async {
+    func deleteRooms(at offsets: IndexSet) async -> Bool {
         let itemsToDelete = offsets.map { rooms[$0] }
+        var allDeleted = true
         
         for item in itemsToDelete {
             do {
@@ -159,8 +160,11 @@ final class PropertyDetailViewModel {
                 await persistCurrentSnapshot()
             } catch {
                 self.errorMessage = "Could not delete room. Please try again."
+                allDeleted = false
             }
         }
+
+        return allDeleted
     }
 
     func activeInspectionCount() async throws -> Int {
@@ -187,7 +191,7 @@ final class PropertyDetailViewModel {
     }
 
     private func hasRole(_ role: String) -> Bool {
-        property.property_members?.contains(where: { $0.role == role }) ?? false
+        property.membershipRole == role
     }
 
     private static func cacheKey(for propertyId: UUID) -> String {

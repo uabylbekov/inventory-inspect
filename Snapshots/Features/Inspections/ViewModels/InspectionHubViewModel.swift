@@ -159,6 +159,19 @@ final class InspectionHubViewModel {
                         await fetchData(showLoadingState: false)
                     }
                 }
+
+                guard !Task.isCancelled else { return }
+                self.channel = nil
+                errorMessage = "Live updates unavailable. Refreshing periodically."
+                fallbackPollingTask?.cancel()
+                fallbackPollingTask = Task { [weak self] in
+                    guard let self else { return }
+                    while !Task.isCancelled {
+                        await fetchData(showLoadingState: false)
+                        try? await Task.sleep(for: .seconds(20))
+                    }
+                }
+                await fetchData(showLoadingState: false)
             }
             self.channel = channel
         } catch {

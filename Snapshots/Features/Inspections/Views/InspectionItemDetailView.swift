@@ -156,8 +156,8 @@ struct InspectionItemDetailView: View {
         .adaptiveImagePresentation(isPresented: $showFullScreenImage) {
             if let data = viewModel.pendingImageData, let image = makePlatformImage(from: data) {
                 FullScreenImageView(image: .local(image))
-            } else if let urlStr = viewModel.imageURL, let publicURL = URL(string: urlStr) {
-                FullScreenImageView(image: .remote(publicURL))
+            } else if let imagePath = viewModel.imageURL {
+                InspectionEvidenceFullScreenView(imagePath: imagePath)
             }
         }
         .onChange(of: viewModel.isProcessingImage) { _, isProcessing in
@@ -221,8 +221,8 @@ struct InspectionItemDetailView: View {
                     .clipped()
             }
             .buttonStyle(.plain)
-        } else if let urlStr = viewModel.imageURL, let publicURL = URL(string: urlStr) {
-            CachedAsyncImage(url: publicURL) { image in
+        } else if let imagePath = viewModel.imageURL {
+            InspectionEvidenceAsyncImage(imagePath: imagePath) { image in
                 Button { showFullScreenImage = true } label: {
                     image
                         .resizable()

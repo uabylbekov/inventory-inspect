@@ -182,9 +182,14 @@ private struct SettingsProfileRow: View {
             Spacer()
             VStack(alignment: .trailing, spacing: 2) {
                 Text(displayName)
-                Text(currentPlanName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(currentPlanName)
+                    if let cadenceLabel {
+                        Text(cadenceLabel)
+                    }
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
             Image(systemName: "chevron.right")
                 .font(.footnote)
@@ -196,6 +201,10 @@ private struct SettingsProfileRow: View {
         if accessManager.hasBusinessAccess { return String(localized: "plan.business") }
         if accessManager.hasDirectPaidAccess { return String(localized: "plan.professional") }
         return String(localized: "plan.standard")
+    }
+
+    private var cadenceLabel: String? {
+        accessManager.activeBillingCadenceLabel
     }
 }
 

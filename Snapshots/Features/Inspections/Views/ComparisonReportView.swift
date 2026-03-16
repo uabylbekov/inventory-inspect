@@ -159,7 +159,7 @@ struct ComparisonReportView: View {
                     titleKey: "comparison.previous",
                     statusText: displayStatus(diff.oldStatus),
                     color: oldStatusColor,
-                    imageURL: diff.oldImage.flatMap(URL.init(string:)),
+                    imagePath: diff.oldImage,
                     isPresented: $showOldImage
                 )
 
@@ -169,7 +169,7 @@ struct ComparisonReportView: View {
                     titleKey: "comparison.current",
                     statusText: displayCurrentStatus,
                     color: newStatusColor,
-                    imageURL: diff.newImage.flatMap(URL.init(string:)),
+                    imagePath: diff.newImage,
                     isPresented: $showNewImage
                 )
 
@@ -238,7 +238,7 @@ struct ComparisonReportView: View {
             titleKey: LocalizedStringKey,
             statusText: String,
             color: Color,
-            imageURL: URL?,
+            imagePath: String?,
             isPresented: Binding<Bool>
         ) -> some View {
             HStack(alignment: .top, spacing: 12) {
@@ -253,15 +253,15 @@ struct ComparisonReportView: View {
 
                 Spacer(minLength: 0)
 
-                if let imageURL {
-                    comparisonThumbnail(url: imageURL, isPresented: isPresented)
+                if let imagePath {
+                    comparisonThumbnail(path: imagePath, isPresented: isPresented)
                 }
             }
         }
 
         @ViewBuilder
-        private func comparisonThumbnail(url: URL, isPresented: Binding<Bool>) -> some View {
-            CachedAsyncImage(url: url, width: 300) { image in
+        private func comparisonThumbnail(path: String, isPresented: Binding<Bool>) -> some View {
+            InspectionEvidenceAsyncImage(imagePath: path, width: 300) { image in
                 Button { isPresented.wrappedValue = true } label: {
                     image
                         .resizable()
@@ -271,7 +271,7 @@ struct ComparisonReportView: View {
                 }
                 .buttonStyle(.plain)
                 .adaptiveImagePresentation(isPresented: isPresented) {
-                    FullScreenImageView(image: .remote(url))
+                    InspectionEvidenceFullScreenView(imagePath: path)
                 }
             } placeholder: {
                 RoundedRectangle(cornerRadius: 10, style: .continuous)

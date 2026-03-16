@@ -13,9 +13,10 @@ enum InspectionItemService {
         imageData: Data?,
         shouldRemoveImage: Bool
     ) async throws -> String? {
-        let existingFilePath = existingImageURL.flatMap(extractStoragePath)
+        let existingFilePath = InspectionImageStorage.normalizePath(existingImageURL)
         var currentImageURL = existingImageURL
         var uploadedNewFilePath: String?
+        var filePathToDeleteAfterSave: String?
 
         if imageData != nil {
             let accessManager = SnapshotsAccessManager.shared
@@ -29,16 +30,13 @@ enum InspectionItemService {
             if let imageData {
                 let filePath = imagePath(inspectionId: inspectionId, inventoryItemId: inventoryItemId)
                 _ = try await supabase.storage
-                    .from("inspection-images")
-                    .upload(filePath, data: imageData, options: FileOptions(contentType: "image/jpeg", upsert: true))
+                    .from(InspectionImageStorage.bucket)
+                    .upload(filePath, data: imageData, options: FileOptions(contentType: "image/jpeg"))
                 uploadedNewFilePath = filePath
-
-                let publicURL = try supabase.storage
-                    .from("inspection-images")
-                    .getPublicURL(path: filePath)
-                currentImageURL = publicURL.absoluteString
+                currentImageURL = filePath
             } else if shouldRemoveImage {
                 currentImageURL = nil
+                filePathToDeleteAfterSave = existingFilePath
             }
 
             let params: [String: AnyJSON] = [
@@ -59,13 +57,17 @@ enum InspectionItemService {
                let existingFilePath,
                existingFilePath != uploadedNewFilePath {
                 _ = try? await supabase.storage
-                    .from("inspection-images")
+                    .from(InspectionImageStorage.bucket)
                     .remove(paths: [existingFilePath])
+            } else if let filePathToDeleteAfterSave {
+                _ = try? await supabase.storage
+                    .from(InspectionImageStorage.bucket)
+                    .remove(paths: [filePathToDeleteAfterSave])
             }
         } catch {
             if let uploadedNewFilePath {
                 _ = try? await supabase.storage
-                    .from("inspection-images")
+                    .from(InspectionImageStorage.bucket)
                     .remove(paths: [uploadedNewFilePath])
             }
             throw error
@@ -79,14 +81,5 @@ enum InspectionItemService {
     private static func imagePath(inspectionId: UUID, inventoryItemId: UUID) -> String {
         let version = UUID().uuidString.lowercased()
         return "\(inspectionId.uuidString.lowercased())/\(inventoryItemId.uuidString.lowercased())-\(version).jpg"
-    }
-
-    private static func extractStoragePath(from publicURL: String) -> String? {
-        guard let components = URLComponents(string: publicURL),
-              let markerRange = components.path.range(of: "/storage/v1/object/public/inspection-images/") else {
-            return nil
-        }
-
-        return String(components.path[markerRange.upperBound...])
     }
 }

@@ -286,8 +286,8 @@ struct PropertyDetailView: View {
                 if let offsets = roomToDeleteOffsets {
                     HapticManager.shared.impact(style: .medium)
                     Task {
-                        await viewModel.deleteRooms(at: offsets)
-                        HapticManager.shared.notification(type: .success)
+                        let deleted = await viewModel.deleteRooms(at: offsets)
+                        HapticManager.shared.notification(type: deleted ? .success : .error)
                     }
                 }
                 roomToDeleteOffsets = nil
