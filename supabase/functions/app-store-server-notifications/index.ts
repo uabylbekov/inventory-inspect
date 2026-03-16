@@ -17,6 +17,7 @@ const PRO_PRODUCT_IDS = [
 ];
 
 const APPLE_ROOT_CA_URLS = [
+  "https://www.apple.com/appleca/AppleIncRootCertificate.cer",
   "https://www.apple.com/certificateauthority/AppleRootCA-G2.cer",
   "https://www.apple.com/certificateauthority/AppleRootCA-G3.cer",
 ];
@@ -60,6 +61,13 @@ const json = (body: unknown, status = 200) =>
   });
 
 let appleRootCAsPromise: Promise<Buffer[]> | null = null;
+
+function logStage(stage: string, details: Record<string, unknown> = {}) {
+  console.log("app-store-server-notifications stage", JSON.stringify({
+    stage,
+    ...details,
+  }));
+}
 
 function toIsoString(epochMs?: number) {
   return epochMs ? new Date(epochMs).toISOString() : null;
@@ -125,22 +133,51 @@ async function verifyNotification(signedPayload: string) {
   const candidateEnvironment = unsignedPayload.data?.environment === "Production"
     ? Environment.PRODUCTION
     : Environment.SANDBOX;
+  logStage("verify_notification.start", {
+    candidateEnvironment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+    notificationUUID: unsignedPayload.notificationUUID ?? null,
+    notificationType: unsignedPayload.notificationType ?? null,
+    bundleId: unsignedPayload.data?.bundleId ?? null,
+    payloadLength: signedPayload.length,
+  });
 
   const primaryVerifier = await buildVerifier(candidateEnvironment);
 
   try {
     const notification = await primaryVerifier.verifyAndDecodeNotification(signedPayload);
+    logStage("verify_notification.primary_success", {
+      environment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+      notificationUUID: notification.notificationUUID ?? null,
+      notificationType: notification.notificationType ?? null,
+    });
     return { notification, verifier: primaryVerifier, environment: candidateEnvironment };
   } catch (primaryError) {
     const fallbackEnvironment = candidateEnvironment === Environment.SANDBOX
       ? Environment.PRODUCTION
       : Environment.SANDBOX;
+    logStage("verify_notification.primary_failed", {
+      environment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+      fallbackEnvironment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+      error: primaryError instanceof Error ? primaryError.message : String(primaryError),
+    });
     const fallbackVerifier = await buildVerifier(fallbackEnvironment);
     try {
       const notification = await fallbackVerifier.verifyAndDecodeNotification(signedPayload);
+      logStage("verify_notification.fallback_success", {
+        environment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+        notificationUUID: notification.notificationUUID ?? null,
+        notificationType: notification.notificationType ?? null,
+      });
       return { notification, verifier: fallbackVerifier, environment: fallbackEnvironment };
-    } catch {
-      throw primaryError;
+    } catch (fallbackError) {
+      logStage("verify_notification.fallback_failed", {
+        environment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
+        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
+      });
+      if (fallbackError instanceof Error && primaryError instanceof Error) {
+        fallbackError.message = `${fallbackError.message} | primary verification error: ${primaryError.message}`;
+      }
+      throw fallbackError;
     }
   }
 }
@@ -279,15 +316,22 @@ serve(async (req) => {
   }
 
   if (req.method !== "POST") {
+    logStage("request.invalid_method", { method: req.method });
     return json({ error: "Method not allowed." }, 405);
   }
 
   try {
+    logStage("request.received", { method: req.method });
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
-    const { signedPayload }: NotificationRequest = await req.json();
+    const requestBody = await req.json() as NotificationRequest;
+    const { signedPayload } = requestBody;
+    logStage("request.parsed", {
+      hasSignedPayload: Boolean(signedPayload),
+      bodyKeys: Object.keys(requestBody),
+    });
 
     if (!signedPayload) {
       return json({ error: "signedPayload is required." }, 400);
@@ -296,6 +340,12 @@ serve(async (req) => {
     const { notification, verifier, environment } = await verifyNotification(signedPayload);
     const notificationUUID = notification.notificationUUID;
     const notificationType = notification.notificationType ?? "UNKNOWN";
+    logStage("notification.verified", {
+      environment: environment === Environment.PRODUCTION ? "Production" : "Sandbox",
+      notificationUUID: notificationUUID ?? null,
+      notificationType,
+      subtype: notification.subtype ?? null,
+    });
 
     if (!notificationUUID) {
       return json({ error: "notificationUUID is missing from the verified payload." }, 400);
@@ -303,6 +353,7 @@ serve(async (req) => {
 
     const duplicate = await findExistingNotification(adminClient, notificationUUID);
     if (duplicate) {
+      logStage("notification.duplicate", { notificationUUID });
       return json({ ok: true, duplicate: true }, 200);
     }
 
@@ -310,10 +361,29 @@ serve(async (req) => {
       verifier,
       notification as DecodedNotification,
     );
+    logStage("notification.decoded_transaction", {
+      hasTransaction: Boolean(transaction),
+      hasRenewal: Boolean(renewal),
+      transactionId: transaction?.transactionId ?? null,
+      originalTransactionId: transaction?.originalTransactionId ?? renewal?.originalTransactionId ?? null,
+      productId: transaction?.productId ?? renewal?.autoRenewProductId ?? null,
+    });
     const subscription = resolveSubscriptionState(transaction, renewal, environment);
+    logStage("notification.resolved_subscription", {
+      active: subscription.active,
+      tier: subscription.tier,
+      productId: subscription.productId,
+      environment: subscription.environment,
+      transactionId: subscription.transactionId,
+      originalTransactionId: subscription.originalTransactionId,
+    });
     const syncedProfileCount = subscription.originalTransactionId
       ? await syncBoundProfiles(adminClient, subscription.originalTransactionId, subscription)
       : 0;
+    logStage("notification.synced_profiles", {
+      originalTransactionId: subscription.originalTransactionId,
+      syncedProfileCount,
+    });
 
     await recordNotification(adminClient, {
       notificationUUID,
@@ -324,6 +394,11 @@ serve(async (req) => {
       productId: subscription.productId,
       environment: subscription.environment,
       signedPayload,
+      syncedProfileCount,
+    });
+    logStage("notification.recorded", {
+      notificationUUID,
+      notificationType,
       syncedProfileCount,
     });
 
@@ -339,7 +414,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
-    console.error("app-store-server-notifications error", message);
+    console.error("app-store-server-notifications error", message, error instanceof Error ? error.stack : "");
     return json({ error: message }, 400);
   }
 });
