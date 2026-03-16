@@ -8,14 +8,22 @@ serve(async (req) => {
         logStage("push-notifications", "request.received", { method: req.method })
         const authHeader = req.headers.get('Authorization')
         const expectedToken = Deno.env.get('PUSH_NOTIFICATIONS_WEBHOOK_TOKEN')
+        const serviceRoleToken = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
         const [bearer, token] = (authHeader ?? '').split(' ')
 
-        if (!expectedToken) {
+        if (!expectedToken && !serviceRoleToken) {
             logStage("push-notifications", "config.missing_webhook_token")
             return new Response("Missing push notification webhook configuration", { status: 500 })
         }
 
-        if (bearer !== 'Bearer' || token !== expectedToken) {
+        const isAuthorized = bearer === 'Bearer'
+            && token
+            && (
+                (expectedToken && token === expectedToken)
+                || (serviceRoleToken && token === serviceRoleToken)
+            )
+
+        if (!isAuthorized) {
             logStage("push-notifications", "auth.unauthorized")
             return new Response("Unauthorized", { status: 401 })
         }

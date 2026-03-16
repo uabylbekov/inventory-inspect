@@ -247,7 +247,7 @@ serve(async (req) => {
       logStage("sync-storekit-subscription", "validation.missing_transaction_id");
       return json({ error: "transactionId is required." }, 400);
     }
-    if (environment !== undefined && !normalizedEnvironment) {
+    if (environment != null && !normalizedEnvironment) {
       logStage("sync-storekit-subscription", "validation.invalid_environment", {
         environment,
       });
