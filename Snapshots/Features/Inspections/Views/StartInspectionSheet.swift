@@ -159,16 +159,19 @@ struct StartInspectionSheet: View {
     
     private func handleStartTapped() async {
         HapticManager.shared.impact(style: .medium)
-        let isDuplicate = await viewModel.checkForDuplicate()
-        if isDuplicate {
+        let duplicateResult = await viewModel.checkForDuplicate()
+        switch duplicateResult {
+        case .duplicateFound:
             showDuplicateAlert = true
-        } else {
+        case .noDuplicate:
             let id = await viewModel.startInspection()
             if id != nil {
                 HapticManager.shared.notification(type: .success)
                 onStarted?()
                 dismiss()
             }
+        case .failed:
+            HapticManager.shared.notification(type: .error)
         }
     }
 

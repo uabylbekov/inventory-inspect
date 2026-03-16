@@ -78,6 +78,7 @@ final class NotificationManager: @unchecked Sendable {
     
     func handleJoinRequest(id: UUID) async {
         joinError = nil
+        joiningInspection = nil
         do {
             let inspection: [InspectionModel] = try await supabase
                 .from("inspections")
@@ -86,8 +87,10 @@ final class NotificationManager: @unchecked Sendable {
                 .execute()
                 .value
             
-            if let first = inspection.first {
+            if let first = inspection.first, first.status == "in_progress" {
                 self.joiningInspection = first
+            } else {
+                self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
             }
         } catch {
             self.joinError = "Unable to join inspection. The inspection may have been completed or deleted."
@@ -95,12 +98,14 @@ final class NotificationManager: @unchecked Sendable {
     }
 
     func handleNotificationTap(userInfo: [AnyHashable: Any]) async {
-        if let inspectionID = parseUUID(from: userInfo["inspection_id"]) {
+        let payload = notificationPayload(from: userInfo)
+
+        if let inspectionID = parseUUID(from: payload["inspection_id"]) {
             await handleJoinRequest(id: inspectionID)
             return
         }
 
-        if let notificationID = parseUUID(from: userInfo["id"]) {
+        if let notificationID = parseUUID(from: payload["id"]) {
             await openNotification(id: notificationID)
         }
     }
@@ -367,6 +372,18 @@ final class NotificationManager: @unchecked Sendable {
 
     private func notificationPropertyID(_ notification: NotificationModel) -> UUID? {
         parseUUID(from: notification.data["property_id"])
+    }
+
+    private func notificationPayload(from userInfo: [AnyHashable: Any]) -> [AnyHashable: Any] {
+        if let nestedPayload = userInfo["data"] as? [AnyHashable: Any] {
+            var mergedPayload = userInfo
+            for (key, value) in nestedPayload {
+                mergedPayload[key] = value
+            }
+            return mergedPayload
+        }
+
+        return userInfo
     }
 
     private func parseUUID(from value: Any?) -> UUID? {

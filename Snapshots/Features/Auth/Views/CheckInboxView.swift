@@ -49,7 +49,7 @@ struct CheckInboxView: View {
                                 ProgressView()
                                     .controlSize(.small)
                             }
-                            Text("Try again")
+                            Text("common.try_again")
                         }
                     }
                     .buttonStyle(.plain)
@@ -57,7 +57,7 @@ struct CheckInboxView: View {
                     .disabled(isRetrying)
                     .accessibilityIdentifier("check_inbox.retry")
 
-                    Button("Try another email") {
+                    Button("auth.check_inbox.try_another") {
                         dismiss()
                     }
                     .buttonStyle(.plain)
@@ -91,7 +91,7 @@ struct CheckInboxView: View {
                 )
 
                 await MainActor.run {
-                    retrySuccessMessage = "We sent a new magic link."
+                    retrySuccessMessage = String(localized: "auth.check_inbox.retry_success")
                     isRetrying = false
                 }
             } catch {

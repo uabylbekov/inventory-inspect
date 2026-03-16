@@ -54,15 +54,11 @@ final class RoomInventoryViewModel {
         }
     }
 
-    func activeInspectionItemCount() async -> Int {
-        do {
-            return try await PropertyDataService.activeInspectionItemCount(
-                propertyId: room.property_id,
-                roomIds: [room.id]
-            )
-        } catch {
-            return 0
-        }
+    func activeInspectionItemCount() async throws -> Int {
+        try await PropertyDataService.activeInspectionItemCount(
+            propertyId: room.property_id,
+            roomIds: [room.id]
+        )
     }
 
     func deleteRoom() async -> Bool {

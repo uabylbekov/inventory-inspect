@@ -85,59 +85,50 @@ final class PropertyViewModel {
     }
     
     /// Returns the number of active (in_progress) inspections for the properties at the given offsets.
-    func activeInspectionCount(at offsets: IndexSet) async -> Int {
+    func activeInspectionCount(at offsets: IndexSet) async throws -> Int {
         let ids = offsets.map { properties[$0].id.uuidString.lowercased() }
-        do {
-            let existing: [InspectionModel] = try await supabase
-                .from("inspections")
-                .select()
-                .in("property_id", values: ids)
-                .eq("status", value: "in_progress")
-                .execute()
-                .value
-            return existing.count
-        } catch {
-            return 0
-        }
+        let existing: [InspectionModel] = try await supabase
+            .from("inspections")
+            .select()
+            .in("property_id", values: ids)
+            .eq("status", value: "in_progress")
+            .execute()
+            .value
+        return existing.count
     }
     
     /// Returns the number of active (in_progress) inspections for a single property ID.
-    func activeInspectionCount(for propertyId: UUID) async -> Int {
-        do {
-            let existing: [InspectionModel] = try await supabase
-                .from("inspections")
-                .select()
-                .eq("property_id", value: propertyId.uuidString.lowercased())
-                .eq("status", value: "in_progress")
-                .execute()
-                .value
-            return existing.count
-        } catch {
-            return 0
-        }
+    func activeInspectionCount(for propertyId: UUID) async throws -> Int {
+        let existing: [InspectionModel] = try await supabase
+            .from("inspections")
+            .select()
+            .eq("property_id", value: propertyId.uuidString.lowercased())
+            .eq("status", value: "in_progress")
+            .execute()
+            .value
+        return existing.count
     }
     
-    func deleteProperties(at offsets: IndexSet) {
-        let itemsToDelete = offsets.map { properties[$0] }
-        properties.remove(atOffsets: offsets)
-        
-        Task {
+    func deleteProperty(id: UUID) async -> Bool {
+        do {
+            try await supabase
+                .from("properties")
+                .delete()
+                .eq("id", value: id.uuidString.lowercased())
+                .execute()
+
+            properties.removeAll { $0.id == id }
+
             if let userId = accessManager.profile?.id {
                 await SnapshotCache.shared.save(properties, key: Self.cacheKey(for: userId))
             }
 
-            for item in itemsToDelete {
-                do {
-                    try await supabase
-                        .from("properties")
-                        .delete()
-                        .eq("id", value: item.id.uuidString.lowercased())
-                        .execute()
-                    await SnapshotCache.shared.remove(key: SnapshotCacheKey.propertyDetail(for: item.id))
-                } catch {
-                    print("Failed to delete property: \(error)")
-                }
-            }
+            await SnapshotCache.shared.remove(key: SnapshotCacheKey.propertyDetail(for: id))
+            return true
+        } catch {
+            print("Failed to delete property: \(error)")
+            errorMessage = error.localizedDescription
+            return false
         }
     }
 

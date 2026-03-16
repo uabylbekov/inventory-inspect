@@ -87,7 +87,7 @@ struct PropertyModel: Codable, Identifiable, Hashable {
     var ownerDisplayName: String {
         if let name = owner?.full_name, !name.isEmpty { return name }
         if let email = owner?.email { return email.components(separatedBy: "@").first ?? email }
-        return "Owner"
+        return String(localized: "team.role.owner")
     }
 
     var membershipRole: String? {

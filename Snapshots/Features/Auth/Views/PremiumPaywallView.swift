@@ -20,10 +20,11 @@ struct SubscriptionCenterView: View {
     @State private var purchasingProductID: String?
     @State private var alertMessage: String?
     @State private var productLoadError: String?
+    @State private var legalAlertMessage: String?
     let showsDismissButton: Bool
 
-    private let proMonthlyProductId = "dev.ukulabs.snapshots.pro.monthly"
-    private let proYearlyProductId = "dev.ukulabs.snapshots.pro.yearly"
+    private let proMonthlyProductId = "dev.ukulabs.snapshots.subscription.pro.monthly"
+    private let proYearlyProductId = "dev.ukulabs.snapshots.subscription.pro.yearly"
 
     var body: some View {
         List {
@@ -104,6 +105,20 @@ struct SubscriptionCenterView: View {
                 }
                 .disabled(isPurchasingAnyPlan || accessManager.isCheckingAccess)
             }
+
+            Section {
+                Button {
+                    openLegalURL(EnvConfig.termsOfServiceURL)
+                } label: {
+                    Label("paywall.terms", systemImage: "doc.text")
+                }
+
+                Button {
+                    openLegalURL(EnvConfig.privacyPolicyURL)
+                } label: {
+                    Label("paywall.privacy", systemImage: "hand.raised")
+                }
+            }
         }
         .navigationTitle("plan.your")
         .applyInlineNavigationTitleIfSupported()
@@ -124,6 +139,14 @@ struct SubscriptionCenterView: View {
             Button("common.ok", role: .cancel) { alertMessage = nil }
         } message: {
             Text(alertMessage ?? "")
+        }
+        .alert("paywall.legal", isPresented: Binding(
+            get: { legalAlertMessage != nil },
+            set: { if !$0 { legalAlertMessage = nil } }
+        )) {
+            Button("common.ok", role: .cancel) { legalAlertMessage = nil }
+        } message: {
+            Text(legalAlertMessage ?? "")
         }
     }
 
@@ -283,6 +306,14 @@ struct SubscriptionCenterView: View {
         purchasingProductID == product.id
     }
 
+    private func openLegalURL(_ url: URL?) {
+        guard let url else {
+            legalAlertMessage = String(localized: "paywall.legal_missing")
+            return
+        }
+        openURL(url)
+    }
+
     private func planSectionHeader(title: String, icon: String, tint: Color) -> some View {
         Label(title, systemImage: icon)
             .foregroundStyle(tint)
@@ -308,14 +339,17 @@ struct SubscriptionCenterView: View {
         do {
             self.products = try await Product.products(for: [proMonthlyProductId, proYearlyProductId])
             if products.isEmpty {
-                productLoadError = "No products were returned for the configured Pro product IDs."
+                productLoadError = String(localized: "paywall.products_missing")
             } else {
                 let loadedIds = Set(products.map(\.id))
                 let expectedIds: Set<String> = [proMonthlyProductId, proYearlyProductId]
                 let missingIds = expectedIds.subtracting(loadedIds)
                 if !missingIds.isEmpty {
                     let missingPlanList = missingIds.sorted().joined(separator: ", ")
-                    productLoadError = "Some plans are missing from App Store Connect for this build: \(missingPlanList)."
+                    productLoadError = String.localizedStringWithFormat(
+                        NSLocalizedString("paywall.products_partial_missing", comment: ""),
+                        missingPlanList
+                    )
                 }
             }
         } catch {
@@ -337,9 +371,9 @@ struct SubscriptionCenterView: View {
         if let syncError = accessManager.lastBillingSyncError {
             alertMessage = syncError
         } else if accessManager.hasDirectPaidAccess {
-            alertMessage = "Purchases restored successfully."
+            alertMessage = String(localized: "paywall.restore_success")
         } else {
-            alertMessage = "No active App Store subscription was found for this account."
+            alertMessage = String(localized: "paywall.restore_none_found")
         }
     }
 

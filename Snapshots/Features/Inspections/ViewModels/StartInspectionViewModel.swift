@@ -3,6 +3,12 @@ import Supabase
 
 @Observable @MainActor
 final class StartInspectionViewModel {
+    enum DuplicateCheckResult {
+        case noDuplicate
+        case duplicateFound
+        case failed
+    }
+
     var selectedPropertyId: UUID?
     var inspectionType = "routine"
     var isSaving = false
@@ -52,11 +58,11 @@ final class StartInspectionViewModel {
         }
     }
     
-    /// Returns true if a same-day move-in or move-out already exists for this property.
+    /// Returns whether a same-day move-in or move-out already exists for this property.
     /// Routine inspections are never checked.
-    func checkForDuplicate() async -> Bool {
+    func checkForDuplicate() async -> DuplicateCheckResult {
         guard let propertyId = selectedPropertyId,
-              inspectionType != "routine" else { return false }
+              inspectionType != "routine" else { return .noDuplicate }
 
         do {
             let existing: [InspectionModel] = try await supabase
@@ -67,15 +73,16 @@ final class StartInspectionViewModel {
                 .gte("started_at", value: startOfTodayString())
                 .execute()
                 .value
-            return !existing.isEmpty
+            return existing.isEmpty ? .noDuplicate : .duplicateFound
         } catch {
-            return false
+            self.errorMessage = errorMessage(for: error)
+            return .failed
         }
     }
     
     func startInspection() async -> UUID? {
         guard let propertyId = selectedPropertyId else {
-            self.errorMessage = "Please select a property."
+            self.errorMessage = String(localized: "start_inspection.select_property_placeholder")
             return nil
         }
         

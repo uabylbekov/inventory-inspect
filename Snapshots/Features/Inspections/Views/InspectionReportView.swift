@@ -317,7 +317,10 @@ struct ReportItemRow: View {
 
     private var primaryStatusText: String {
         if effectiveStatus == "resolved", let previousStatus, isResolvableIssue(previousStatus) {
-            return "Resolved from \(displayStatus(previousStatus))"
+            return String.localizedStringWithFormat(
+                NSLocalizedString("pdf.status.resolved_from", comment: ""),
+                displayStatus(previousStatus)
+            )
         }
         return displayStatus(effectiveStatus)
     }

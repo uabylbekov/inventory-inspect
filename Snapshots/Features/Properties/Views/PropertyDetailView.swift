@@ -332,24 +332,33 @@ struct PropertyDetailView: View {
         guard let index = viewModel.rooms.firstIndex(where: { $0.id == room.id }) else { return }
         roomToDeleteOffsets = IndexSet(integer: index)
         Task {
-            let count = await viewModel.activeInspectionItemCount(at: roomToDeleteOffsets!)
-            if count > 0 {
-                roomActiveInspectionItemCount = count
-                showingRoomActiveInspectionAlert = true
-            } else {
-                showingRoomDeleteAlert = true
+            do {
+                let count = try await viewModel.activeInspectionItemCount(at: roomToDeleteOffsets!)
+                if count > 0 {
+                    roomActiveInspectionItemCount = count
+                    showingRoomActiveInspectionAlert = true
+                } else {
+                    showingRoomDeleteAlert = true
+                }
+            } catch {
+                viewModel.errorMessage = error.localizedDescription
+                roomToDeleteOffsets = nil
             }
         }
     }
 
     private func confirmDeleteProperty() {
         Task {
-            let count = await viewModel.activeInspectionCount()
-            if count > 0 {
-                propertyActiveInspectionCount = count
-                showingPropertyActiveInspectionAlert = true
-            } else {
-                showingPropertyDeleteAlert = true
+            do {
+                let count = try await viewModel.activeInspectionCount()
+                if count > 0 {
+                    propertyActiveInspectionCount = count
+                    showingPropertyActiveInspectionAlert = true
+                } else {
+                    showingPropertyDeleteAlert = true
+                }
+            } catch {
+                viewModel.errorMessage = error.localizedDescription
             }
         }
     }

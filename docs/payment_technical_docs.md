@@ -36,7 +36,7 @@ The profiles table stores a `subscription_tier` string:
 
 ### B. StoreKit 2 Check (Verified Transactions)
 The app listens to `Transaction.currentEntitlements`. 
-*   Uses `dev.ukulabs.snapshots.pro.monthly` and `dev.ukulabs.snapshots.pro.yearly`.
+*   Uses `dev.ukulabs.snapshots.subscription.pro.monthly` and `dev.ukulabs.snapshots.subscription.pro.yearly`.
 *   Entitlements are verified using `.verified(transaction)` to ensure against receipt tampering.
 *   The app then sends the transaction id to the `sync-storekit-subscription` Edge Function so the backend can persist subscription state.
 
