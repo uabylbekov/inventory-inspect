@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { logError, logStage } from "../_shared/logging.ts";
 
 type LogRow = {
   ts?: string;
@@ -160,11 +161,14 @@ async function fetchLogsForSource(
 }
 
 Deno.serve(async (req) => {
+  logStage("forward-supabase-errors", "request.received", { method: req.method });
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   if (req.method !== "POST") {
+    logStage("forward-supabase-errors", "request.invalid_method", { method: req.method });
     return json({ error: "Method not allowed." }, 405);
   }
 
@@ -185,13 +189,14 @@ Deno.serve(async (req) => {
   ].filter((value): value is string => value !== null);
 
   if (missingConfig.length > 0) {
-    console.error("forward-supabase-errors config missing", { missingConfig });
+    logStage("forward-supabase-errors", "config.missing", { missingConfig });
     return json({ error: `Required secrets are not configured: ${missingConfig.join(", ")}` }, 500);
   }
 
   const authHeader = req.headers.get("Authorization");
   const [bearer, token] = (authHeader ?? "").split(" ");
   if (bearer != "Bearer" || token != expectedCronToken) {
+    logStage("forward-supabase-errors", "auth.unauthorized");
     return json({ error: "Unauthorized." }, 401);
   }
 
@@ -217,6 +222,9 @@ Deno.serve(async (req) => {
 
     const candidates: AlertCandidate[] = [];
     const cursorUpdates: { source: string; last_checked_at: string }[] = [];
+    logStage("forward-supabase-errors", "scan.started", {
+      sources: sources.map((source) => source.key),
+    });
 
     for (const source of sources) {
       const storedCursor = cursorMap.get(source.key);
@@ -224,6 +232,10 @@ Deno.serve(async (req) => {
       const endIso = now.toISOString();
 
       const logs = await fetchLogsForSource(projectRef, managementToken, source, startIso, endIso);
+      logStage("forward-supabase-errors", "scan.source_loaded", {
+        source: source.key,
+        rowCount: logs.length,
+      });
       let lastScannedTimestamp: string | null = null;
       let stoppedByRunLimit = false;
 
@@ -269,6 +281,7 @@ Deno.serve(async (req) => {
     }
 
     if (candidates.length === 0) {
+      logStage("forward-supabase-errors", "scan.no_candidates");
       if (cursorUpdates.length > 0) {
         const { error: upsertError } = await adminClient
           .rpc("upsert_supabase_alert_cursor", {
@@ -303,6 +316,10 @@ Deno.serve(async (req) => {
 
     if (!discordResponse.ok) {
       const message = await discordResponse.text();
+      logStage("forward-supabase-errors", "discord.failed", {
+        status: discordResponse.status,
+        candidateCount: candidates.length,
+      });
       return json({ error: `Discord webhook failed: ${message || discordResponse.statusText}` }, 502);
     }
 
@@ -338,10 +355,14 @@ Deno.serve(async (req) => {
       throw new Error(`Failed to clean alert dedupe: ${getErrorMessage(cleanupError)}`);
     }
 
+    logStage("forward-supabase-errors", "request.completed", {
+      sent: candidates.length,
+      cursorUpdates: cursorUpdates.length,
+    });
     return json({ success: true, sent: candidates.length });
   } catch (error) {
     const message = getErrorMessage(error);
-    console.error("forward-supabase-errors failed", message);
+    logError("forward-supabase-errors", error);
     return json({ error: message }, 500);
   }
 });

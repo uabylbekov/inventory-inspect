@@ -217,7 +217,7 @@ final class SnapshotsAccessManager {
                 matchedProductID = transaction.productID
                 matchedTransactionID = String(transaction.id)
                 matchedOriginalTransactionID = String(transaction.originalID)
-                matchedEnvironment = String(describing: transaction.environment)
+                matchedEnvironment = normalizedAppStoreEnvironment(String(describing: transaction.environment))
             }
         }
 
@@ -273,7 +273,9 @@ final class SnapshotsAccessManager {
                             ],
                             body: StoreKitSyncPayload(
                                 transactionId: transactionIdentifier,
-                                environment: entitlement.environment ?? profile?.app_store_environment
+                                environment: normalizedAppStoreEnvironment(
+                                    entitlement.environment ?? profile?.app_store_environment
+                                )
                             )
                         )
                     )
@@ -315,6 +317,19 @@ final class SnapshotsAccessManager {
             activeProductID ?? proMonthlyProductId
         default:
             nil
+        }
+    }
+
+    private func normalizedAppStoreEnvironment(_ value: String?) -> String? {
+        guard let value else { return nil }
+
+        switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "production", "prod":
+            return "Production"
+        case "sandbox", "test", "xcode", "localtesting", "local_testing":
+            return "Sandbox"
+        default:
+            return nil
         }
     }
     

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
+import { logError, logStage } from "../_shared/logging.ts"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,8 @@ const normalizeRole = (role: string) => {
 }
 
 serve(async (req) => {
+  logStage("send-property-invite", "request.received", { method: req.method })
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders })
   }
@@ -21,6 +24,11 @@ serve(async (req) => {
   try {
     const { email, property_id, role } = await req.json()
     const normalizedRole = normalizeRole(role)
+    logStage("send-property-invite", "payload.parsed", {
+      propertyId: property_id,
+      role: normalizedRole,
+      emailDomain: typeof email === "string" ? email.split("@")[1] ?? null : null,
+    })
 
     const adminClient = createClient(
       Deno.env.get("SUPABASE_URL")!,
@@ -37,7 +45,10 @@ serve(async (req) => {
     const { data: { user: caller } } = await adminClient.auth.getUser(
       authHeader.replace("Bearer ", "")
     )
-    if (!caller) throw new Error("Unauthorized")
+    if (!caller) {
+      logStage("send-property-invite", "auth.unauthorized")
+      throw new Error("Unauthorized")
+    }
 
     const [propertyRes, profileRes] = await Promise.all([
       adminClient.from("properties").select("name").eq("id", property_id).single(),
@@ -57,6 +68,10 @@ serve(async (req) => {
     if (rpcError) throw new Error(rpcError.message)
 
     const status = rpcResult?.status
+    logStage("send-property-invite", "invite.rpc_completed", {
+      propertyId: property_id,
+      status,
+    })
 
     if (status === "pending_created") {
       const appStoreUrl = Deno.env.get("APP_STORE_URL") ?? "https://apps.apple.com"
@@ -70,14 +85,22 @@ serve(async (req) => {
         },
         redirectTo: appStoreUrl,
       })
+      logStage("send-property-invite", "invite.email_sent", {
+        propertyId: property_id,
+      })
     }
 
+    logStage("send-property-invite", "request.completed", {
+      propertyId: property_id,
+      status,
+    })
     return new Response(
       JSON.stringify({ success: true, status }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     )
 
   } catch (error) {
+    logError("send-property-invite", error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }

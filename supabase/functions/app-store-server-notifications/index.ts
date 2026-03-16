@@ -5,6 +5,7 @@ import {
   SignedDataVerifier,
 } from "npm:@apple/app-store-server-library";
 import { Buffer } from "node:buffer";
+import { logError, logStage as logStructuredStage } from "../_shared/logging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -63,10 +64,7 @@ const json = (body: unknown, status = 200) =>
 let appleRootCAsPromise: Promise<Buffer[]> | null = null;
 
 function logStage(stage: string, details: Record<string, unknown> = {}) {
-  console.log("app-store-server-notifications stage", JSON.stringify({
-    stage,
-    ...details,
-  }));
+  logStructuredStage("app-store-server-notifications", stage, details);
 }
 
 function toIsoString(epochMs?: number) {
@@ -414,7 +412,7 @@ serve(async (req) => {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
-    console.error("app-store-server-notifications error", message, error instanceof Error ? error.stack : "");
+    logError("app-store-server-notifications", error);
     return json({ error: message }, 400);
   }
 });
