@@ -1,18 +1,22 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1"
 import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts"
+import { logError, logStage } from "../_shared/logging.ts"
 
 serve(async (req) => {
     try {
+        logStage("push-notifications", "request.received", { method: req.method })
         const authHeader = req.headers.get('Authorization')
         const expectedToken = Deno.env.get('PUSH_NOTIFICATIONS_WEBHOOK_TOKEN')
         const [bearer, token] = (authHeader ?? '').split(' ')
 
         if (!expectedToken) {
+            logStage("push-notifications", "config.missing_webhook_token")
             return new Response("Missing push notification webhook configuration", { status: 500 })
         }
 
         if (bearer !== 'Bearer' || token !== expectedToken) {
+            logStage("push-notifications", "auth.unauthorized")
             return new Response("Unauthorized", { status: 401 })
         }
 
@@ -20,8 +24,14 @@ serve(async (req) => {
         const { record } = payload
 
         if (!record || !record.user_id) {
+            logStage("push-notifications", "payload.invalid")
             return new Response("Invalid payload", { status: 400 })
         }
+        logStage("push-notifications", "payload.parsed", {
+            userId: record.user_id,
+            notificationId: record.id ?? null,
+            type: record.type ?? null,
+        })
 
         const supabase = createClient(
             Deno.env.get('SUPABASE_URL')!,
@@ -36,6 +46,9 @@ serve(async (req) => {
 
         if (tokenError) throw tokenError
         if (!tokens || tokens.length === 0) {
+            logStage("push-notifications", "tokens.none_found", {
+                userId: record.user_id,
+            })
             return new Response("No tokens found", { status: 200 })
         }
 
@@ -55,6 +68,7 @@ serve(async (req) => {
         const isProduction = Deno.env.get('APNS_ENVIRONMENT') === 'production'
 
         if (!privateKey || !keyId || !teamId || !bundleId) {
+            logStage("push-notifications", "config.missing_apns")
             return new Response("Missing APNs configuration", { status: 500 })
         }
 
@@ -133,6 +147,13 @@ serve(async (req) => {
 
         const failed = results.filter((result) => !result.ok)
         const status = failed.length == results.length ? 502 : 200
+        logStage("push-notifications", "request.completed", {
+            userId: record.user_id,
+            sent: results.length,
+            failed: failed.length,
+            status,
+            badge: unreadCount,
+        })
 
         return new Response(JSON.stringify({
             sent: results.length,
@@ -144,6 +165,7 @@ serve(async (req) => {
         })
 
     } catch (error) {
+        logError("push-notifications", error)
         return new Response(error.message, { status: 500 })
     }
 })

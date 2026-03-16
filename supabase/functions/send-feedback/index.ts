@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { logError, logStage } from "../_shared/logging.ts";
 
 type FeedbackPayload = {
   category?: string;
@@ -39,6 +40,8 @@ function truncate(value: string, maxLength: number) {
 }
 
 Deno.serve(async (req) => {
+  logStage("send-feedback", "request.received", { method: req.method });
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -49,16 +52,19 @@ Deno.serve(async (req) => {
 
   const webhookUrl = Deno.env.get("DISCORD_FEEDBACK_WEBHOOK");
   if (!webhookUrl) {
+    logStage("send-feedback", "config.missing_webhook");
     return json({ error: "Discord feedback webhook is not configured." }, 500);
   }
 
   const authHeader = req.headers.get("Authorization");
   if (!authHeader) {
+    logStage("send-feedback", "auth.missing_header");
     return json({ error: "Missing authorization header." }, 401);
   }
 
   const [bearer, token] = authHeader.split(" ");
   if (bearer !== "Bearer" || !token) {
+    logStage("send-feedback", "auth.invalid_header");
     return json({ error: "Authorization header must be in Bearer format." }, 401);
   }
 
@@ -84,8 +90,14 @@ Deno.serve(async (req) => {
     const message = payload.message?.trim() ?? "";
     const category = payload.category ?? "other";
     const categoryLabel = payload.category_label ?? "Other";
+    logStage("send-feedback", "payload.parsed", {
+      category,
+      messageLength: message.length,
+      hasAppVersion: Boolean(payload.app_version),
+    });
 
     if (message.length < 10) {
+      logStage("send-feedback", "validation.message_too_short", { messageLength: message.length });
       return json({ error: "Feedback message is too short." }, 400);
     }
 
@@ -94,6 +106,7 @@ Deno.serve(async (req) => {
     const userEmail = claimsData?.claims?.email;
 
     if (claimsError || !userId) {
+      logStage("send-feedback", "auth.claims_failed");
       return json({ error: "Unable to verify the current user." }, 401);
     }
 
@@ -141,14 +154,22 @@ Deno.serve(async (req) => {
 
     if (!discordResponse.ok) {
       const responseText = await discordResponse.text();
+      logStage("send-feedback", "discord.failed", {
+        status: discordResponse.status,
+      });
       return json(
         { error: `Discord webhook request failed: ${responseText || discordResponse.statusText}` },
         502,
       );
     }
 
+    logStage("send-feedback", "request.completed", {
+      userId,
+      category,
+    });
     return json({ success: true });
   } catch (error) {
+    logError("send-feedback", error);
     return json({ error: error instanceof Error ? error.message : "Unexpected error." }, 500);
   }
 });

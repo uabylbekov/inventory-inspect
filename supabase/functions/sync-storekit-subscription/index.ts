@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 import { SignJWT, importPKCS8 } from "npm:jose@5.9.6";
+import { logError, logStage } from "../_shared/logging.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,6 +51,26 @@ function toIsoString(epochMs?: number) {
   return epochMs ? new Date(epochMs).toISOString() : null;
 }
 
+function normalizeAppStoreEnvironment(value: unknown): AppStoreEnvironment | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  switch (value.trim().toLowerCase()) {
+    case "production":
+    case "prod":
+      return "Production";
+    case "sandbox":
+    case "test":
+    case "xcode":
+    case "localtesting":
+    case "local_testing":
+      return "Sandbox";
+    default:
+      return undefined;
+  }
+}
+
 async function buildAppStoreToken() {
   const issuerId = Deno.env.get("APP_STORE_ISSUER_ID");
   const keyId = Deno.env.get("APP_STORE_KEY_ID");
@@ -63,13 +84,13 @@ async function buildAppStoreToken() {
   }
 
   const signingKey = await importPKCS8(privateKey.replace(/\\n/g, "\n"), "ES256");
-  console.log("app-store-token-config", JSON.stringify({
+  logStage("sync-storekit-subscription", "app_store_token.config", {
     issuerIdPresent: Boolean(issuerId),
     issuerIdPrefix: issuerId?.slice(0, 8) ?? null,
     keyId,
     bundleId,
     privateKeyPresent: Boolean(privateKey),
-  }));
+  });
 
   return await new SignJWT({ bid: bundleId })
     .setProtectedHeader({ alg: "ES256", kid: keyId, typ: "JWT" })
@@ -101,13 +122,13 @@ async function fetchTransactionHistory(
   });
 
   for (const candidate of environments) {
-    console.log("app-store-history-request", JSON.stringify({
+    logStage("sync-storekit-subscription", "app_store_history.request", {
       environment: candidate.environment,
       bundleId: Deno.env.get("APP_STORE_BUNDLE_ID"),
       transactionId,
       endpointVersion: "v2",
       query: query.toString(),
-    }));
+    });
     const response = await fetch(
       `${candidate.baseUrl}/inApps/v2/history/${encodeURIComponent(transactionId)}?${query.toString()}`,
       {
@@ -120,21 +141,21 @@ async function fetchTransactionHistory(
 
     if (response.status === 404 || (response.status >= 400 && response.status < 500)) {
       const message = await response.text();
-      console.warn("app-store-history-response", JSON.stringify({
+      logStage("sync-storekit-subscription", "app_store_history.client_error", {
         environment: candidate.environment,
         status: response.status,
         body: message || response.statusText,
-      }));
+      });
       continue;
     }
 
     if (!response.ok) {
       const message = await response.text();
-      console.error("app-store-history-response", JSON.stringify({
+      logStage("sync-storekit-subscription", "app_store_history.server_error", {
         environment: candidate.environment,
         status: response.status,
         body: message || response.statusText,
-      }));
+      });
       throw new Error(`App Store history lookup failed: ${message || response.statusText}`);
     }
 
@@ -207,6 +228,8 @@ async function assertTransactionOwnership(
 }
 
 serve(async (req) => {
+  logStage("sync-storekit-subscription", "request.received", { method: req.method });
+
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -214,18 +237,20 @@ serve(async (req) => {
   try {
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
+      logStage("sync-storekit-subscription", "auth.missing_header");
       return json({ error: "Missing Authorization header." }, 401);
     }
 
     const { transactionId, environment } = await req.json();
+    const normalizedEnvironment = normalizeAppStoreEnvironment(environment);
     if (!transactionId || typeof transactionId !== "string") {
+      logStage("sync-storekit-subscription", "validation.missing_transaction_id");
       return json({ error: "transactionId is required." }, 400);
     }
-    if (
-      environment !== undefined &&
-      environment !== "Production" &&
-      environment !== "Sandbox"
-    ) {
+    if (environment !== undefined && !normalizedEnvironment) {
+      logStage("sync-storekit-subscription", "validation.invalid_environment", {
+        environment,
+      });
       return json({ error: "environment must be Production or Sandbox." }, 400);
     }
 
@@ -238,6 +263,7 @@ serve(async (req) => {
       authHeader.replace("Bearer ", ""),
     );
     if (authError || !user) {
+      logStage("sync-storekit-subscription", "auth.unauthorized");
       return json({ error: "Unauthorized." }, 401);
     }
 
@@ -245,9 +271,13 @@ serve(async (req) => {
     const history = await fetchTransactionHistory(
       transactionId,
       appStoreToken,
-      environment as AppStoreEnvironment | undefined,
+      normalizedEnvironment,
     );
     if (history.transactions.length === 0) {
+      logStage("sync-storekit-subscription", "history.none_found", {
+        transactionId,
+        requestedEnvironment: normalizedEnvironment ?? null,
+      });
       return json(
         { error: "No verified App Store transaction history was found for this transactionId." },
         404,
@@ -262,6 +292,9 @@ serve(async (req) => {
       user.id,
     );
     if (ownershipConflict) {
+      logStage("sync-storekit-subscription", "ownership.conflict", {
+        userId: user.id,
+      });
       return ownershipConflict;
     }
 
@@ -281,8 +314,16 @@ serve(async (req) => {
       throw new Error(updateError.message);
     }
 
+    logStage("sync-storekit-subscription", "request.completed", {
+      userId: user.id,
+      active: subscription.active,
+      tier: subscription.tier,
+      environment: subscription.environment ?? history.environment,
+      productId: subscription.productId,
+    });
     return json(subscription, 200);
   } catch (error) {
+    logError("sync-storekit-subscription", error);
     return json({ error: error instanceof Error ? error.message : "Unknown error." }, 400);
   }
 });
