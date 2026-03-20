@@ -6,7 +6,13 @@ struct NotificationBellView: View {
     
     var body: some View {
         Button(action: { showingNotifications = true }) {
-            Image(systemName: notificationManager.unreadCount > 0 ? "bell.badge" : "bell")
+            if notificationManager.unreadCount > 0 {
+                Image(systemName: "bell.badge")
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Color.red, Color.primary)
+            } else {
+                Image(systemName: "bell")
+            }
         }
         .buttonStyle(.plain)
         .sheet(isPresented: $showingNotifications) {
