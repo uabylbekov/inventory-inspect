@@ -63,11 +63,14 @@ final class ManageTeamViewModel {
             }
 
             let response: InviteResponse = try await supabase.functions
-                .invoke("send-property-invite", options: .init(body: InvitePayload(
-                    email: email,
-                    property_id: propertyId.uuidString.lowercased(),
-                    role: newMemberRole
-                )))
+                .invoke("send-property-invite", options: .init(
+                    headers: ["Authorization": "Bearer \(session.accessToken)"],
+                    body: InvitePayload(
+                        email: email,
+                        property_id: propertyId.uuidString.lowercased(),
+                        role: newMemberRole
+                    )
+                ))
 
             if let serverError = response.error {
                 self.errorMessage = serverError
