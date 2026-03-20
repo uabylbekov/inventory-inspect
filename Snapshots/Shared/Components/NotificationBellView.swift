@@ -14,7 +14,6 @@ struct NotificationBellView: View {
                 Image(systemName: "bell")
             }
         }
-        .buttonStyle(.plain)
         .sheet(isPresented: $showingNotifications) {
             NotificationsView()
         }
