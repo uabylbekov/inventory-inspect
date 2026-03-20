@@ -118,7 +118,8 @@ final class NotificationManager: @unchecked Sendable {
         let pushToken = [
             "user_id": userId.uuidString.lowercased(),
             "device_token": token,
-            "platform": platformName
+            "platform": platformName,
+            "apns_environment": apnsEnvironment
         ]
 
         do {
@@ -135,6 +136,14 @@ final class NotificationManager: @unchecked Sendable {
         "macos"
 #else
         "ios"
+#endif
+    }
+
+    private var apnsEnvironment: String {
+#if DEBUG
+        "sandbox"
+#else
+        "production"
 #endif
     }
     

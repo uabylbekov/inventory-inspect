@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class RoomInspectionViewModel {
     let inspection: InspectionModel
     let room: PropertyRoomModel

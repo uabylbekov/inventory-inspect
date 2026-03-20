@@ -1,7 +1,7 @@
 import SwiftUI
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class InventoryItemDetailViewModel {
     var item: RoomInventoryItemModel
     var history: [InspectionItemModel] = []

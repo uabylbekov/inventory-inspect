@@ -8,20 +8,14 @@ serve(async (req) => {
         logStage("push-notifications", "request.received", { method: req.method })
         const authHeader = req.headers.get('Authorization')
         const expectedToken = Deno.env.get('PUSH_NOTIFICATIONS_WEBHOOK_TOKEN')
-        const serviceRoleToken = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
         const [bearer, token] = (authHeader ?? '').split(' ')
 
-        if (!expectedToken && !serviceRoleToken) {
+        if (!expectedToken) {
             logStage("push-notifications", "config.missing_webhook_token")
             return new Response("Missing push notification webhook configuration", { status: 500 })
         }
 
-        const isAuthorized = bearer === 'Bearer'
-            && token
-            && (
-                (expectedToken && token === expectedToken)
-                || (serviceRoleToken && token === serviceRoleToken)
-            )
+        const isAuthorized = bearer === 'Bearer' && token && token === expectedToken
 
         if (!isAuthorized) {
             logStage("push-notifications", "auth.unauthorized")
@@ -46,34 +40,13 @@ serve(async (req) => {
             Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
         )
 
-        // 1. Fetch user's active device tokens
-        const { data: tokens, error: tokenError } = await supabase
-            .from('user_push_tokens')
-            .select('device_token')
-            .eq('user_id', record.user_id)
-
-        if (tokenError) throw tokenError
-        if (!tokens || tokens.length === 0) {
-            logStage("push-notifications", "tokens.none_found", {
-                userId: record.user_id,
-            })
-            return new Response("No tokens found", { status: 200 })
-        }
-
-        // 2. SMART BADGE: Count current unread notifications for this user
-        // We fetch this count AFTER the insert that triggered this hook
-        const { count: unreadCount } = await supabase
-            .from('notifications')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', record.user_id)
-            .eq('is_read', false)
-
         // 3. APNs Configuration
         const privateKey = Deno.env.get('APNS_PRIVATE_KEY')
         const keyId = Deno.env.get('APNS_KEY_ID')
         const teamId = Deno.env.get('APNS_TEAM_ID')
         const bundleId = Deno.env.get('APNS_BUNDLE_ID')
-        const isProduction = Deno.env.get('APNS_ENVIRONMENT') === 'production'
+        const apnsEnv = Deno.env.get('APNS_ENVIRONMENT') === 'production' ? 'production' : 'sandbox'
+        const isProduction = apnsEnv === 'production'
 
         if (!privateKey || !keyId || !teamId || !bundleId) {
             logStage("push-notifications", "config.missing_apns")
@@ -88,6 +61,31 @@ serve(async (req) => {
             .sign(await jose.importPKCS8(formattedKey, 'ES256'))
 
         const host = isProduction ? 'api.push.apple.com' : 'api.sandbox.push.apple.com'
+
+        // 1. Fetch user's active device tokens — filtered by APNs environment so
+        //    sandbox tokens are never sent to the production endpoint and vice versa.
+        const { data: tokens, error: tokenError } = await supabase
+            .from('user_push_tokens')
+            .select('device_token')
+            .eq('user_id', record.user_id)
+            .eq('apns_environment', apnsEnv)
+
+        if (tokenError) throw tokenError
+        if (!tokens || tokens.length === 0) {
+            logStage("push-notifications", "tokens.none_found", {
+                userId: record.user_id,
+                apnsEnv,
+            })
+            return new Response("No tokens found", { status: 200 })
+        }
+
+        // 2. SMART BADGE: Count current unread notifications for this user
+        // We fetch this count AFTER the insert that triggered this hook
+        const { count: unreadCount = 0 } = await supabase
+            .from('notifications')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', record.user_id)
+            .eq('is_read', false)
 
         // 4. Send to each device
         const results = await Promise.all(tokens.map(async (t) => {
@@ -118,19 +116,28 @@ serve(async (req) => {
                     })
                 })
 
-                // Cleanup dead tokens
-                if (response.status === 410 || response.status === 404) {
-                    await supabase
+                const errorBody = response.ok ? null : await response.text()
+
+                // Cleanup dead tokens (gone, not found, or explicitly invalid)
+                const isBadToken = response.status === 410 || response.status === 404
+                    || (response.status === 400 && (errorBody ?? '').includes('BadDeviceToken'))
+                if (isBadToken) {
+                    const { error: deleteError } = await supabase
                         .from('user_push_tokens')
                         .delete()
                         .eq('device_token', t.device_token)
+                    if (deleteError) {
+                        console.error('push-notifications token_cleanup_failed', JSON.stringify({
+                            token_suffix: t.device_token.slice(-8),
+                            error: deleteError.message,
+                        }))
+                    }
                 }
 
-                const errorBody = response.ok ? null : await response.text()
                 if (!response.ok) {
                     console.error('push-notifications apns_delivery_failed', JSON.stringify({
                         status: response.status,
-                        token: t.device_token,
+                        token_suffix: t.device_token.slice(-8),
                         body: errorBody || response.statusText,
                     }))
                 }
@@ -142,7 +149,7 @@ serve(async (req) => {
                 }
             } catch (error) {
                 console.error('push-notifications request_failed', JSON.stringify({
-                    token: t.device_token,
+                    token_suffix: t.device_token.slice(-8),
                     error: error instanceof Error ? error.message : String(error),
                 }))
                 return {
@@ -174,6 +181,6 @@ serve(async (req) => {
 
     } catch (error) {
         logError("push-notifications", error)
-        return new Response(error.message, { status: 500 })
+        return new Response(error instanceof Error ? error.message : "Unknown error.", { status: 500 })
     }
 })

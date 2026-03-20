@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class AddItemViewModel {
     let roomId: UUID
     var name = ""

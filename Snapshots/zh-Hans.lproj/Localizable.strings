@@ -102,6 +102,7 @@
 "paywall.restore_purchases" = "恢复购买";
 "paywall.restore_failed" = "无法恢复购买，请重试。";
 "paywall.monthly" = "每月";
+"paywall.yearly" = "每年";
 "paywall.terms" = "服务条款";
 "paywall.privacy" = "隐私政策";
 "paywall.legal" = "法律信息";

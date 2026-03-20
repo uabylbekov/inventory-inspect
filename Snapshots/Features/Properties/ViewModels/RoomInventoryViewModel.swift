@@ -1,7 +1,7 @@
 import SwiftUI
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class RoomInventoryViewModel {
     let room: PropertyRoomModel
     var items: [RoomInventoryItemModel] = []
