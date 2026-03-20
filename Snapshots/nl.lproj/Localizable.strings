@@ -102,6 +102,7 @@
 "paywall.restore_purchases" = "Aankopen herstellen";
 "paywall.restore_failed" = "Aankopen konden niet worden hersteld. Probeer opnieuw.";
 "paywall.monthly" = "Maandelijks";
+"paywall.yearly" = "Jaarlijks";
 "paywall.terms" = "Servicevoorwaarden";
 "paywall.privacy" = "Privacybeleid";
 "paywall.legal" = "Juridisch";

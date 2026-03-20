@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class ManageTeamViewModel {
     let propertyId: UUID
     var newMemberEmail = ""
@@ -17,7 +17,8 @@ final class ManageTeamViewModel {
     
     var isValidEmail: Bool {
         let email = newMemberEmail.trimmingCharacters(in: .whitespaces)
-        return email.contains("@") && email.contains(".") && email.count > 4
+        let predicate = NSPredicate(format: "SELF MATCHES %@", #"^[^\s@]+@[^\s@]+\.[^\s@]+$"#)
+        return predicate.evaluate(with: email)
     }
     
     var isInviteDisabled: Bool {
@@ -32,7 +33,7 @@ final class ManageTeamViewModel {
         successMessage = nil
         
         let email = newMemberEmail.trimmingCharacters(in: .whitespaces).lowercased()
-        if !email.contains("@") || !email.contains(".") {
+        guard isValidEmail else {
             self.errorMessage = String(localized: "team.error.invalid_email")
             self.isSaving = false
             return false

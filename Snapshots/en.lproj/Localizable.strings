@@ -111,6 +111,7 @@
 "paywall.restore_purchases" = "Restore Purchases";
 "paywall.restore_failed" = "Could not restore purchases. Please try again.";
 "paywall.monthly" = "Monthly";
+"paywall.yearly" = "Yearly";
 "paywall.terms" = "Terms of Service";
 "paywall.privacy" = "Privacy Policy";
 "paywall.legal" = "Legal";

@@ -247,6 +247,10 @@ serve(async (req) => {
       logStage("sync-storekit-subscription", "validation.missing_transaction_id");
       return json({ error: "transactionId is required." }, 400);
     }
+    if (!/^\d{1,20}$/.test(transactionId.trim())) {
+      logStage("sync-storekit-subscription", "validation.invalid_transaction_id_format", { transactionId });
+      return json({ error: "transactionId must be a numeric string." }, 400);
+    }
     if (environment != null && !normalizedEnvironment) {
       logStage("sync-storekit-subscription", "validation.invalid_environment", {
         environment,
@@ -324,6 +328,6 @@ serve(async (req) => {
     return json(subscription, 200);
   } catch (error) {
     logError("sync-storekit-subscription", error);
-    return json({ error: error instanceof Error ? error.message : "Unknown error." }, 400);
+    return json({ error: error instanceof Error ? error.message : "Unknown error." }, 500);
   }
 });

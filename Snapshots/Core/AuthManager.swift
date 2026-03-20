@@ -1,7 +1,7 @@
 import SwiftUI
 import Supabase
 
-@Observable
+@Observable @MainActor
 final class AuthManager {
     var isAuthenticated = false
     var isCheckingSession = true
@@ -16,39 +16,29 @@ final class AuthManager {
         Task {
             do {
                 let session = try await supabase.auth.session
-                await MainActor.run {
-                    self.isAuthenticated = true
-                    self.checkProfileCompletion(session)
-                    self.isCheckingSession = false
-                }
+                self.isAuthenticated = true
+                self.checkProfileCompletion(session)
+                self.isCheckingSession = false
                 await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
             } catch {
-                await MainActor.run {
+                self.isAuthenticated = false
+                self.isProfileComplete = false
+                self.isCheckingSession = false
+                SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
+            }
+
+            for await state in supabase.auth.authStateChanges {
+                if let session = state.session {
+                    self.isAuthenticated = true
+                    self.checkProfileCompletion(session)
+                } else {
                     self.isAuthenticated = false
                     self.isProfileComplete = false
-                    self.isCheckingSession = false
-                }
-                await MainActor.run {
-                    SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
-                }
-            }
-            
-            for await state in supabase.auth.authStateChanges {
-                await MainActor.run {
-                    if let session = state.session {
-                        self.isAuthenticated = true
-                        self.checkProfileCompletion(session)
-                    } else {
-                        self.isAuthenticated = false
-                        self.isProfileComplete = false
-                    }
                 }
                 if state.session != nil {
                     await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
                 } else {
-                    await MainActor.run {
-                        SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
-                    }
+                    SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
                 }
             }
         }

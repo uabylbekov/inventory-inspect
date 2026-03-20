@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import {
-  Environment,
-  SignedDataVerifier,
-} from "npm:@apple/app-store-server-library";
+import { compactVerify, decodeProtectedHeader, importX509 } from "npm:jose@5.9.6";
 import { Buffer } from "node:buffer";
 import { logError, logStage as logStructuredStage } from "../_shared/logging.ts";
 
@@ -75,16 +72,23 @@ async function loadAppleRootCAs() {
   if (!appleRootCAsPromise) {
     appleRootCAsPromise = Promise.all(
       APPLE_ROOT_CA_URLS.map(async (url) => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          throw new Error(`Failed to load Apple root certificate from ${url}.`);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 10_000);
+        try {
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) {
+            throw new Error(`Failed to load Apple root certificate from ${url}.`);
+          }
+          return Buffer.from(await response.arrayBuffer());
+        } finally {
+          clearTimeout(timeout);
         }
-
-        return Buffer.from(await response.arrayBuffer());
       }),
-    );
+    ).catch((err) => {
+      appleRootCAsPromise = null;
+      throw err;
+    });
   }
-
   return appleRootCAsPromise;
 }
 
@@ -93,7 +97,6 @@ function decodePayloadWithoutVerification<T>(signedValue: string): T {
   if (!payload) {
     throw new Error("Malformed signed payload.");
   }
-
   const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
   const padding = normalized.length % 4 === 0 ? "" : "=".repeat(4 - (normalized.length % 4));
   const decoded = atob(normalized + padding);
@@ -102,7 +105,61 @@ function decodePayloadWithoutVerification<T>(signedValue: string): T {
   ) as T;
 }
 
-async function buildVerifier(environment: Environment) {
+function derToPem(derBase64: string): string {
+  const body = derBase64.match(/.{1,64}/g)!.join("\n");
+  return `-----BEGIN CERTIFICATE-----\n${body}\n-----END CERTIFICATE-----`;
+}
+
+function buffersEqual(a: Buffer, b: Buffer): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+}
+
+// Verifies an Apple JWS token by:
+// 1. Checking the x5c chain root against known Apple root CAs
+// 2. Importing the leaf cert public key via jose (WebCrypto-native, no node:crypto X509 needed)
+// 3. Verifying the compact JWS signature
+async function verifyAppleJWS(
+  jws: string,
+  rootCAs: Buffer[],
+): Promise<Record<string, unknown>> {
+  const header = decodeProtectedHeader(jws);
+  const x5c = header.x5c as string[] | undefined;
+
+  if (!x5c || x5c.length < 2) {
+    throw new Error(`Invalid certificate chain length: ${x5c?.length ?? 0}`);
+  }
+
+  // Verify the chain's root cert matches a known Apple root CA
+  const chainRootDer = Buffer.from(x5c[x5c.length - 1], "base64");
+  const knownRoot = rootCAs.some((ca) => buffersEqual(chainRootDer, ca));
+  if (!knownRoot) {
+    throw new Error("Certificate chain root is not a known Apple root CA");
+  }
+
+  // Import the leaf cert's public key and verify the JWS signature
+  const leafPem = derToPem(x5c[0]);
+  const leafKey = await importX509(leafPem, "ES256");
+  const { payload: rawPayload } = await compactVerify(jws, leafKey);
+
+  return JSON.parse(new TextDecoder().decode(rawPayload));
+}
+
+async function verifyNotification(signedPayload: string) {
+  const unsignedPayload = decodePayloadWithoutVerification<DecodedNotification>(signedPayload);
+  const declaredEnvironment = unsignedPayload.data?.environment ?? "Sandbox";
+
+  logStage("verify_notification.start", {
+    declaredEnvironment,
+    notificationUUID: unsignedPayload.notificationUUID ?? null,
+    notificationType: unsignedPayload.notificationType ?? null,
+    bundleId: unsignedPayload.data?.bundleId ?? null,
+    payloadLength: signedPayload.length,
+  });
+
   const bundleId = Deno.env.get("APP_STORE_BUNDLE_ID");
   if (!bundleId) {
     throw new Error("APP_STORE_BUNDLE_ID is required for App Store notification verification.");
@@ -110,88 +167,52 @@ async function buildVerifier(environment: Environment) {
 
   const appAppleIdRaw = Deno.env.get("APP_STORE_APPLE_ID");
   const appAppleId = appAppleIdRaw ? Number(appAppleIdRaw) : undefined;
-  if (environment === Environment.PRODUCTION && !appAppleId) {
+  if (declaredEnvironment === "Production" && !appAppleId) {
     throw new Error(
       "APP_STORE_APPLE_ID is required to verify production App Store Server Notifications.",
     );
   }
 
-  const appleRootCAs = await loadAppleRootCAs();
-  return new SignedDataVerifier(
-    appleRootCAs,
-    true,
-    environment,
-    bundleId,
-    appAppleId,
-  );
-}
+  const rootCAs = await loadAppleRootCAs();
+  const notification = await verifyAppleJWS(signedPayload, rootCAs) as DecodedNotification;
 
-async function verifyNotification(signedPayload: string) {
-  const unsignedPayload = decodePayloadWithoutVerification<DecodedNotification>(signedPayload);
-  const candidateEnvironment = unsignedPayload.data?.environment === "Production"
-    ? Environment.PRODUCTION
-    : Environment.SANDBOX;
-  logStage("verify_notification.start", {
-    candidateEnvironment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-    notificationUUID: unsignedPayload.notificationUUID ?? null,
-    notificationType: unsignedPayload.notificationType ?? null,
-    bundleId: unsignedPayload.data?.bundleId ?? null,
-    payloadLength: signedPayload.length,
+  // Verify bundle ID matches what we expect
+  if (notification.data?.bundleId && notification.data.bundleId !== bundleId) {
+    throw new Error(
+      `Bundle ID mismatch: expected ${bundleId}, got ${notification.data.bundleId}`,
+    );
+  }
+
+  // Verify app Apple ID for production if configured
+  if (appAppleId && notification.data?.appAppleId && notification.data.appAppleId !== appAppleId) {
+    throw new Error(
+      `App Apple ID mismatch: expected ${appAppleId}, got ${notification.data.appAppleId}`,
+    );
+  }
+
+  const environment = notification.data?.environment ?? declaredEnvironment;
+
+  logStage("verify_notification.success", {
+    environment,
+    notificationUUID: notification.notificationUUID ?? null,
+    notificationType: notification.notificationType ?? null,
   });
 
-  const primaryVerifier = await buildVerifier(candidateEnvironment);
-
-  try {
-    const notification = await primaryVerifier.verifyAndDecodeNotification(signedPayload);
-    logStage("verify_notification.primary_success", {
-      environment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-      notificationUUID: notification.notificationUUID ?? null,
-      notificationType: notification.notificationType ?? null,
-    });
-    return { notification, verifier: primaryVerifier, environment: candidateEnvironment };
-  } catch (primaryError) {
-    const fallbackEnvironment = candidateEnvironment === Environment.SANDBOX
-      ? Environment.PRODUCTION
-      : Environment.SANDBOX;
-    logStage("verify_notification.primary_failed", {
-      environment: candidateEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-      fallbackEnvironment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-      error: primaryError instanceof Error ? primaryError.message : String(primaryError),
-    });
-    const fallbackVerifier = await buildVerifier(fallbackEnvironment);
-    try {
-      const notification = await fallbackVerifier.verifyAndDecodeNotification(signedPayload);
-      logStage("verify_notification.fallback_success", {
-        environment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-        notificationUUID: notification.notificationUUID ?? null,
-        notificationType: notification.notificationType ?? null,
-      });
-      return { notification, verifier: fallbackVerifier, environment: fallbackEnvironment };
-    } catch (fallbackError) {
-      logStage("verify_notification.fallback_failed", {
-        environment: fallbackEnvironment === Environment.PRODUCTION ? "Production" : "Sandbox",
-        error: fallbackError instanceof Error ? fallbackError.message : String(fallbackError),
-      });
-      if (fallbackError instanceof Error && primaryError instanceof Error) {
-        fallbackError.message = `${fallbackError.message} | primary verification error: ${primaryError.message}`;
-      }
-      throw fallbackError;
-    }
-  }
+  return { notification, rootCAs, environment };
 }
 
 async function decodeTransactionAndRenewal(
-  verifier: SignedDataVerifier,
   notification: DecodedNotification,
+  rootCAs: Buffer[],
 ) {
   const signedTransactionInfo = notification.data?.signedTransactionInfo;
   const signedRenewalInfo = notification.data?.signedRenewalInfo;
 
   const transaction = signedTransactionInfo
-    ? await verifier.verifyAndDecodeTransaction(signedTransactionInfo) as DecodedTransaction
+    ? await verifyAppleJWS(signedTransactionInfo, rootCAs) as DecodedTransaction
     : null;
   const renewal = signedRenewalInfo
-    ? await verifier.verifyAndDecodeRenewalInfo(signedRenewalInfo) as DecodedRenewalInfo
+    ? await verifyAppleJWS(signedRenewalInfo, rootCAs) as DecodedRenewalInfo
     : null;
 
   return { transaction, renewal };
@@ -200,7 +221,7 @@ async function decodeTransactionAndRenewal(
 function resolveSubscriptionState(
   transaction: DecodedTransaction | null,
   renewal: DecodedRenewalInfo | null,
-  environment: Environment,
+  environment: string,
 ) {
   const productId = transaction?.productId ?? renewal?.autoRenewProductId ?? null;
   const expiresDate = transaction?.expiresDate;
@@ -217,7 +238,7 @@ function resolveSubscriptionState(
     tier: active ? "pro" : "free",
     productId,
     expiresAt: toIsoString(expiresDate),
-    environment: transaction?.environment ?? (environment === Environment.PRODUCTION ? "Production" : "Sandbox"),
+    environment: transaction?.environment ?? environment,
     transactionId: transaction?.transactionId ?? null,
     originalTransactionId: transaction?.originalTransactionId ?? renewal?.originalTransactionId ?? null,
   };
@@ -335,11 +356,11 @@ serve(async (req) => {
       return json({ error: "signedPayload is required." }, 400);
     }
 
-    const { notification, verifier, environment } = await verifyNotification(signedPayload);
+    const { notification, rootCAs, environment } = await verifyNotification(signedPayload);
     const notificationUUID = notification.notificationUUID;
     const notificationType = notification.notificationType ?? "UNKNOWN";
     logStage("notification.verified", {
-      environment: environment === Environment.PRODUCTION ? "Production" : "Sandbox",
+      environment,
       notificationUUID: notificationUUID ?? null,
       notificationType,
       subtype: notification.subtype ?? null,
@@ -356,8 +377,8 @@ serve(async (req) => {
     }
 
     const { transaction, renewal } = await decodeTransactionAndRenewal(
-      verifier,
       notification as DecodedNotification,
+      rootCAs,
     );
     logStage("notification.decoded_transaction", {
       hasTransaction: Boolean(transaction),
@@ -413,6 +434,6 @@ serve(async (req) => {
   } catch (error) {
     const message = error instanceof Error ? error.message : "Unknown error.";
     logError("app-store-server-notifications", error);
-    return json({ error: message }, 400);
+    return json({ error: message }, 500);
   }
 });

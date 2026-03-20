@@ -103,6 +103,7 @@
 "paywall.restore_purchases" = "Восстановить покупки";
 "paywall.restore_failed" = "Не удалось восстановить покупки. Попробуйте снова.";
 "paywall.monthly" = "Ежемесячно";
+"paywall.yearly" = "Ежегодно";
 "paywall.terms" = "Условия использования";
 "paywall.privacy" = "Политика конфиденциальности";
 "paywall.legal" = "Юридическая информация";

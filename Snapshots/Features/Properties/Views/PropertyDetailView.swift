@@ -330,10 +330,11 @@ struct PropertyDetailView: View {
     
     private func confirmDeleteRoom(_ room: PropertyRoomModel) {
         guard let index = viewModel.rooms.firstIndex(where: { $0.id == room.id }) else { return }
-        roomToDeleteOffsets = IndexSet(integer: index)
+        let offsets = IndexSet(integer: index)
+        roomToDeleteOffsets = offsets
         Task {
             do {
-                let count = try await viewModel.activeInspectionItemCount(at: roomToDeleteOffsets!)
+                let count = try await viewModel.activeInspectionItemCount(at: offsets)
                 if count > 0 {
                     roomActiveInspectionItemCount = count
                     showingRoomActiveInspectionAlert = true
