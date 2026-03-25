@@ -8,5 +8,5 @@
 APS_ENVIRONMENT = production
 SUPABASE_URL = https:/$()/ulsckwhhnaxxebrthzpn.supabase.co
 SUPABASE_KEY = sb_publishable_cMtvYMTK7HfwzXt-02eXlg_Y1kqdNs6
-TERMS_URL = https:/$()/uabylbekov.github.io/snapshots/terms.html
+TERMS_URL = https:/$()/www.apple.com/legal/internet-services/itunes/dev/stdeula/
 PRIVACY_URL = https:/$()/uabylbekov.github.io/snapshots/privacy.html
