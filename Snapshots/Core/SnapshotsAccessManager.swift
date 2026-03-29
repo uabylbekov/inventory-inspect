@@ -210,7 +210,7 @@ final class SnapshotsAccessManager {
         for await result in Transaction.currentEntitlements {
             guard case .verified(let transaction) = result else { continue }
             guard transaction.revocationDate == nil else { continue }
-            guard transaction.expirationDate == nil || transaction.expirationDate! > Date() else { continue }
+            guard transaction.expirationDate.map({ $0 > Date() }) ?? true else { continue }
 
             if [proMonthlyProductId, proYearlyProductId].contains(transaction.productID) {
                 highestTierFound = "pro"
