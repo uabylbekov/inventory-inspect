@@ -1,12 +1,11 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct InspectionReportView: View {
     @State private var viewModel: InspectionReportViewModel
     @State private var showingInspectionSelection = false
-    @State private var exportDocument: ExportedPDFDocument?
+    @State private var previewPDFData: Data?
     @State private var exportFilename = ""
-    @State private var showingExporter = false
+    @State private var showingPDFPreview = false
     @State private var showingPaywall = false
 
     init(inspection: InspectionModel) {
@@ -138,25 +137,25 @@ struct InspectionReportView: View {
                     Button(action: {
                         Task {
                             if let pdf = await viewModel.generatePDF() {
-                                exportDocument = ExportedPDFDocument(data: pdf.data)
+                                previewPDFData = pdf.data
                                 exportFilename = pdf.filename
-                                showingExporter = true
+                                showingPDFPreview = true
                             }
                         }
                     }) {
-                        Image(systemName: "square.and.arrow.up")
+                        Image(systemName: "doc.badge.plus")
                             .imageScale(.large)
                     }
                 }
             }
         }
-        .fileExporter(
-            isPresented: $showingExporter,
-            document: exportDocument,
-            contentType: .pdf,
-            defaultFilename: exportFilename
-        ) { _ in
-            exportDocument = nil
+        .sheet(isPresented: $showingPDFPreview) {
+            if let previewPDFData {
+                PDFPreviewSheet(
+                    data: previewPDFData,
+                    title: exportFilename
+                )
+            }
         }
         .sheet(isPresented: $showingInspectionSelection) {
             CompareSelectSheet(currentInspection: viewModel.inspection)

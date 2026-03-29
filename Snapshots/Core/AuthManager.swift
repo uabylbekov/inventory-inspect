@@ -14,31 +14,36 @@ final class AuthManager {
         }
 
         Task {
-            do {
-                let session = try await supabase.auth.session
-                self.isAuthenticated = true
-                self.checkProfileCompletion(session)
-                self.isCheckingSession = false
-                await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
-            } catch {
-                self.isAuthenticated = false
-                self.isProfileComplete = false
-                self.isCheckingSession = false
-                SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
-            }
-
+            // Drive all auth state from the single authoritative stream.
+            // authStateChanges always emits .initialSession first, which
+            // replaces the separate supabase.auth.session call and closes
+            // the race window where a magic-link event could fire between
+            // the initial check completing and the loop starting.
             for await state in supabase.auth.authStateChanges {
-                if let session = state.session {
-                    self.isAuthenticated = true
-                    self.checkProfileCompletion(session)
-                } else {
+                switch state.event {
+                case .initialSession:
+                    if let session = state.session {
+                        self.isAuthenticated = true
+                        self.checkProfileCompletion(session)
+                        await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
+                    } else {
+                        self.isAuthenticated = false
+                        self.isProfileComplete = false
+                        SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
+                    }
+                    self.isCheckingSession = false
+                case .signedIn, .tokenRefreshed:
+                    if let session = state.session {
+                        self.isAuthenticated = true
+                        self.checkProfileCompletion(session)
+                        await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
+                    }
+                case .signedOut:
                     self.isAuthenticated = false
                     self.isProfileComplete = false
-                }
-                if state.session != nil {
-                    await SnapshotsAccessManager.shared.refreshEntitlementsForCurrentUser()
-                } else {
                     SnapshotsAccessManager.shared.clearEntitlementsForSignedOutUser()
+                default:
+                    break
                 }
             }
         }

@@ -12,6 +12,24 @@ final class SnapshotCache {
     private init() {
         memoryCache.countLimit = 64
         memoryCache.totalCostLimit = 5 * 1024 * 1024
+        ioQueue.async { self.purgeExpiredFiles() }
+    }
+
+    // Deletes cache files older than maxAge. Called once at startup on the IO queue.
+    private func purgeExpiredFiles(maxAge: TimeInterval = 7 * 24 * 60 * 60) {
+        guard let files = try? fileManager.contentsOfDirectory(
+            at: cacheDirectoryURL,
+            includingPropertiesForKeys: [.contentModificationDateKey],
+            options: .skipsHiddenFiles
+        ) else { return }
+
+        let cutoff = Date().addingTimeInterval(-maxAge)
+        for file in files {
+            let modDate = (try? file.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
+            if let modDate, modDate < cutoff {
+                try? fileManager.removeItem(at: file)
+            }
+        }
     }
 
     func load<Value: Codable>(_ type: Value.Type, key: String, maxAge: TimeInterval? = nil) async -> Value? {

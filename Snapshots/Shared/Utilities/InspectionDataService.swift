@@ -23,7 +23,8 @@ struct RoomInspectionSnapshot {
 
 struct ComparisonReportSnapshot {
     let property: PropertyModel?
-    let inspectorName: String?
+    let previousInspectorName: String?
+    let currentInspectorName: String?
     let anomalies: [ReportItem]
     let presentItems: [ReportItem]
     let changedItems: [DiffItem]
@@ -137,6 +138,14 @@ struct InspectionDataService {
 
     static func loadComparisonSnapshot(older: InspectionModel, newer: InspectionModel) async throws -> ComparisonReportSnapshot {
         let context = try await loadInspectionContext(propertyId: newer.property_id)
+        async let previousInspectorName = fetchInspectorName(
+            propertyId: older.property_id,
+            inspectorId: older.inspector_id
+        )
+        async let currentInspectorName = fetchInspectorName(
+            propertyId: newer.property_id,
+            inspectorId: newer.inspector_id
+        )
 
         let oldRecords: [InspectionItemModel] = try await supabase
             .from("inspection_items")
@@ -200,10 +209,8 @@ struct InspectionDataService {
 
         return ComparisonReportSnapshot(
             property: context.property,
-            inspectorName: await fetchInspectorName(
-                propertyId: newer.property_id,
-                inspectorId: newer.inspector_id
-            ),
+            previousInspectorName: await previousInspectorName,
+            currentInspectorName: await currentInspectorName,
             anomalies: anomalies.sorted(by: { $0.room.name < $1.room.name }),
             presentItems: presentItems.sorted(by: { $0.room.name < $1.room.name }),
             changedItems: changes.sorted { $0.roomName == $1.roomName ? $0.itemName < $1.itemName : $0.roomName < $1.roomName },

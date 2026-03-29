@@ -45,12 +45,11 @@ struct SettingsView: View {
                 Section {
                     NavigationLink {
                         SettingsAboutView(
-                            version: appVersion,
-                            build: buildNumber
+                            version: appVersion
                         )
                     } label: {
                         LabeledContent {
-                            Text("\(String(localized: "settings.version")) \(appVersion) • \(String(localized: "settings.build")) \(buildNumber)")
+                            Text("\(String(localized: "settings.version")) \(appVersion)")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } label: {
@@ -122,10 +121,6 @@ struct SettingsView: View {
 
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0.0"
-    }
-
-    private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "2026.3"
     }
 
     private func openLegalURL(_ url: URL?) {
@@ -272,7 +267,6 @@ private struct FeedbackSheetContainer: View {
 
 private struct SettingsAboutView: View {
     let version: String
-    let build: String
 
     var body: some View {
         List {
@@ -281,11 +275,6 @@ private struct SettingsAboutView: View {
                     Text(version)
                 } label: {
                     Label("settings.version", systemImage: "number")
-                }
-                LabeledContent {
-                    Text(build)
-                } label: {
-                    Label("settings.build", systemImage: "hammer")
                 }
             }
         }
