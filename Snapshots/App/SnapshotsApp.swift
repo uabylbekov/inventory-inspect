@@ -76,6 +76,8 @@ struct InspectionsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var delegate
     #endif
 
+    @State private var magicLinkError: String?
+
     var body: some Scene {
         WindowGroup {
             Group {
@@ -89,9 +91,17 @@ struct InspectionsApp: App {
                                 do {
                                     try await supabase.auth.session(from: url)
                                 } catch {
-                                    print("Failed to handle deep link: \(error.localizedDescription)")
+                                    magicLinkError = error.localizedDescription
                                 }
                             }
+                        }
+                        .alert("auth.magic_link_failed", isPresented: .init(
+                            get: { magicLinkError != nil },
+                            set: { if !$0 { magicLinkError = nil } }
+                        )) {
+                            Button("common.ok") { magicLinkError = nil }
+                        } message: {
+                            Text(magicLinkError ?? "")
                         }
                 }
             }

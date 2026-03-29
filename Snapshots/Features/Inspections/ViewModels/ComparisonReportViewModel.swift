@@ -6,7 +6,8 @@ import SwiftUI
 final class ComparisonReportViewModel {
     private struct CachedSnapshot: Codable {
         let property: PropertyModel?
-        let inspectorName: String?
+        let previousInspectorName: String?
+        let currentInspectorName: String?
         let anomalies: [ReportItem]
         let presentItems: [ReportItem]
         let changedItems: [DiffItem]
@@ -22,7 +23,8 @@ final class ComparisonReportViewModel {
     let newer: InspectionModel
     
     var property: PropertyModel?
-    var inspectorName: String?
+    var previousInspectorName: String?
+    var currentInspectorName: String?
     var anomalies: [ReportItem] = [] // for Newer inspection
     var presentItems: [ReportItem] = [] // for Newer inspection
     var changedItems: [DiffItem] = []
@@ -69,7 +71,8 @@ final class ComparisonReportViewModel {
             let snapshot = try await InspectionDataService.loadComparisonSnapshot(older: older, newer: newer)
             let cachedSnapshot = CachedSnapshot(
                 property: snapshot.property,
-                inspectorName: snapshot.inspectorName,
+                previousInspectorName: snapshot.previousInspectorName,
+                currentInspectorName: snapshot.currentInspectorName,
                 anomalies: snapshot.anomalies,
                 presentItems: snapshot.presentItems,
                 changedItems: snapshot.changedItems,
@@ -98,7 +101,8 @@ final class ComparisonReportViewModel {
             older: older,
             newer: newer,
             property: property,
-            inspectorName: inspectorName,
+            previousInspectorName: previousInspectorName,
+            currentInspectorName: currentInspectorName,
             changedItems: changedItems,
             unchangedItems: unchangedItems
         )
@@ -106,7 +110,8 @@ final class ComparisonReportViewModel {
 
     private func apply(snapshot: CachedSnapshot) {
         property = snapshot.property
-        inspectorName = snapshot.inspectorName
+        previousInspectorName = snapshot.previousInspectorName
+        currentInspectorName = snapshot.currentInspectorName
         anomalies = snapshot.anomalies
         presentItems = snapshot.presentItems
         changedItems = snapshot.changedItems

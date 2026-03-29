@@ -437,3 +437,10 @@
 "paywall.products_partial_missing" = "Some plans are missing from App Store Connect for this build: %@.";
 "paywall.restore_success" = "Purchases restored successfully.";
 "paywall.restore_none_found" = "No active App Store subscription was found for this account.";
+"comparison.no_photo" = "No photo";
+"pdf.photo_evidence" = "Photo evidence";
+"pdf.no_photo" = "No photo";
+"inspection_item.status.pending" = "Pending";
+"pdf.photo_reference_not_embedded" = "Photo reference available but not embedded";
+
+"auth.magic_link_failed" = "Sign-in Link Failed";

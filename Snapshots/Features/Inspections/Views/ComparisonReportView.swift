@@ -1,12 +1,11 @@
 import SwiftUI
 import Supabase
-import UniformTypeIdentifiers
 
 struct ComparisonReportView: View {
     @State private var viewModel: ComparisonReportViewModel
-    @State private var exportDocument: ExportedPDFDocument?
+    @State private var previewPDFData: Data?
     @State private var exportFilename = ""
-    @State private var showingExporter = false
+    @State private var showingPDFPreview = false
     @State private var showingPaywall = false
     
     init(base: InspectionModel, current: InspectionModel) {
@@ -52,37 +51,39 @@ struct ComparisonReportView: View {
                 }
             } else {
                 if !viewModel.changedItems.isEmpty {
-                    Section {
-                        ForEach(viewModel.changedItems) { diff in
+                    Label(
+                        String.localizedStringWithFormat(
+                            NSLocalizedString("comparison.changes_found", comment: ""),
+                            viewModel.changedItems.count
+                        ),
+                        systemImage: "arrow.triangle.2.circlepath"
+                    )
+                    .foregroundStyle(.orange)
+
+                    ForEach(viewModel.changedItems) { diff in
+                        Section {
                             DiffRowView(diff: diff, sectionKind: .changed)
-                        }
-                    } header: {
-                        HStack {
-                            Label(
-                                String.localizedStringWithFormat(
-                                    NSLocalizedString("comparison.changes_found", comment: ""),
-                                    viewModel.changedItems.count
-                                ),
-                                systemImage: "arrow.triangle.2.circlepath"
-                            )
-                            .foregroundStyle(.orange)
+                        } header: {
+                            itemHeader(diff: diff)
                         }
                     }
                 }
                 
                 if !viewModel.unchangedItems.isEmpty {
-                    Section {
-                        ForEach(viewModel.unchangedItems) { diff in
+                    Label(
+                        String.localizedStringWithFormat(
+                            NSLocalizedString("comparison.unchanged_items", comment: ""),
+                            viewModel.unchangedItems.count
+                        ),
+                        systemImage: "checkmark.circle"
+                    )
+
+                    ForEach(viewModel.unchangedItems) { diff in
+                        Section {
                             DiffRowView(diff: diff, sectionKind: .unchanged)
+                        } header: {
+                            itemHeader(diff: diff)
                         }
-                    } header: {
-                        Label(
-                            String.localizedStringWithFormat(
-                                NSLocalizedString("comparison.unchanged_items", comment: ""),
-                                viewModel.unchangedItems.count
-                            ),
-                            systemImage: "checkmark.circle"
-                        )
                     }
                 }
             }
@@ -95,27 +96,27 @@ struct ComparisonReportView: View {
                 Button {
                     Task {
                         let pdf = await viewModel.generatePDF()
-                        exportDocument = ExportedPDFDocument(data: pdf.data)
+                        previewPDFData = pdf.data
                         exportFilename = pdf.filename
-                        showingExporter = true
+                        showingPDFPreview = true
                     }
                 } label: {
                     if viewModel.isGeneratingPDF {
                         ProgressView()
                     } else {
-                        Label("comparison.share_pdf", systemImage: "square.and.arrow.up")
+                        Label("comparison.share_pdf", systemImage: "doc.badge.plus")
                     }
                 }
                 .disabled(viewModel.isLoading || viewModel.isGeneratingPDF)
             }
         }
-        .fileExporter(
-            isPresented: $showingExporter,
-            document: exportDocument,
-            contentType: .pdf,
-            defaultFilename: exportFilename
-        ) { _ in
-            exportDocument = nil
+        .sheet(isPresented: $showingPDFPreview) {
+            if let previewPDFData {
+                PDFPreviewSheet(
+                    data: previewPDFData,
+                    title: exportFilename
+                )
+            }
         }
         .sheet(isPresented: $showingPaywall) {
             PremiumPaywallView()
@@ -123,6 +124,19 @@ struct ComparisonReportView: View {
         .task {
             await viewModel.loadInitialData()
         }
+    }
+
+    @ViewBuilder
+    private func itemHeader(diff: DiffItem) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(diff.itemName)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+            Text(diff.roomName)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .textCase(nil)
     }
     
     // MARK: - Diff Row UI
@@ -138,6 +152,10 @@ struct ComparisonReportView: View {
         @State private var showOldImage = false
         @State private var showNewImage = false
 
+        private var shouldShowPhotoColumn: Bool {
+            hasPhoto(diff.oldImage) || hasPhoto(diff.newImage)
+        }
+
         private var oldStatusColor: Color {
             color(for: diff.oldStatus)
         }
@@ -148,18 +166,12 @@ struct ComparisonReportView: View {
         
         var body: some View {
             VStack(alignment: .leading, spacing: 10) {
-                Text(diff.itemName)
-                    .font(.body.weight(.medium))
-
-                Text(diff.roomName)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-
                 comparisonStatusRow(
                     titleKey: "comparison.previous",
                     statusText: displayStatus(diff.oldStatus),
                     color: oldStatusColor,
                     imagePath: diff.oldImage,
+                    showPhotoColumn: shouldShowPhotoColumn,
                     isPresented: $showOldImage
                 )
 
@@ -170,6 +182,7 @@ struct ComparisonReportView: View {
                     statusText: displayCurrentStatus,
                     color: newStatusColor,
                     imagePath: diff.newImage,
+                    showPhotoColumn: shouldShowPhotoColumn,
                     isPresented: $showNewImage
                 )
 
@@ -234,11 +247,17 @@ struct ComparisonReportView: View {
             status == "missing" || status == "damaged"
         }
 
+        private func hasPhoto(_ imagePath: String?) -> Bool {
+            guard let imagePath else { return false }
+            return !imagePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        }
+
         private func comparisonStatusRow(
             titleKey: LocalizedStringKey,
             statusText: String,
             color: Color,
             imagePath: String?,
+            showPhotoColumn: Bool,
             isPresented: Binding<Bool>
         ) -> some View {
             HStack(alignment: .top, spacing: 12) {
@@ -253,8 +272,12 @@ struct ComparisonReportView: View {
 
                 Spacer(minLength: 0)
 
-                if let imagePath {
-                    comparisonThumbnail(path: imagePath, isPresented: isPresented)
+                if showPhotoColumn {
+                    if let imagePath {
+                        comparisonThumbnail(path: imagePath, isPresented: isPresented)
+                    } else {
+                        noPhotoPlaceholder()
+                    }
                 }
             }
         }
@@ -278,6 +301,17 @@ struct ComparisonReportView: View {
                     .fill(Color.platformGray5)
                     .frame(width: 96, height: 72)
             }
+        }
+
+        private func noPhotoPlaceholder() -> some View {
+            ZStack {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.platformGray5)
+                Text("comparison.no_photo")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(width: 96, height: 72)
         }
     }
 }

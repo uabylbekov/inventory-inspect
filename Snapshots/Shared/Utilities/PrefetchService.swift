@@ -24,7 +24,8 @@ enum PrefetchService {
 
     private struct ComparisonReportCachedSnapshot: Codable {
         let property: PropertyModel?
-        let inspectorName: String?
+        let previousInspectorName: String?
+        let currentInspectorName: String?
         let anomalies: [ReportItem]
         let presentItems: [ReportItem]
         let changedItems: [DiffItem]
@@ -102,7 +103,8 @@ enum PrefetchService {
                 await SnapshotCache.shared.save(
                     ComparisonReportCachedSnapshot(
                         property: snapshot.property,
-                        inspectorName: snapshot.inspectorName,
+                        previousInspectorName: snapshot.previousInspectorName,
+                        currentInspectorName: snapshot.currentInspectorName,
                         anomalies: snapshot.anomalies,
                         presentItems: snapshot.presentItems,
                         changedItems: snapshot.changedItems,

@@ -440,3 +440,10 @@
 
 "pdf.footer_with_date" = "由 Snapshots 生成 • %@";
 "pdf.status.resolved_from" = "已从 %@ 解决";
+"comparison.no_photo" = "No photo";
+"pdf.photo_evidence" = "Photo evidence";
+"pdf.no_photo" = "No photo";
+"inspection_item.status.pending" = "Pending";
+"pdf.photo_reference_not_embedded" = "Photo reference available but not embedded";
+
+"auth.magic_link_failed" = "登录链接失败";
